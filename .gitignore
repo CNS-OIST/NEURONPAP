@@ -1,0 +1,12 @@
+#compile
+arm64
+
+# data
+*.dat
+
+# Ignored files:
+*.c
+*.o
+
+# Ignored folders:
+results/
