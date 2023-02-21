@@ -80,7 +80,7 @@ PARAMETER {
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.1 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
+	delta = 0.8	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95 (0.8)
 : The Parameter Controls Ohm haw in NMDAR
 	e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
 }
