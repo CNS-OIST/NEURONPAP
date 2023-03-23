@@ -9,5 +9,7 @@ arm64
 *.o
 .DS_Store
 
-# Ignored folders:
-results/
+!results/
+
+results/*
+!results/utils/
