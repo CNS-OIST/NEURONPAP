@@ -9,6 +9,8 @@ arm64
 *.o
 .DS_Store
 
+*.pdf
+
 !results/
 
 results/*
