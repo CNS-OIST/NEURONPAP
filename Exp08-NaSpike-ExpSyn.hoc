@@ -2,15 +2,17 @@
 We will examine the depolarization after injection of current.
 */
 
-load_file("nrngui.hoc")
+// load_file("nrngui.hoc")
+load_file("stdgui.hoc")
 load_file("params.hoc")
 
 //fully activates cache efficiency
 cvode.cache_efficient(1)  
 
 tstop = 520
-dt = .025
-celsius = 25	//room temperature in Clarke08 experiment = ?
+dt = .001
+celsius = 23	//room temperature in Clarke08 experiment = ?
+// v_init = -85
 v_init = -65
 
 // ------------------ THE BRANCH
@@ -55,7 +57,8 @@ diam = 0.02             // um from previous Ryo Model
 // cm = 0.8                // uF/cm2
 // nseg = 10              // seg/5 um
 insert pas
-e_pas = -65             // mV 
+e_pas = -65
+// e_pas = -85             // mV 
 // g_pas = 1/11150         // mS/cm2
 
 
@@ -97,13 +100,14 @@ proc clampSwitch () {
     } else if ($1 > 0) {
         vc = new VClamp(.5)
         vc.dur[0] = tstop   // ms half of tstop
-        vc.amp[0] = -40 // mV depolarization
+        vc.amp[0] = 40 // mV depolarization
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
         // ic.del = tstop / 2 // ms delay half of tstop
-        ic.dur = tstop //ms half of tstop
-        unit =  0.010 // fA
+        ic.dur = 0.5 //ms half of tstop
+        ic.del = 1.5 - 1 // ms starts with glutamate 
+        unit =  0.000001 // fA
         ic.amp = 1 * unit // nA current injection (1 pA)
         //---------------------------------------------------
     }
@@ -111,36 +115,67 @@ proc clampSwitch () {
 
 clampSwitch(1) //use different mode
 
-Tau1 = 2.1343
-Wtau2 = 0.65
-Tau2_0 = 33.129
-A2 = 2.9907
-B2 = 0.0243
-Tau3_0 = 217.69
-A3 = 34.69
-B3 = 0.01
+
+objref wFile
+wFile = new File()   
+wFile.ropen("./results/optimize/optT1.dat")
+Tau1 = wFile.scanvar()
+Wtau2 = wFile.scanvar()
+wFile.close()
+
+wFile = new File()   
+wFile.ropen("./results/optimize/optT2.dat")
+Tau2_0 = wFile.scanvar()
+A2 = wFile.scanvar()
+B2 = wFile.scanvar()
+wFile.close()
+
+wFile = new File()   
+wFile.ropen("./results/optimize/optT3.dat")
+Tau3_0 = wFile.scanvar()
+A3 = wFile.scanvar()
+B3 = wFile.scanvar()
+wFile.close()
+
+// Tau1 = 2.1343
+// Wtau2 = 0.65
+
+// Tau2_0 = 33.129
+// A2 = 2.9907
+// B2 = 0.0243
+// Tau3_0 = 217.69
+// A3 = 34.69
+// B3 = 0.01
+
 k0 = 6.9172
-DELTA = 0.99128
+wFile = new File()   
+wFile.ropen("./results/optimize/optDelta.dat")
+DELTA = wFile.scanvar()
+wFile.close()
+// DELTA = 0.99128
+
 
 objref sNMDA, stim, nc
 stim = new NetStim(.5)
 	stim.interval = 1		//ms (mean) time between spikes
 	stim.number = 1			//(average) number of spikes
-	stim.start 	= 1.534 - 1	//ms (most likely) start time of first spike
+	// stim.start 	= 1.534 - 1	//ms (most likely) start time of first spike
+        stim.start = 10
 	stim.noise 	= 0			//---- range 0 to 1. Fractional randomness.
 //	0 deterministic, 1 intervals have negexp distribution.
 //        Artificial Stimulus to PAP (compatible with astrocyte?)
 
-{sNMDA = new Exp4NMDA2(.5) } // Our Model 2012 Synaptic Conductance 
+{sNMDA = new Exp5NMDA(.5) } // Our Model 2012 Synaptic Conductance 
 // {sNMDA = new Exp5NMDA4(.5) SynWeight = 0.57262 } // Our Model - modifed to have voltage dependent gFAST, 2012
 // sNMDA = new Exp5NMDA(.5)
 
 
-nc = new NetCon(stim, sNMDA) //Removed synaptic input (no synaptic conductance on PAP)
+nc = new NetCon(stim, sNMDA) 
 
 proc init_NMDA() {
 	nc.weight = $1
-	nc.delay = 1
+	// nc.delay = 1
+	nc.delay = 0
 	
 	sNMDA.tau1 = Tau1
 	sNMDA.tau2_0 = Tau2_0
@@ -155,30 +190,27 @@ proc init_NMDA() {
     }
     objref FinNMDA
     
-    objref wFile
-    double SynWeight[1]
 wFile = new File()   
 wFile.ropen("./results/optimize/optW.dat")
 SynWeight = wFile.scanvar()
-print SynWeight
-
 wFile.close()
-    
+
+// SynWeight = 0.57262
 FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 	
 //-------Graph----------------------	
-objref iNMDA, vSoma
-iNMDA = new Graph()
-iNMDA.size(0,tstop,-10,5)
-iNMDA.addvar("sNMDA.i",3,0)
-iNMDA.save_name("graphList[0].")
-graphList[0].append(iNMDA)
+// objref iNMDA, vSoma
+// iNMDA = new Graph()
+// iNMDA.size(0,tstop,-10,5)
+// iNMDA.addvar("sNMDA.i",3,0)
+// iNMDA.save_name("graphList[0].")
+// graphList[0].append(iNMDA)
 
-vSoma = new Graph()
-vSoma.size(0,tstop,-100,100)
-vSoma.addvar("pap.v(.5)",3,0)
-vSoma.save_name("graphList[0].")
-graphList[0].append(vSoma)
+// vSoma = new Graph()
+// vSoma.size(0,tstop,-100,100)
+// vSoma.addvar("pap.v(.5)",3,0)
+// vSoma.save_name("graphList[0].")
+// graphList[0].append(vSoma)
 
 //------Save Simulated NMDA Current
 objref iNMDA, iFile, time, tFile, vSoma, vFile
