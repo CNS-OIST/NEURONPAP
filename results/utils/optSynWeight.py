@@ -124,26 +124,26 @@ def objective(trial):
     SynWeight = trial.suggest_float("SynWeight", 0, 1)
     saveSynWeight(SynWeight)
 
-    # Suggest DELTA
-    DELTA = trial.suggest_float("DELTA", 0, 1)
-    saveDelta(DELTA)
+    # # Suggest DELTA
+    # DELTA = trial.suggest_float("DELTA", 0, 1)
+    # saveDelta(DELTA)
 
-    # suggest Tau1
-    tau1 = trial.suggest_float("tau1", 0, 100)
-    wTau2 = trial.suggest_float("wTau2", 0, 1)
-    saveTau(tau1,wTau2,None,1)
+    # # suggest Tau1
+    # tau1 = trial.suggest_float("tau1", 0, 100)
+    # wTau2 = trial.suggest_float("wTau2", 0, 1)
+    # saveTau(tau1,wTau2,None,1)
     
-    # suggest Tau2
-    tau2 = trial.suggest_float("tau2", 0, 100)
-    A2 = trial.suggest_float("A2", 0, 100)
-    B2 = trial.suggest_float("B2", 0, 1)
-    saveTau(tau2,A2,B2,2)
+    # # suggest Tau2
+    # tau2 = trial.suggest_float("tau2", 0, 100)
+    # A2 = trial.suggest_float("A2", 0, 100)
+    # B2 = trial.suggest_float("B2", 0, 1)
+    # saveTau(tau2,A2,B2,2)
     
-    # suggest Tau3
-    tau3 = trial.suggest_float("tau3", 0, 100)
-    A3 = trial.suggest_float("A3", 0, 100)
-    B3 = trial.suggest_float("B3", 0, 1)
-    saveTau(tau3,A3,B3,3)
+    # # suggest Tau3
+    # tau3 = trial.suggest_float("tau3", 0, 100)
+    # A3 = trial.suggest_float("A3", 0, 100)
+    # B3 = trial.suggest_float("B3", 0, 1)
+    # saveTau(tau3,A3,B3,3)
     
     h.load_file("Exp08-NaSpike-ExpSyn.hoc")
     
@@ -179,24 +179,24 @@ def setBest(study):
     parmDict = study.best_params
     saveSynWeight(parmDict['SynWeight'])
 
-    saveDelta(parmDict['DELTA'])
+    # saveDelta(parmDict['DELTA'])
 
-    saveTau(parmDict['tau1'],
-        parmDict['wTau2'],
-        None,
-        1
-    )
+    # saveTau(parmDict['tau1'],
+    #     parmDict['wTau2'],
+    #     None,
+    #     1
+    # )
 
-    saveTau(parmDict['tau2'],
-            parmDict['A2'],
-            parmDict['B2'],
-            2
-            )
-    saveTau(parmDict['tau3'],
-            parmDict['A3'],
-            parmDict['B3'],
-            3
-            )
+    # saveTau(parmDict['tau2'],
+    #         parmDict['A2'],
+    #         parmDict['B2'],
+    #         2
+    #         )
+    # saveTau(parmDict['tau3'],
+    #         parmDict['A3'],
+    #         parmDict['B3'],
+    #         3
+    #         )
 
 
 if __name__ == "__main__":

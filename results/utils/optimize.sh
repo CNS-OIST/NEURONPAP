@@ -1,7 +1,7 @@
-Niter=2000
+Niter=5000
 Dir=./results/optimize
 
-optFile=original_research
+optFile=original_re_search_SynW
 saveDir=./results/optimize/
 for i in `seq $Niter`; do
    python results/utils/optSynWeight.py -o $optFile --saveDir $saveDir

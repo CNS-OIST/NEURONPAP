@@ -43,6 +43,7 @@ ASSIGNED {
 BREAKPOINT {
         
         ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
-		: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
+	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
+        : consider different channel dynamics
 }
 
