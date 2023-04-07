@@ -34,6 +34,7 @@ def func(dir):
         plt.ylabel('mV')
         plt.xlabel('ms')
         # plt.ylim(-90,0)
+        plt.xlim(9.99,10.02)
         plt.savefig(os.path.join(dir,'resultsV.pdf'))
         
 
