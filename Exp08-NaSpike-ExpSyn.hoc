@@ -105,7 +105,7 @@ proc clampSwitch () {
         // ic.del = tstop / 2 // ms delay half of tstop
         ic.dur = dt //ms half of tstop
         ic.del = 10 // ms starts with glutamate 
-        unit =  0.000001 // fA
+        unit =  0 // fA
         ic.amp = 1 * unit // nA current injection (1 pA)
         //---------------------------------------------------
     }
@@ -194,6 +194,7 @@ SynWeight = wFile.scanvar()
 wFile.close()
 
 // SynWeight = 0.57262
+print(SynWeight)
 FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 	
 //-------Graph----------------------	
@@ -211,11 +212,16 @@ FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 // graphList[0].append(vSoma)
 
 //------Save Simulated NMDA Current
-objref iNMDA, iFile, time, tFile, vSoma, vFile
+objref iNMDA, iFile, iMem, iFileMem, time, tFile, vSoma, vFile
 iNMDA = new Vector()
 iNMDA.record(&sNMDA.i)
 iFile = new File("iFile.dat")
 iFile.wopen("iFile.dat")
+
+iMem = new Vector()
+iMem.record(&pap.i_pas(0.5))
+iFileMem = new File("iFileMem.dat")
+iFileMem.wopen("iFileMem.dat")
 
 vSoma = new Vector()
 vSoma.record(&pap.v(0.5))
@@ -232,6 +238,9 @@ run()
 
 iNMDA.printf(iFile)
 iFile.close()
+
+iMem.printf(iFileMem)
+iFileMem.close()
 
 
 vSoma.printf(vFile)
