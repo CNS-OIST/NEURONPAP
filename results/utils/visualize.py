@@ -18,18 +18,18 @@ def loadFile(fName):
     else:
         return None
 
-def func(dir,zoom=False,ext=True):
+def func(dir,zoom=False,ext=False):
     i = loadFile(os.path.join(dir,'iFile.dat'))
     v = loadFile(os.path.join(dir,'vFile.dat'))
     mem = loadFile(os.path.join(dir,'iFileMem.dat'))
     t = loadFile(os.path.join(dir,'tFile.dat'))
     plt.plot(t,i)
-    plt.ylabel('nA')
-    # plt.ylim(-10,0)
+    plt.ylabel('pA')
+    plt.ylim(0,25)
     plt.xlabel('ms')
     if zoom:
         plt.xlim(9.99,10.02)
-    elif ext:
+    elif ext and max(t) >= 10000:
         plt.xlim(11,10000)
     plt.savefig(os.path.join(dir,'results.pdf'))
     plt.cla()
@@ -41,7 +41,7 @@ def func(dir,zoom=False,ext=True):
         # plt.ylim(-90,0)
         if zoom: 
             plt.xlim(9.99,10.02)
-        elif ext:
+        elif ext and max(t) >= 10000:
             plt.xlim(11,10000)
             
         plt.savefig(os.path.join(dir,'resultsV.pdf'))
@@ -49,12 +49,12 @@ def func(dir,zoom=False,ext=True):
         plt.clf()
     if mem is not None:
         plt.plot(t,mem)
-        plt.ylabel('nA')
+        plt.ylabel('pA')
         plt.xlabel('ms')
         # plt.ylim(-90,0)
         if zoom:
             plt.xlim(9.99,10.02)
-        elif ext:
+        elif ext and max(t) >= 10000:
             plt.xlim(11,10000)
 
         plt.savefig(os.path.join(dir,'resultsIMem.pdf'))
