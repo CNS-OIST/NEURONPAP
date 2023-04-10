@@ -9,8 +9,8 @@ load_file("params.hoc")
 //fully activates cache efficiency
 cvode.cache_efficient(1)  
 
-tstop = 520
-dt = .001
+tstop = 10000
+dt = .0001
 celsius = 23	//room temperature in Clarke08 experiment = ?
 //v_init = -85
 v_init = -65
@@ -53,13 +53,12 @@ access pap
 L = 0.3                 // um from previous Ryo Model
 diam = 0.02             // um from previous Ryo Model
 
-// Ra = 100                // Ohm cm 
-// cm = 0.8                // uF/cm2
-// nseg = 10              // seg/5 um
+Ra = 100                // Ohm cm 
+cm = 0.8                // uF/cm2
+nseg = 10              // seg/5 um
 insert pas
-e_pas = -65
-// e_pas = -85             // mV 
-// g_pas = 1/11150         // mS/cm2
+e_pas = -85             // mV 
+g_pas = 1/11150         // mS/cm2
 
 
 // insert k_ion
@@ -99,21 +98,21 @@ proc clampSwitch () {
         // vRec.printf()
     } else if ($1 > 0) {
         vc = new VClamp(.5)
-        vc.dur[0] = tstop   // ms half of tstop
-        vc.amp[0] = 40 // mV depolarization
+        vc.dur[0] = tstop/2   // ms half of tstop
+        vc.amp[0] = -65 // mV depolarization (dV = 20)
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
         // ic.del = tstop / 2 // ms delay half of tstop
-        ic.dur = 0.5 //ms half of tstop
-        ic.del = 1.5 - 1 // ms starts with glutamate 
-        unit =  0.000001 // fA
+        ic.dur = 2*dt //ms half of tstop
+        ic.del = 10 // ms starts with glutamate 
+        unit =  0 // fA
         ic.amp = 1 * unit // nA current injection (1 pA)
         //---------------------------------------------------
     }
 }
 
-clampSwitch(1) //use different mode
+clampSwitch(0) //use different mode
 
 
 objref wFile
@@ -196,6 +195,8 @@ SynWeight = wFile.scanvar()
 wFile.close()
 
 // SynWeight = 0.57262
+// SynWeight = 0
+print(SynWeight)
 FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 	
 //-------Graph----------------------	
@@ -213,11 +214,16 @@ FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 // graphList[0].append(vSoma)
 
 //------Save Simulated NMDA Current
-objref iNMDA, iFile, time, tFile, vSoma, vFile
+objref iNMDA, iFile, iMem, iFileMem, time, tFile, vSoma, vFile
 iNMDA = new Vector()
 iNMDA.record(&sNMDA.i)
 iFile = new File("iFile.dat")
 iFile.wopen("iFile.dat")
+
+iMem = new Vector()
+iMem.record(&pap.i_pas(0.5))
+iFileMem = new File("iFileMem.dat")
+iFileMem.wopen("iFileMem.dat")
 
 vSoma = new Vector()
 vSoma.record(&pap.v(0.5))
@@ -234,6 +240,9 @@ run()
 
 iNMDA.printf(iFile)
 iFile.close()
+
+iMem.printf(iFileMem)
+iFileMem.close()
 
 
 vSoma.printf(vFile)

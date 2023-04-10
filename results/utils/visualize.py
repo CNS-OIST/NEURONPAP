@@ -14,18 +14,23 @@ import matplotlib.pyplot as plt
 
 def loadFile(fName):
     if os.path.isfile(fName):
-        return pd.read_csv(fName)
+        return pd.read_csv(fName,header=None)
     else:
         return None
 
-def func(dir):
+def func(dir,zoom=False,ext=True):
     i = loadFile(os.path.join(dir,'iFile.dat'))
     v = loadFile(os.path.join(dir,'vFile.dat'))
+    mem = loadFile(os.path.join(dir,'iFileMem.dat'))
     t = loadFile(os.path.join(dir,'tFile.dat'))
     plt.plot(t,i)
     plt.ylabel('nA')
     # plt.ylim(-10,0)
     plt.xlabel('ms')
+    if zoom:
+        plt.xlim(9.99,10.02)
+    elif ext:
+        plt.xlim(11,10000)
     plt.savefig(os.path.join(dir,'results.pdf'))
     plt.cla()
     plt.clf()
@@ -34,7 +39,25 @@ def func(dir):
         plt.ylabel('mV')
         plt.xlabel('ms')
         # plt.ylim(-90,0)
+        if zoom: 
+            plt.xlim(9.99,10.02)
+        elif ext:
+            plt.xlim(11,10000)
+            
         plt.savefig(os.path.join(dir,'resultsV.pdf'))
+        plt.cla()
+        plt.clf()
+    if mem is not None:
+        plt.plot(t,mem)
+        plt.ylabel('nA')
+        plt.xlabel('ms')
+        # plt.ylim(-90,0)
+        if zoom:
+            plt.xlim(9.99,10.02)
+        elif ext:
+            plt.xlim(11,10000)
+
+        plt.savefig(os.path.join(dir,'resultsIMem.pdf'))
         
 
 
