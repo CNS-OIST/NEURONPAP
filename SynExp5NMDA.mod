@@ -9,6 +9,7 @@ Mg++ voltage dependency from Spruston95 -> Woodhull, 1973
 
 Desensitization is introduced in this model. Actually, this model has 4 differential equations
 becasue desensitization is solved analitically. It can be reduced to 3 by solving its A state analitically.
+Removed Densitization by Nakatani
 For more info read the original paper. 
 
 Keivan Moradi 2012
@@ -156,25 +157,26 @@ DERIVATIVE state {
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
 	: gVD' = (inf-gVD)/tau
-}
+    }
+    
+    NET_RECEIVE(weight){
+:    , D1, tsyn (ms)) {
+	: INITIAL {
+	: : these are in NET_RECEIVE to be per-stream
+	: : this header will appear once per stream
+	: 	D1 = 1
+	: 	tsyn = t
+	: }
 
-NET_RECEIVE(weight, D1, tsyn (ms)) {
-	INITIAL {
-	: these are in NET_RECEIVE to be per-stream
-	: this header will appear once per stream
-		D1 = 1
-		tsyn = t
-	}
+	: D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
+	: tsyn = t Removed desensitization
 
-	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
-	tsyn = t
-
-	wf = weight*factor*D1
+	wf = weight*factor:*D1
 	A = A + wf
 	B = B + wf
 	C = C + wf
 
-	D1 = D1 * d1
+	: D1 = D1 * d1
 }
 
 FUNCTION Mgblock(v(mV)) {

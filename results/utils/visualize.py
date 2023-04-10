@@ -18,7 +18,7 @@ def loadFile(fName):
     else:
         return None
 
-def func(dir,zoom=True):
+def func(dir,zoom=False,ext=True):
     i = loadFile(os.path.join(dir,'iFile.dat'))
     v = loadFile(os.path.join(dir,'vFile.dat'))
     mem = loadFile(os.path.join(dir,'iFileMem.dat'))
@@ -29,6 +29,8 @@ def func(dir,zoom=True):
     plt.xlabel('ms')
     if zoom:
         plt.xlim(9.99,10.02)
+    elif ext:
+        plt.xlim(11,10000)
     plt.savefig(os.path.join(dir,'results.pdf'))
     plt.cla()
     plt.clf()
@@ -39,6 +41,9 @@ def func(dir,zoom=True):
         # plt.ylim(-90,0)
         if zoom: 
             plt.xlim(9.99,10.02)
+        elif ext:
+            plt.xlim(11,10000)
+            
         plt.savefig(os.path.join(dir,'resultsV.pdf'))
         plt.cla()
         plt.clf()
@@ -49,6 +54,9 @@ def func(dir,zoom=True):
         # plt.ylim(-90,0)
         if zoom:
             plt.xlim(9.99,10.02)
+        elif ext:
+            plt.xlim(11,10000)
+
         plt.savefig(os.path.join(dir,'resultsIMem.pdf'))
         
 

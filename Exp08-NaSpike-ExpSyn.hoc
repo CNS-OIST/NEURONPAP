@@ -9,7 +9,7 @@ load_file("params.hoc")
 //fully activates cache efficiency
 cvode.cache_efficient(1)  
 
-tstop = 11
+tstop = 10000
 dt = .0001
 celsius = 23	//room temperature in Clarke08 experiment = ?
 v_init = -85
@@ -103,7 +103,7 @@ proc clampSwitch () {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
         // ic.del = tstop / 2 // ms delay half of tstop
-        ic.dur = dt //ms half of tstop
+        ic.dur = 2*dt //ms half of tstop
         ic.del = 10 // ms starts with glutamate 
         unit =  0 // fA
         ic.amp = 1 * unit // nA current injection (1 pA)
@@ -194,6 +194,7 @@ SynWeight = wFile.scanvar()
 wFile.close()
 
 // SynWeight = 0.57262
+// SynWeight = 0
 print(SynWeight)
 FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 	
