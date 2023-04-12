@@ -25,10 +25,11 @@ def func(dir,zoom=False,ext=False):
     t = loadFile(os.path.join(dir,'tFile.dat'))
     plt.plot(t,i)
     plt.ylabel('pA')
-    plt.ylim(0,25)
+    if max(i.iloc[:, 0]) > 1:
+        plt.ylim(0,25)
     plt.xlabel('ms')
     if zoom:
-        plt.xlim(9.99,10.02)
+        plt.xlim(9.99,10.025)
     elif ext and max(t) >= 10000:
         plt.xlim(11,10000)
     plt.savefig(os.path.join(dir,'results.pdf'))
@@ -39,8 +40,8 @@ def func(dir,zoom=False,ext=False):
         plt.ylabel('mV')
         plt.xlabel('ms')
         # plt.ylim(-90,0)
-        if zoom: 
-            plt.xlim(9.99,10.02)
+        if zoom or max(v.iloc[:, 0]) > -20: 
+            plt.xlim(9.99,10.1)
         elif ext and max(t) >= 10000:
             plt.xlim(11,10000)
             
@@ -53,7 +54,7 @@ def func(dir,zoom=False,ext=False):
         plt.xlabel('ms')
         # plt.ylim(-90,0)
         if zoom:
-            plt.xlim(9.99,10.02)
+            plt.xlim(9.99,10.025)
         elif ext and max(t) >= 10000:
             plt.xlim(11,10000)
 
