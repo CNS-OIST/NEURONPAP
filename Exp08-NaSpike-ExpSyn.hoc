@@ -116,11 +116,11 @@ clampSwitch(1) //use different mode
 
 
 objref wFile
-wFile = new File()   
-wFile.ropen("./results/optimize/optT1.dat")
-Tau1 = wFile.scanvar()
-Wtau2 = wFile.scanvar()
-wFile.close()
+// wFile = new File()   
+// wFile.ropen("./results/optimize/optT1.dat")
+// Tau1 = wFile.scanvar()
+// Wtau2 = wFile.scanvar()
+// wFile.close()
 
 wFile = new File()   
 wFile.ropen("./results/optimize/optT2.dat")
@@ -176,11 +176,11 @@ proc init_NMDA() {
 	// nc.delay = 1
 	nc.delay = 0
 	
-	sNMDA.tau1 = Tau1
+	// sNMDA.tau1 = Tau1
 	sNMDA.tau2_0 = Tau2_0
 	sNMDA.a2 = A2
 	sNMDA.b2 = B2
-	sNMDA.wtau2 = Wtau2
+	// sNMDA.wtau2 = Wtau2
 	sNMDA.tau3_0 = Tau3_0
 	sNMDA.a3 = A3
 	sNMDA.b3 = B3
