@@ -1,3 +1,4 @@
+
 """
 Author: Joel Nakatani
 Overview:
@@ -39,11 +40,12 @@ def func(dir,zoom=False,ext=False):
         plt.plot(t,v)
         plt.ylabel('mV')
         plt.xlabel('ms')
-        # plt.ylim(-90,0)
-        if zoom or max(v.iloc[:, 0]) > -20: 
-            plt.xlim(9.99,10.1)
-        elif ext and max(t) >= 10000:
-            plt.xlim(11,10000)
+        print(max(v.iloc[:,0]))
+        plt.ylim(-90,0)
+        # if zoom or max(v.iloc[:, 0]) > -20: 
+        #     plt.xlim(9.99,10.1)
+        # elif ext and max(t) >= 10000:
+        #     plt.xlim(11,10000)
             
         plt.savefig(os.path.join(dir,'resultsV.pdf'))
         plt.cla()
