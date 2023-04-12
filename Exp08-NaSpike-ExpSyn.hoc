@@ -9,8 +9,8 @@ load_file("params.hoc")
 //fully activates cache efficiency
 cvode.cache_efficient(1)  
 
-tstop = 10000
-dt = .0001
+tstop = 520
+dt = 0.001
 celsius = 23	//room temperature in Clarke08 experiment = ?
 v_init = -85
 
@@ -97,21 +97,22 @@ proc clampSwitch () {
         // vRec.printf()
     } else if ($1 > 0) {
         vc = new VClamp(.5)
-        vc.dur[0] = tstop/2   // ms half of tstop
+        vc.dur[0] = tstop   // ms half of tstop
         vc.amp[0] = -65 // mV depolarization (dV = 20)
+        // vc.amp[0] = 40 // mV depolarization (dV = 20)
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
         // ic.del = tstop / 2 // ms delay half of tstop
         ic.dur = 2*dt //ms half of tstop
-        ic.del = 10 // ms starts with glutamate 
-        unit =  0 // fA
-        ic.amp = 1 * unit // nA current injection (1 pA)
+        ic.del = 10 - ic.dur // ms starts with glutamate 
+        unit =  0.001 // pA
+        ic.amp = 1.5 * unit // nA current injection (1 pA)
         //---------------------------------------------------
     }
 }
 
-clampSwitch(0) //use different mode
+clampSwitch(1) //use different mode
 
 
 objref wFile
@@ -121,36 +122,37 @@ objref wFile
 // Wtau2 = wFile.scanvar()
 // wFile.close()
 
-// wFile = new File()   
-// wFile.ropen("./results/optimize/optT2.dat")
-// Tau2_0 = wFile.scanvar()
-// A2 = wFile.scanvar()
-// B2 = wFile.scanvar()
-// wFile.close()
+wFile = new File()   
+wFile.ropen("./results/optimize/optT2.dat")
+Tau2_0 = wFile.scanvar()
+A2 = wFile.scanvar()
+B2 = wFile.scanvar()
+wFile.close()
 
-// wFile = new File()   
-// wFile.ropen("./results/optimize/optT3.dat")
-// Tau3_0 = wFile.scanvar()
-// A3 = wFile.scanvar()
-// B3 = wFile.scanvar()
-// wFile.close()
+wFile = new File()   
+wFile.ropen("./results/optimize/optT3.dat")
+Tau3_0 = wFile.scanvar()
+A3 = wFile.scanvar()
+B3 = wFile.scanvar()
+wFile.close()
 
-Tau1 = 2.1343
-Wtau2 = 0.65
+// Tau1 = 0.01
+// Wtau2 = 1
 
-Tau2_0 = 33.129
-A2 = 2.9907
-B2 = 0.0243
-Tau3_0 = 217.69
-A3 = 34.69
+// Tau2_0 = 33.129
+// A2 = 2.9907
+// B2 = 0.0243
+//Tau3_0 = 217.69
+//A3 = 34.69
+//A3 = 1
 B3 = 0.01
 
-k0 = 6.9172
-// wFile = new File()   
-// wFile.ropen("./results/optimize/optDelta.dat")
-// DELTA = wFile.scanvar()
-// wFile.close()
-DELTA = 0.99128
+//k0 = 6.9172
+wFile = new File()   
+wFile.ropen("./results/optimize/optDelta.dat")
+DELTA = wFile.scanvar()
+wFile.close()
+// DELTA = 0.99128
 
 
 objref sNMDA, stim, nc
@@ -168,22 +170,21 @@ stim = new NetStim(.5)
 // sNMDA = new Exp5NMDA(.5)
 
 
-nc = new NetCon(stim, sNMDA) 
+nc = new NetCon(stim, sNMDA)
 
 proc init_NMDA() {
 	nc.weight = $1
 	// nc.delay = 1
 	nc.delay = 0
-	
-	sNMDA.tau1 = Tau1
-	sNMDA.tau2_0 = Tau2_0
+        
+	// sNMDA.tau1 = Tau1        
+        sNMDA.tau2_0 = Tau2_0
 	sNMDA.a2 = A2
 	sNMDA.b2 = B2
-	sNMDA.wtau2 = Wtau2
+	// sNMDA.wtau2 = Wtau2
 	sNMDA.tau3_0 = Tau3_0
 	sNMDA.a3 = A3
 	sNMDA.b3 = B3
-	sNMDA.K0 = k0
 	sNMDA.delta = DELTA
     }
     objref FinNMDA
@@ -194,7 +195,7 @@ SynWeight = wFile.scanvar()
 wFile.close()
 
 // SynWeight = 0.57262
-// SynWeight = 0
+//SynWeight = 1e-10
 print(SynWeight)
 FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 	

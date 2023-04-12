@@ -79,8 +79,7 @@ def saveTau(t,A,B,i,dName='./results/optimize/'):
     sFile = open(fName,'r')
     return sFile.readlines()
 
-
-def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
+def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=2):
     iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
     tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
 
@@ -92,7 +91,28 @@ def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
         t,v = line.strip().split()
         tList.append(float(t))
         vList.append(float(v))
-    itResult = [(t,i) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
+    itResult = [(t,i/max(iCurve['current'])) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
+    vList = [v/max(vList) for v in vList]
+    rss = 0
+    for i,current in enumerate(itResult):
+        t,c = current
+        rss += (c - vList[i]) ** 2
+    return rss * abs(max(iCurve['current'])/scale-max(vList)) / max(vList) * 1e4
+
+def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
+    scale = 1 # Surface area of patch membrane 2um to PAP area
+    iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
+    tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
+
+    fName = open(expData,'r')
+    lines = fName.readlines()
+    tList = []
+    vList = []
+    for line in lines[2:]:
+        t,v = line.strip().split()
+        tList.append(float(t))
+        vList.append(float(v))
+    itResult = [(t,i/scale) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
     vList = [v for v in vList]
     rss = 0
     for i,current in enumerate(itResult):
@@ -121,34 +141,37 @@ def objective(trial):
 
     """
     # Save Synaptic weight
-    SynWeight = trial.suggest_float("SynWeight", 0, 1)
+    SynWeight = trial.suggest_float("SynWeight", 0, 1e-5)
     saveSynWeight(SynWeight)
 
-    # Suggest DELTA
+    # # Suggest DELTA
     DELTA = trial.suggest_float("DELTA", 0, 1)
     saveDelta(DELTA)
 
-    # suggest Tau1
-    tau1 = trial.suggest_float("tau1", 0, 100)
-    wTau2 = trial.suggest_float("wTau2", 0, 1)
-    saveTau(tau1,wTau2,None,1)
+    # # suggest Tau1
+    # tau1 = trial.suggest_float("tau1", 0, 10)
+    # wTau2 = trial.suggest_float("wTau2", 0, 0.1)
+    # saveTau(tau1,wTau2,None,1)
     
     # suggest Tau2
     tau2 = trial.suggest_float("tau2", 0, 100)
-    A2 = trial.suggest_float("A2", 0, 100)
-    B2 = trial.suggest_float("B2", 0, 1)
+    A2 = trial.suggest_float("A2", 0, 50)
+    B2 = trial.suggest_float("B2", 0, 0.1)
     saveTau(tau2,A2,B2,2)
     
     # suggest Tau3
     tau3 = trial.suggest_float("tau3", 0, 100)
-    A3 = trial.suggest_float("A3", 0, 100)
-    B3 = trial.suggest_float("B3", 0, 1)
+    A3 = trial.suggest_float("A3", 0, 500)
+    B3 = trial.suggest_float("B3", 0, 0.1)
     saveTau(tau3,A3,B3,3)
+
+    scale = trial.suggest_int("scale",1,50)
     
     h.load_file("Exp08-NaSpike-ExpSyn.hoc")
     
+    
 
-    score = resLikelihood()
+    score = relLikelihood(scale=scale) #Score based on shape also
     return score
 
 
@@ -181,11 +204,11 @@ def setBest(study):
 
     saveDelta(parmDict['DELTA'])
 
-    saveTau(parmDict['tau1'],
-        parmDict['wTau2'],
-        None,
-        1
-    )
+    # saveTau(parmDict['tau1'],
+    #     parmDict['wTau2'],
+    #     None,
+    #     1
+    # )
 
     saveTau(parmDict['tau2'],
             parmDict['A2'],
