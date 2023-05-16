@@ -3,6 +3,8 @@ arm64
 
 # data
 *.dat
+*.pickle
+*.html
 
 # Ignored files:
 *.c
@@ -15,3 +17,4 @@ arm64
 
 results/*
 !results/utils/
+

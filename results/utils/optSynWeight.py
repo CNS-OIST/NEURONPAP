@@ -11,6 +11,7 @@ import optuna
 import logging
 import sys
 import argparse
+import plotly
 
 from neuron import h
 import os
@@ -40,6 +41,13 @@ def setArgParser():
         dest="saveBest",
         default=False,
         help="Used to setup best value for optimization in dat file"
+    )  # saveDir arg
+    parser.add_argument(
+        "--print",
+        action="store_true",
+        dest="printStudy",
+        default=False,
+        help="Used to print study"
     )  # saveDir arg
 
     
@@ -185,10 +193,13 @@ def loadStudy():
 
 def printStudy(study):
     df = study.trials_dataframe(attrs=("number", "value", "params"))
+    pd.set_option('display.max_rows', len(df))
     print(df)
-    print(f"Best: {study.best_params}")
 
-
+def showStudy(study):
+    fig = optuna.visualization.plot_optimization_history(study)
+    plotly.offline.plot(fig, filename='studyVisualize.html')
+    
 def initStudy(storage_name, study_name):
     study = optuna.create_study(
         study_name=study_name,
@@ -237,7 +248,9 @@ if __name__ == "__main__":
             print(f'Found database{storage_name}')
             printStudy(study)
             setBest(study)
-
+    elif args.printStudy:
+        printStudy(study)
+        showStudy(study)
     else:
         print(f"Saving to databse{storage_name}")
         study.optimize(
