@@ -6,16 +6,16 @@ import pickle
 import os
 import pandas as pd
 
-def main(voltageClamp,multiple=None):
+def main(voltageClamp,multiple=None,mode=1):
     # Load NEURON GUI and parameters
     h.load_file("stdgui.hoc")
     h.load_file("params.hoc")
 
     # Set simulation parameters
-    h.tstop = 520
-    h.dt = 0.00001
-    h.celsius = 23
-    h.v_init = -65
+    h.tstop = 100
+    h.dt = 0.0001
+    h.celsius = 37
+    h.v_init = -85
 
     # Create the branch (not included in the original hoc file)
     # branch = h.Section()
@@ -26,9 +26,12 @@ def main(voltageClamp,multiple=None):
     # Set astrocyte leaf membrane parameters
     pap.L = 0.3
     pap.diam = 0.02
-    pap.nseg = 10
+    pap.nseg = 1
+    pap.Ra = 100
+    pap.cm = 0.8
     pap.insert('pas')
-    pap.e_pas = -65
+    pap.e_pas = -85
+    pap.g_pas = 1/11150
 
     h.psection()
 
@@ -61,10 +64,16 @@ def main(voltageClamp,multiple=None):
 
     # print(clampSwitch(1))  # Use different mode
     # Outside function because of bug
-    ic = h.IClamp(0.5)
-    ic.dur = 1 * h.dt
-    ic.delay = 10 - ic.dur  # ms starts with glutamate
-    ic.amp = 1.5 * 0  # nA current injection (1 pA)
+    if mode > 0:
+        vc = h.VClamp(0.5)
+        vc.dur[0] = h.tstop
+        vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
+
+    else:
+        ic = h.IClamp(0.5)
+        ic.dur = 1 * h.dt
+        ic.delay = 10 - ic.dur  # ms starts with glutamate
+        ic.amp = 2 * 0.001  # nA current injection (1 pA)
 
     # Load optimization parameters
     wFile = h.File()
@@ -85,6 +94,7 @@ def main(voltageClamp,multiple=None):
     wFile.ropen("./results/optimize/optDelta.dat")
     DELTA = wFile.scanvar()
     wFile.close()
+    DELTA = 0
 
     wFile = h.File()
     wFile.ropen("./results/optimize/optW.dat")
@@ -115,7 +125,6 @@ def main(voltageClamp,multiple=None):
             NMDAs[i].tau3_0 = Tau3_0
             NMDAs[i].a3 = A3
             NMDAs[i].b3 = B3
-            NMDAs[i].Mg = 0  # To turn off external Magnesium
         sNMDA = NMDAs[i]
 
     else:
@@ -129,7 +138,6 @@ def main(voltageClamp,multiple=None):
         sNMDA.tau3_0 = Tau3_0
         sNMDA.a3 = A3
         sNMDA.b3 = B3
-        sNMDA.Mg = 0  # To turn off external Magnesium
 
     #Save Stuff
     iNMDA = h.Vector()
@@ -261,14 +269,17 @@ def plot(dir,zoom=False,ext=False):
     return max(v.iloc[:,0])
 
 if __name__ == "__main__":
-    measureCond('IV')
+    #measureCond('IV')
+    itr = 100
     dList = []
-    for i in range(1,10):
-        main(40,multiple=i)
-        dList.append(plot("."))
+    for i in range(1,itr + 1):
+        main(40,multiple=i,mode=0)
+        dList.append(plot(".") + 85)
+    with open(f'dList.pickle', 'wb') as handle:
+        pickle.dump(dList, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     plt.cla()
     plt.clf()
-    plt.plot(range(1,10),dList)
+    plt.scatter(range(1,itr + 1),dList)
     plt.savefig('patchXDepolar.pdf')
     

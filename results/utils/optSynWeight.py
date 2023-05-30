@@ -87,10 +87,12 @@ def saveTau(t,A,B,i,dName='./results/optimize/'):
     sFile = open(fName,'r')
     return sFile.readlines()
 
-def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=2):
+def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=1):
+    # Read simulated data
     iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
     tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
 
+    # Read answer data
     fName = open(expData,'r')
     lines = fName.readlines()
     tList = []
@@ -98,35 +100,36 @@ def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=2):
     for line in lines[2:]:
         t,v = line.strip().split()
         tList.append(float(t))
-        vList.append(float(v))
-    itResult = [(t,i/max(iCurve['current'])) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
-    vList = [v/max(vList) for v in vList]
-    rss = 0
-    for i,current in enumerate(itResult):
-        t,c = current
-        rss += (c - vList[i]) ** 2
-    return rss * abs(max(iCurve['current'])/scale-max(vList)) / max(vList) * 1e4
-
-def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
-    scale = 1 # Surface area of patch membrane 2um to PAP area
-    iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
-    tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
-
-    fName = open(expData,'r')
-    lines = fName.readlines()
-    tList = []
-    vList = []
-    for line in lines[2:]:
-        t,v = line.strip().split()
-        tList.append(float(t))
-        vList.append(float(v))
-    itResult = [(t,i/scale) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
+        vList.append(float(v)*scale/50)
+    # Get RSS
+    itResult =[(t,i) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
     vList = [v for v in vList]
     rss = 0
     for i,current in enumerate(itResult):
         t,c = current
         rss += (c - vList[i]) ** 2
-    return rss
+    return rss 
+
+# def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
+#     scale = 1 # Surface area of patch membrane 2um to PAP area
+#     iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
+#     tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
+
+#     fName = open(expData,'r')
+#     lines = fName.readlines()
+#     tList = []
+#     vList = []
+#     for line in lines[2:]:
+#         t,v = line.strip().split()
+#         tList.append(float(t))
+#         vList.append(float(v))
+#     itResult = [(t,i/scale) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
+#     vList = [v for v in vList]
+#     rss = 0
+#     for i,current in enumerate(itResult):
+#         t,c = current
+#         rss += (c - vList[i]) ** 2
+#     return rss
 
 def objective(trial):
     """
@@ -149,7 +152,7 @@ def objective(trial):
 
     """
     # Save Synaptic weight
-    SynWeight = trial.suggest_float("SynWeight", 0, 1e-5)
+    SynWeight = trial.suggest_float("SynWeight", 0, 1e-8)
     saveSynWeight(SynWeight)
 
     # # Suggest DELTA
@@ -172,14 +175,12 @@ def objective(trial):
     A3 = trial.suggest_float("A3", 0, 50)
     B3 = trial.suggest_float("B3", 0, 0.1)
     saveTau(tau3,A3,B3,3)
-
-    scale = trial.suggest_int("scale",1,50)
     
     h.load_file("Exp08-NaSpike-ExpSyn.hoc")
     
     
 
-    score = relLikelihood(scale=scale) #Score based on shape also
+    score = relLikelihood() #Score based on shape also
     return score
 
 

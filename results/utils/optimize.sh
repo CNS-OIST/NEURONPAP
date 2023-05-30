@@ -1,8 +1,7 @@
 Niter=10000
 Dir=./results/optimize
 
-optFile=original_refit_Additional
-optFile=original_refit_Relative
+optFile=CalculatedScaleRange_SmallerSynW
 saveDir=./results/optimize/
 for i in `seq $Niter`; do
    python results/utils/optSynWeight.py -o $optFile --saveDir $saveDir

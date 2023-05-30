@@ -1,4 +1,4 @@
-TITLE Triple-exponential model of NMDA receptors
+TITLE Triple-exp model of NMDAR has (HH-type gating) (temp. sensitivity) (voltage-dependent time constants) (desensitization)
 
 COMMENT
 This is a Triple-exponential model of an NMDAR 
@@ -7,9 +7,9 @@ time constants are voltage-dependent and temperature sensitive
 
 Mg++ voltage dependency from Spruston95 -> Woodhull, 1973 
 
-Desensitization is introduced in this model. Actually, this model has 5 differential equations
-becasue desensitization is solved numerically. 
-It can be reduced to 3 by solving its A state analitically.
+Desensitization is introduced in this model. Actually, this model has 4 differential equations
+becasue desensitization is solved analitically. It can be reduced to 3 by solving its A state analitically.
+Removed Densitization by Nakatani
 For more info read the original paper. 
 
 Keivan Moradi 2012
@@ -17,9 +17,9 @@ Keivan Moradi 2012
 ENDCOMMENT
 
 NEURON {
-	POINT_PROCESS Exp5NMDA2
+	POINT_PROCESS Exp5NMDA
 	NONSPECIFIC_CURRENT i
-	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D, d
+	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1
 	GLOBAL inf, tau2, tau3
 	THREADSAFE
 }
@@ -37,14 +37,12 @@ UNITS {
 
 PARAMETER {
 : Parameters Control Neurotransmitter and Voltage-dependent gating of NMDAR
-	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] 
-										: be careful: presence of Mg in solutions can change these values
+	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
 : parameters control exponential rise to a maximum of tau2
 	tau2_0 = 3.97	(ms)
 	a2 = 0.70		(ms)
 	b2 = 0.0243		(1/mV)
 	wtau2= 0.65		<1e-9,1> : Hestrin90
-	: wtau2= 0.78 Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] percentage of contribution of tau2 in deactivation of NMDAR
 	
 : parameters control exponential rise to a maximum of tau3
 	tau3_0 = 41.62	(ms)
@@ -53,6 +51,7 @@ PARAMETER {
 	: Hestrin90 CA1 soma  [Mg=1 v=-40 celcius=30-32] the decay of the NMDA component of the EPSC recorded at temperatures above 30 degC 
 	: the fast phase of decay, which accounted for 65%-+12% of the decay, had a time constant of 23.5-+3.8 ms, 
 	: whereas the slow component had a time constant of 123-+83 ms.
+	: wtau2= 0.78 Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] percentage of contribution of tau2 in deactivation of NMDAR
 	Q10_tau1 = 2.2			: Hestrin90
 	Q10_tau2 = 3.68			: Hestrin90 -> 3.5-+0.9, Korinek10 -> NR1/2B -> 3.68
 	Q10_tau3 = 2.65			: Korinek10
@@ -64,8 +63,8 @@ PARAMETER {
 : Parameters control desensitization of the channel
 	: these values are from Fig.3 in Varela et al. 1997
 	: the (1) is needed for the range limits to be effective
-	d = 0.2 (1) < 0, 1 >     : fast depression
-	tau_D = 2500 (ms) < 1e-9, 1e9 >
+	d1 = 0.2 	  	(1)		< 0, 1 >     : fast depression
+	tau_D1 = 2500 	(ms)	< 1e-9, 1e9 >
 : Parameters Control voltage-dependent gating of NMDAR
 	tauV = 7		(ms)	<1e-9,1e9>	: Kim11 
 							: at 26 degC & [Mg]o = 1 mM, 
@@ -75,14 +74,14 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 1			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+	gVI = 1			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD is about 0.004 uS in reality
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
-	celsius 		(degC)	: actual temperature for simulation, defined in Neuron, usually about 35
+	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.8 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
+	delta = 0.8	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95 (0.8)
 : The Parameter Controls Ohm haw in NMDAR
 	e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
 }
@@ -114,7 +113,6 @@ STATE {
 	A		: Gating in response to release of Glutamate
 	B		: Gating in response to release of Glutamate
 	C		: Gating in response to release of Glutamate
-	D		: Desensitization
 	gVD (uS): Voltage dependent gating
 }
 
@@ -138,35 +136,47 @@ INITIAL {
 	A = 0
 	B = 0
 	C = 0
-	D = 1
 	gVD = 0
 	wf = 1
 }
 
 BREAKPOINT {
-	SOLVE state METHOD derivimplicit : runge
+	SOLVE state METHOD runge : derivimplicit : 
+	: we found acceptable results with "runge" integration method
+	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
+	: to avoid probable unstability problems
 
 	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
 }
 
 DERIVATIVE state {
 	rates(v)
-	A' = -(A-wf*(1-d)*D')/tau1
-	B' = -(B-wf*(1-d)*D')/tau2
-	C' = -(C-wf*(1-d)*D')/tau3
-	D' = (1-D)/tau_D
+	A' = -A/tau1
+	B' = -B/tau2
+	C' = -C/tau3
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
-}
+	: gVD' = (inf-gVD)/tau
+    }
+    
+    NET_RECEIVE(weight){
+:    , D1, tsyn (ms)) {
+	: INITIAL {
+	: : these are in NET_RECEIVE to be per-stream
+	: : this header will appear once per stream
+	: 	D1 = 1
+	: 	tsyn = t
+	: }
 
-NET_RECEIVE(weight) {
-	wf = weight*factor*D
+	: D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
+	: tsyn = t Removed desensitization
+
+	wf = weight*factor:*D1
 	A = A + wf
 	B = B + wf
 	C = C + wf
 
-	D = D * d
-	wf = weight*factor
+	: D1 = D1 * d1
 }
 
 FUNCTION Mgblock(v(mV)) {

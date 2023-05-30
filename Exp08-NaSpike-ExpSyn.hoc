@@ -99,8 +99,8 @@ proc clampSwitch () {
     } else if ($1 > 0) {
         vc = new VClamp(.5)
         vc.dur[0] = tstop   // ms half of tstop
-        vc.amp[0] = -65 // mV depolarization (dV = 20)
-        // vc.amp[0] = 40 // mV depolarization (dV = 20)
+        // vc.amp[0] = -65 // mV depolarization (dV = 20)
+        vc.amp[0] = 40 // mV depolarization (dV = 20)
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
@@ -112,9 +112,7 @@ proc clampSwitch () {
         //---------------------------------------------------
     }
 }
-
 clampSwitch(1) //use different mode
-
 
 objref wFile
 // wFile = new File()   
