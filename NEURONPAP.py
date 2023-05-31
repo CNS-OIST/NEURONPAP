@@ -14,7 +14,7 @@ class PAPModel():
     v_init = -85
     pap = object()
 
-    def __init__(self,voltageClamp,multiple=1,mode=-1):
+    def __init__(self,bLen=30,voltageClamp=40,multiple=1,mode=-1):
         # Load NEURON GUI and parameters
         h.load_file("stdgui.hoc")
         h.load_file("params.hoc")
@@ -26,7 +26,7 @@ class PAPModel():
         h.v_init = self.v_init
 
         # Build Morphology
-        self.morph()
+        self.morph(bLen=bLen)
 
         # Clamp settings
         if mode > 0:
@@ -86,7 +86,7 @@ class PAPModel():
             if bLen != None and type(bLen) == int:
                 self.branch.L = bLen
             else:
-                self.branch.L = 1000
+                self.branch.L = 30
             self.branch.diam = 1
             self.branch.nseg = 10
             self.astroMem(self.branch)
@@ -300,5 +300,15 @@ def multiChannel(itr=100):
 if __name__ == "__main__":
     #measureCond('IV')
     #multiChannel()
-    PAPModel(40,multiple=10)
-    plotRes(".")
+    dList = []
+    cList = []
+    vList = []
+    for i in range(1,101):
+        for j in range(1,51):
+            PAPModel(bLen=1,multiple=j)
+            vMax = plotRes(".")
+            dList.append(i)
+            cList.append(j)
+            vList.append(vMax)
+            with open(f'ballStick.pickle', 'wb') as handle:
+                pickle.dump([dList,cList,vList], handle, protocol=pickle.HIGHEST_PROTOCOL)
