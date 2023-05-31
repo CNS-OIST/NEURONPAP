@@ -12,7 +12,7 @@ def main(voltageClamp,multiple=None,mode=1):
     h.load_file("params.hoc")
 
     # Set simulation parameters
-    h.tstop = 100
+    h.tstop = 520
     h.dt = 0.0001
     h.celsius = 37
     h.v_init = -85
@@ -69,10 +69,10 @@ def main(voltageClamp,multiple=None,mode=1):
         vc.dur[0] = h.tstop
         vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
 
-    else:
+    elif mode == 0:
         ic = h.IClamp(0.5)
-        ic.dur = 1 * h.dt
-        ic.delay = 10 - ic.dur  # ms starts with glutamate
+        ic.dur = 0.002
+        ic.delay = 10 # ms starts with glutamate
         ic.amp = 2 * 0.001  # nA current injection (1 pA)
 
     # Load optimization parameters
@@ -100,7 +100,6 @@ def main(voltageClamp,multiple=None,mode=1):
     wFile.ropen("./results/optimize/optW.dat")
     SynWeight = wFile.scanvar()
     wFile.close()
-    SynWeight *= 1e-3
 
     print(SynWeight)
 
