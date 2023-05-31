@@ -18,3 +18,4 @@ arm64
 results/*
 !results/utils/
 
+__pycache__

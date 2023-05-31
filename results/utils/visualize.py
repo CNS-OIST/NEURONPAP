@@ -1,4 +1,3 @@
-
 """
 Author: Joel Nakatani
 Overview:

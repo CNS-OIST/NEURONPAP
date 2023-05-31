@@ -5,180 +5,198 @@ from scipy.optimize import curve_fit
 import pickle
 import os
 import pandas as pd
+from results.utils.visualize import func as plotRes
 
-def main(voltageClamp,multiple=None,mode=1):
-    # Load NEURON GUI and parameters
-    h.load_file("stdgui.hoc")
-    h.load_file("params.hoc")
+class PAPModel():
+    tstop = 100
+    dt = 0.00001
+    celsius = 37
+    v_init = -85
+    pap = object()
 
-    # Set simulation parameters
-    h.tstop = 520
-    h.dt = 0.0001
-    h.celsius = 37
-    h.v_init = -85
+    def __init__(self,voltageClamp,multiple=1,mode=-1):
+        # Load NEURON GUI and parameters
+        h.load_file("stdgui.hoc")
+        h.load_file("params.hoc")
 
-    # Create the branch (not included in the original hoc file)
-    # branch = h.Section()
+        # Set simulation parameters
+        h.tstop = self.tstop
+        h.dt = self.dt
+        h.celsius = self.celsius
+        h.v_init = self.v_init
 
-    # Access the PAP object
-    pap = h.Section(name="PAP")
+        # Build Morphology
+        self.morph()
 
-    # Set astrocyte leaf membrane parameters
-    pap.L = 0.3
-    pap.diam = 0.02
-    pap.nseg = 1
-    pap.Ra = 100
-    pap.cm = 0.8
-    pap.insert('pas')
-    pap.e_pas = -85
-    pap.g_pas = 1/11150
+        # Clamp settings
+        if mode > 0:
+            vc = h.VClamp(0.5)
+            vc.dur[0] = h.tstop
+            vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
 
-    h.psection()
+        elif mode == 0:
+            ic = h.IClamp(0.5)
+            ic.dur = 0.002
+            ic.delay = 10 # ms starts with glutamate
+            ic.amp = 2 * 0.001  # nA current injection (1 pA)
 
-
-    # Function to switch between voltage clamp and current clamp
-    # def clampSwitch(mode):
-    #     if mode > 1:
-    #         vRec = h.Vector(570)
-    #         tRec = h.Vector(570)
-    #         vFile = h.File()
-    #         tFile = h.File()
-
-    #         vFile.ropen("./Data/Exp10-Clarke08-Fig10/vNaSpike.dat")
-    #         tFile.ropen("./Data/Exp10-Clarke08-Fig10/tNaSpike.dat")
-
-    #         vRec.scanf(vFile)
-    #         tRec.scanf(tFile)
-    #         vRec.play(vc.amp[0], tRec)
-    #     elif mode > 0:
-    #         vc = h.VClamp(0.5)
-    #         vc.dur[0] = h.tstop
-    #         vc.amp[0] = 40  # mV depolarization (dV = 20)
-    #         return vc
-    #     else:
-    #         ic = h.IClamp(0.5)
-    #         ic.dur = 2 * h.dt
-    #         ic.delay = 10 - ic.dur  # ms starts with glutamate
-    #         ic.amp = 1.5 * 0.001  # nA current injection (1 pA)
-    #         return ic
-
-    # print(clampSwitch(1))  # Use different mode
-    # Outside function because of bug
-    if mode > 0:
-        vc = h.VClamp(0.5)
-        vc.dur[0] = h.tstop
-        vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
-
-    elif mode == 0:
-        ic = h.IClamp(0.5)
-        ic.dur = 0.002
-        ic.delay = 10 # ms starts with glutamate
-        ic.amp = 2 * 0.001  # nA current injection (1 pA)
-
-    # Load optimization parameters
-    wFile = h.File()
-    wFile.ropen("./results/optimize/optT2.dat")
-    Tau2_0 = wFile.scanvar()
-    A2 = wFile.scanvar()
-    B2 = wFile.scanvar()
-    wFile.close()
-
-    wFile = h.File()
-    wFile.ropen("./results/optimize/optT3.dat")
-    Tau3_0 = wFile.scanvar()
-    A3 = wFile.scanvar()
-    B3 = wFile.scanvar()
-    wFile.close()
-
-    wFile = h.File()
-    wFile.ropen("./results/optimize/optDelta.dat")
-    DELTA = wFile.scanvar()
-    wFile.close()
-    DELTA = 0
-
-    wFile = h.File()
-    wFile.ropen("./results/optimize/optW.dat")
-    SynWeight = wFile.scanvar()
-    wFile.close()
-
-    print(SynWeight)
-
-    # Create the synaptic NMDA conductance
-    stim = h.NetStim(0.5)
-    stim.interval = 1
-    stim.number = 1
-    stim.start = 10
-    stim.noise = 0
-
-    if multiple is not None and type(multiple) == int:
-        NMDAs = []
-        NCs = []
+        self.readParameters()
+        self.NMDAs = []
+        self.NCs = []
         for i in range(multiple):
-            NMDAs.append(h.Exp5NMDA(0.5))
-            NCs.append( h.NetCon(stim, NMDAs[i]))
-            NCs[i].weight[0] = SynWeight
-            NCs[i].delay = 0
-            NMDAs[i].tau2_0 = Tau2_0
-            NMDAs[i].a2 = A2
-            NMDAs[i].b2 = B2
-            NMDAs[i].tau3_0 = Tau3_0
-            NMDAs[i].a3 = A3
-            NMDAs[i].b3 = B3
-        sNMDA = NMDAs[i]
+            # Create the synaptic NMDA conductance
+            stim = h.NetStim(self.pap(0.5))
+            stim.interval = 1
+            stim.number = 1
+            stim.start = 10
+            stim.noise = 0
+            self.NMDAs.append(self.nmda())
+            
+            nc = h.NetCon(stim, self.NMDAs[-1])        
+            nc.weight[0] = self.SynWeight
+            nc.delay = 0
 
-    else:
-        sNMDA = h.Exp5NMDA(0.5)
-        nc = h.NetCon(stim, sNMDA)
-        nc.weight[0] = SynWeight
-        nc.delay = 0
-        sNMDA.tau2_0 = Tau2_0
-        sNMDA.a2 = A2
-        sNMDA.b2 = B2
-        sNMDA.tau3_0 = Tau3_0
-        sNMDA.a3 = A3
-        sNMDA.b3 = B3
+            self.NCs.append(nc) # Must be in outer later with python address allocated
+        self.record(sNMDA = self.NMDAs[-1])
+        h.init()
+        h.run()
+        self.printRec()
 
-    #Save Stuff
-    iNMDA = h.Vector()
-    iNMDA.record(sNMDA._ref_i)
+    def astroMem(self,compartment):
+        compartment.Ra = 100
+        compartment.cm = 0.8
+        compartment.insert('pas')
+        compartment.e_pas = -85
+        compartment.g_pas = 1/11150
 
-    iFile = h.File("iFile.dat")
-    iFile.wopen("iFile.dat")
+    def morph(self,isolate=False,bLen=None):
+        # Access the PAP object
+        self.pap = h.Section(name="PAP")
 
-    iMem = h.Vector()
-    iMem.record(pap(0.5)._ref_i_pas)
+        # Set astrocyte leaf membrane parameters
+        self.pap.L = 0.3
+        self.pap.diam = 0.02
+        self.pap.nseg = 1
+        self.astroMem(self.pap)
 
-    iFileMem = h.File("iFileMem.dat")
-    iFileMem.wopen("iFileMem.dat")
-
-    vSoma = h.Vector()
-    vSoma.record(pap(0.5)._ref_v)
-
-    vFile = h.File("vFile.dat")
-    vFile.wopen("vFile.dat")
-
-    time = h.Vector()
-    time.record(h._ref_t)
-
-    tFile = h.File("tFile.dat")
-    tFile.wopen("tFile.dat")
-
-    h.init()
-    h.run()
-
-    iNMDA.printf(iFile)
-    iFile.close()
-
-    iMem.printf(iFileMem)
-    iFileMem.close()
+        h.psection(sec=self.pap)
+        if not isolate:
+            # Create the branch (not included in the original hoc file)
+            self.branch = h.Section(name='branch')
+            if bLen != None and type(bLen) == int:
+                self.branch.L = bLen
+            else:
+                self.branch.L = 1000
+            self.branch.diam = 1
+            self.branch.nseg = 10
+            self.astroMem(self.branch)
+            h.psection(sec=self.branch)
 
 
-    vSoma.printf(vFile)
-    vFile.close()
+            # create Soma
+            self.soma = h.Section(name='soma')
+            self.soma.diam = 10 # Agulhon 2008 Neuron
+            self.soma.L = 10
+            self.astroMem(self.soma)
+            h.psection(sec=self.soma)
 
-    time.printf(tFile)
-    tFile.close()
-    return list(iNMDA)[-1], max(iNMDA)
+
+            #Connect
+            self.branch.connect(self.soma(0.5))
+            self.pap.connect(self.branch)
+            h.topology()
+            
+    def readParameters(self,fDir='./results/optimize'):
+        # Load optimization parameters
+        wFile = h.File()
+        wFile.ropen(f"{fDir}/optT2.dat")
+        self.Tau2_0 = wFile.scanvar()
+        self.A2 = wFile.scanvar()
+        self.B2 = wFile.scanvar()
+        wFile.close()
+
+        wFile = h.File()
+        wFile.ropen(f"{fDir}/optT3.dat")
+        self.Tau3_0 = wFile.scanvar()
+        self.A3 = wFile.scanvar()
+        self.B3 = wFile.scanvar()
+        wFile.close()
+
+        self.DELTA = 0 # Lalo 2006 J. Neuroscience
+
+        wFile = h.File()
+        wFile.ropen(f"{fDir}/optW.dat")
+        self.SynWeight = wFile.scanvar()
+        wFile.close()
+
+    def nmda(self):        
+        sNMDA = h.Exp5NMDA(self.pap(0.5))
+        sNMDA.tau2_0 = self.Tau2_0
+        sNMDA.a2 = self.A2
+        sNMDA.b2 = self.B2
+        sNMDA.tau3_0 = self.Tau3_0
+        sNMDA.a3 = self.A3
+        sNMDA.b3 = self.B3
+        sNMDA.delta = self.DELTA
+
+        return sNMDA
+
+    def record(self,sNMDA=None):
+        #Save Stuff
+        if sNMDA != None:
+            self.iNMDA = h.Vector()
+            self.iNMDA.record(sNMDA._ref_i)
+
+            self.iFile = h.File("iFile.dat")
+            self.iFile.wopen("iFile.dat")
+
+        self.iMem = h.Vector()
+        self.iMem.record(self.pap(0.5)._ref_i_pas)
+
+        self.iFileMem = h.File("iFileMem.dat")
+        self.iFileMem.wopen("iFileMem.dat")
+
+        self.vPAP = h.Vector()
+        self.vPAP.record(self.pap(0.5)._ref_v)
+
+        self.vFile = h.File("vFile.dat")
+        self.vFile.wopen("vFile.dat")
+
+        if hasattr(self,"soma"):
+            self.vSoma = h.Vector()
+            self.vSoma.record(self.soma(0.5)._ref_v)
+
+            self.vFileSoma = h.File("vFileSoma.dat")
+            self.vFileSoma.wopen("vFileSoma.dat")
+
+
+        self.time = h.Vector()
+        self.time.record(h._ref_t)
+
+        self.tFile = h.File("tFile.dat")
+        self.tFile.wopen("tFile.dat")
+
+    def printRec(self):
+        if hasattr(self,"iNMDA"):
+            self.iNMDA.printf(self.iFile)
+            self.iFile.close()
+        
+        self.iMem.printf(self.iFileMem)
+        self.iFileMem.close()
+
+        
+        self.vPAP.printf(self.vFile)
+        self.vFile.close()
+
+        if hasattr(self,"soma"):
+            self.vSoma.printf(self.vFileSoma)
+            self.vFileSoma.close()
+
+        self.time.printf(self.tFile)
+        self.tFile.close()
+        
+        if hasattr(self,"iNMDA"):
+            return list(self.iNMDA)[-1], max(self.iNMDA)
 
 def eq(x,a,b):
     return a*x + b
@@ -191,7 +209,7 @@ def measureCond(fName):
         IVfast = {}
         for volt in voltList:
             print(volt)
-            iS,iF = main(volt)
+            iS,iF = PAPModel(volt)
             IVslow[volt] = iS
             IVfast[volt] = iF
             print(iS,iF)
@@ -267,18 +285,20 @@ def plot(dir,zoom=False,ext=False):
         plt.savefig(os.path.join(dir,'resultsIMem.pdf'))
     return max(v.iloc[:,0])
 
-if __name__ == "__main__":
-    #measureCond('IV')
-    itr = 100
+def multiChannel(itr=100):
     dList = []
     for i in range(1,itr + 1):
-        main(40,multiple=i,mode=0)
+        PAPModel(40,multiple=i,mode=0)
         dList.append(plot(".") + 85)
     with open(f'dList.pickle', 'wb') as handle:
         pickle.dump(dList, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
     plt.cla()
     plt.clf()
     plt.scatter(range(1,itr + 1),dList)
     plt.savefig('patchXDepolar.pdf')
-    
+
+if __name__ == "__main__":
+    #measureCond('IV')
+    #multiChannel()
+    PAPModel(40,multiple=10)
+    plotRes(".")
