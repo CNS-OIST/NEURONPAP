@@ -2,19 +2,26 @@ from neuron import h, load_mechanisms
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from scipy.optimize import minimize
 import pickle
 import os
 import pandas as pd
 from results.utils.visualize import func as plotRes
+from mpl_toolkits import mplot3d
+
 
 class PAPModel():
     tstop = 100
-    dt = 0.00001
+    dt = 0.001 #0.00001
     celsius = 37
     v_init = -85
     pap = object()
+    somaSize = 10 # Soma Size
+    bLen = 30 # Branch Size
+    bWid = 3
+    branches = []
 
-    def __init__(self,bLen=30,voltageClamp=40,multiple=1,mode=-1):
+    def __init__(self,bWid=3,bNum=1,bLen=30,voltageClamp=40,somaSize=10,currentClamp=2,multiple=1,mode=2):
         # Load NEURON GUI and parameters
         h.load_file("stdgui.hoc")
         h.load_file("params.hoc")
@@ -25,20 +32,34 @@ class PAPModel():
         h.celsius = self.celsius
         h.v_init = self.v_init
 
+        # set morphology parameters
+        self.somaSize = somaSize
+        self.bLen = bLen
+        self.bWid = bWid
+        self.bNum = bNum
+
         # Build Morphology
-        self.morph(bLen=bLen)
+        self.morph()
 
         # Clamp settings
-        if mode > 0:
-            vc = h.VClamp(0.5)
+        if mode > 1:
+            #Step Current
+            ic = h.IClamp(0.5)
+            ic.dur = self.tstop
+            ic.delay = 0 # ms starts with glutamate
+            ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
+        elif mode > 0:
+            vc = h.VClamp(self.soma(0.5))
             vc.dur[0] = h.tstop
             vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
 
         elif mode == 0:
-            ic = h.IClamp(0.5)
+            #Impulse Current
+            ic = h.IClamp(self.pap(0.5))
             ic.dur = 0.002
             ic.delay = 10 # ms starts with glutamate
-            ic.amp = 2 * 0.001  # nA current injection (1 pA)
+            ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
+
 
         self.readParameters()
         self.NMDAs = []
@@ -52,24 +73,31 @@ class PAPModel():
             stim.noise = 0
             self.NMDAs.append(self.nmda())
             
-            nc = h.NetCon(stim, self.NMDAs[-1])        
-            nc.weight[0] = self.SynWeight
-            nc.delay = 0
+            self.NCs.append(h.NetCon(stim, self.NMDAs[-1])) # Must be in outer later with python address allocated
+            self.NCs[-1].weight[0] = self.SynWeight
+            self.NCs[-1].delay = 0
 
-            self.NCs.append(nc) # Must be in outer later with python address allocated
         self.record(sNMDA = self.NMDAs[-1])
         h.init()
         h.run()
         self.printRec()
+        self.cleanMorphology()
+
+    def cleanMorphology(self):
+        for sec in h.allsec():
+            h.delete_section(sec=sec)
+        self.branches = []
 
     def astroMem(self,compartment):
+        # add astrocyte properties
         compartment.Ra = 100
         compartment.cm = 0.8
+        # compartment.insert('kir4') # ASTRO KIR model
         compartment.insert('pas')
         compartment.e_pas = -85
         compartment.g_pas = 1/11150
 
-    def morph(self,isolate=False,bLen=None):
+    def morph(self,isolate=False):
         # Access the PAP object
         self.pap = h.Section(name="PAP")
 
@@ -81,30 +109,28 @@ class PAPModel():
 
         h.psection(sec=self.pap)
         if not isolate:
-            # Create the branch (not included in the original hoc file)
-            self.branch = h.Section(name='branch')
-            if bLen != None and type(bLen) == int:
-                self.branch.L = bLen
-            else:
-                self.branch.L = 30
-            self.branch.diam = 1
-            self.branch.nseg = 10
-            self.astroMem(self.branch)
-            h.psection(sec=self.branch)
-
-
             # create Soma
             self.soma = h.Section(name='soma')
-            self.soma.diam = 10 # Agulhon 2008 Neuron
-            self.soma.L = 10
+            self.soma.diam = self.somaSize
+            self.soma.L = self.somaSize
+            # self.soma.diam = 10 # Agulhon 2008 Neuron
+            # self.soma.L = 10
             self.astroMem(self.soma)
             h.psection(sec=self.soma)
-
-
-            #Connect
-            self.branch.connect(self.soma(0.5))
-            self.pap.connect(self.branch)
-            h.topology()
+            
+            for i in range(self.bNum):
+                # Create the branch (not included in the original hoc file)
+                self.branches.append(h.Section(name=f'branch{i}'))
+                self.branches[-1].L = self.bLen
+                self.branches[-1].diam = self.bWid
+                self.branches[-1].nseg = 10
+                self.astroMem(self.branches[-1])
+                h.psection(sec=self.branches[-1])
+                #Connect
+                self.branches[-1].connect(self.soma(0.5))
+                if i == 0:
+                    self.pap.connect(self.branches[-1])
+        h.topology()
             
     def readParameters(self,fDir='./results/optimize'):
         # Load optimization parameters
@@ -297,18 +323,55 @@ def multiChannel(itr=100):
     plt.scatter(range(1,itr + 1),dList)
     plt.savefig('patchXDepolar.pdf')
 
-if __name__ == "__main__":
-    #measureCond('IV')
-    #multiChannel()
+def multiDistance(x):
+    somaSize, bWid, bNum = x
     dList = []
     cList = []
     vList = []
     for i in range(1,101):
-        for j in range(1,51):
-            PAPModel(bLen=1,multiple=j)
-            vMax = plotRes(".")
+        for j in range(50,1000,50):
             dList.append(i)
             cList.append(j)
-            vList.append(vMax)
-            with open(f'ballStick.pickle', 'wb') as handle:
-                pickle.dump([dList,cList,vList], handle, protocol=pickle.HIGHEST_PROTOCOL)
+            vList.append(max(PAPModel(bLen=i,multiple=j, bWid=bWid, somaSize=somaSize, bNum=int(bNum),mode=0).vPAP))
+    with open(f'ballStick.pickle', 'wb') as handle:
+        pickle.dump([dList,cList,vList], handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # Create a figure and a 3D axis
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+
+    # Create the scatter plot
+    ax.scatter3D(dList, cList, vList, c=vList, cmap='viridis')
+
+    # Set labels and title
+    ax.set_xlabel('distance')
+    ax.set_ylabel('channel Count')
+    ax.set_zlabel('Somatic Voltage')
+
+    # Show the plot
+    plt.savefig('./3Dplot.pdf')
+
+
+def measureRi(x):
+    somaSize, bLen, bWid, bNum = x
+    # Make a list for tested currents
+    cList = np.arange(-600,601,200)
+    vList = []
+    for current in cList:
+        vList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum)).vPAP)
+        # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
+    popt, pcov = curve_fit(eq,[ v[-1] for v in vList],cList)
+    # x = np.linspace(-600,600)
+    # plt.plot(eq(x,*popt),x)
+    # plt.legend()
+    # plt.show()
+    print(f'{abs(1/popt[0])} MOhm')
+    return abs(1/popt[0] - 2.6) # soma input resistance score
+
+if __name__ == "__main__":
+    #measureCond('IV')
+    #multiChannel()
+    measureRi((6.197,  3.148e1,  4.094,  1))
+    multiDistance((6.197,  4.094,  1))
+    # measureRi((2.8e8,50,3.5e7,3))
+    # print(minimize(measureRi,(10,30,5,1),method='Nelder-Mead',bounds=[(1,None),(10,50),(1,None),(1,50)],options={'disp':True},tol=0.01))
