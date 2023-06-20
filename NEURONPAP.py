@@ -8,20 +8,22 @@ import os
 import pandas as pd
 from results.utils.visualize import func as plotRes
 from mpl_toolkits import mplot3d
+import math
 
 
 class PAPModel():
     tstop = 100
-    dt = 0.001 #0.00001
+    dt = 0.00001 #0.00001
     celsius = 37
     v_init = -85
     pap = object()
     somaSize = 10 # Soma Size
     bLen = 30 # Branch Size
     bWid = 3
+    papWid = 0.02
     branches = []
 
-    def __init__(self,bWid=3,bNum=1,bLen=30,voltageClamp=40,somaSize=10,currentClamp=2,multiple=1,mode=2):
+    def __init__(self,papWid=0.02,bWid=3,bNum=1,bLen=30,voltageClamp=40,somaSize=10,currentClamp=2,multiple=1,mode=2,somaCheck=True,Glu=False):
         # Load NEURON GUI and parameters
         h.load_file("stdgui.hoc")
         h.load_file("params.hoc")
@@ -37,6 +39,7 @@ class PAPModel():
         self.bLen = bLen
         self.bWid = bWid
         self.bNum = bNum
+        self.papWid = papWid
 
         # Build Morphology
         self.morph()
@@ -44,7 +47,10 @@ class PAPModel():
         # Clamp settings
         if mode > 1:
             #Step Current
-            ic = h.IClamp(0.5)
+            if somaCheck:
+                ic = h.IClamp(self.soma(0.5))
+            else:
+                ic = h.IClamp(self.pap(0.5))
             ic.dur = self.tstop
             ic.delay = 0 # ms starts with glutamate
             ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
@@ -72,10 +78,10 @@ class PAPModel():
             stim.start = 10
             stim.noise = 0
             self.NMDAs.append(self.nmda())
-            
-            self.NCs.append(h.NetCon(stim, self.NMDAs[-1])) # Must be in outer later with python address allocated
-            self.NCs[-1].weight[0] = self.SynWeight
-            self.NCs[-1].delay = 0
+            if Glu:
+                self.NCs.append(h.NetCon(stim, self.NMDAs[-1])) # Must be in outer later with python address allocated
+                self.NCs[-1].weight[0] = self.SynWeight
+                self.NCs[-1].delay = 0
 
         self.record(sNMDA = self.NMDAs[-1])
         h.init()
@@ -103,7 +109,7 @@ class PAPModel():
 
         # Set astrocyte leaf membrane parameters
         self.pap.L = 0.3
-        self.pap.diam = 0.02
+        self.pap.diam = self.papWid
         self.pap.nseg = 1
         self.astroMem(self.pap)
 
@@ -352,26 +358,49 @@ def multiDistance(x):
     plt.savefig('./3Dplot.pdf')
 
 
+def find_nan_inf_index(lst):
+    for i, value in enumerate(lst):
+        if math.isnan(value) or math.isinf(value):
+            return i
+    return -1  # Return -1 if no NaN or inf value is found
+
+def remove_nan_values(lst,lst2):
+    index = find_nan_inf_index(lst)
+    while index != -1:
+        del lst[index]
+        lst2 = np.delete(lst2,index)
+        index = find_nan_inf_index(lst)
+    return lst,lst2
+
 def measureRi(x):
-    somaSize, bLen, bWid, bNum = x
+    somaSize, bLen, bWid, papWid, bNum = x
     # Make a list for tested currents
-    cList = np.arange(-600,601,200)
-    vList = []
+    cList = np.arange(-800,801,200)
+    vSomaList = []
+    vPAPList = []
     for current in cList:
-        vList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum)).vPAP)
+        vSomaList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum),papWid=papWid).vSoma)
+        vPAPList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum),somaCheck=False,papWid=papWid).vPAP)
         # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
-    popt, pcov = curve_fit(eq,[ v[-1] for v in vList],cList)
+
+    
+    vList,somaC = remove_nan_values([ v[-1] for v in vSomaList],cList)
+    somapopt, pcov = curve_fit(eq,vList,somaC)
     # x = np.linspace(-600,600)
     # plt.plot(eq(x,*popt),x)
     # plt.legend()
     # plt.show()
-    print(f'{abs(1/popt[0])} MOhm')
-    return abs(1/popt[0] - 2.6) # soma input resistance score
+    print(f'{abs(1/somapopt[0])} MOhm')
+    vList,papC = remove_nan_values([ v[-1] for v in vPAPList],cList)
+    pappopt, pcov = curve_fit(eq,vList,papC)
+    print(f'{abs(1/pappopt[0])} MOhm')
+
+    return abs(1/somapopt[0] - 2.6) + abs(1/pappopt[0] - 1050) # soma input resistance score
 
 if __name__ == "__main__":
     #measureCond('IV')
     #multiChannel()
-    measureRi((6.197,  3.148e1,  4.094,  1))
-    multiDistance((6.197,  4.094,  1))
+    measureRi([3,  30,  4.28,  4.3e-4,  1])
+    # multiDistance((6.197,  4.094,  1))
     # measureRi((2.8e8,50,3.5e7,3))
-    # print(minimize(measureRi,(10,30,5,1),method='Nelder-Mead',bounds=[(1,None),(10,50),(1,None),(1,50)],options={'disp':True},tol=0.01))
+    # print(minimize(measureRi,(10,30,5,0.02,1),method='Nelder-Mead',bounds=[(1,None),(10,None),(1,None),(0.000001,None),(1,50)],options={'disp':True},tol=0.01))

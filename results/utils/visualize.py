@@ -40,7 +40,8 @@ def func(dir,zoom=False,ext=False):
         plt.ylabel('mV')
         plt.xlabel('ms')
         print(max(v.iloc[:,0]))
-        plt.ylim(-90,0)
+        if zoom:
+            plt.ylim(-90,0)
         # if zoom or max(v.iloc[:, 0]) > -20: 
         #     plt.xlim(9.99,10.1)
         # elif ext and max(t) >= 10000:
