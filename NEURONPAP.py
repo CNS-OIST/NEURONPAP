@@ -329,33 +329,71 @@ def multiChannel(itr=100):
     plt.scatter(range(1,itr + 1),dList)
     plt.savefig('patchXDepolar.pdf')
 
-def multiDistance(x):
-    somaSize, bWid, bNum = x
+    
+def multiDistance(x,read=False):
+    somaSize, bLen, bWid, papWid, bNum = x
     dList = []
     cList = []
     vList = []
-    for i in range(1,101):
-        for j in range(50,1000,50):
-            dList.append(i)
-            cList.append(j)
-            vList.append(max(PAPModel(bLen=i,multiple=j, bWid=bWid, somaSize=somaSize, bNum=int(bNum),mode=0).vPAP))
-    with open(f'ballStick.pickle', 'wb') as handle:
-        pickle.dump([dList,cList,vList], handle, protocol=pickle.HIGHEST_PROTOCOL)
+    if read:
+        with open(f'ballStick.pickle', 'rb') as handle:
+            dList,cList,vList = pickle.load(handle)
+
+    else:
+        vSomaList = []
+        vPAPList = []
+        for i in range(1,101,10):
+            for j in range(50,1000,50):
+                dList.append(i)
+                cList.append(j)
+                vSomaList.append(max(
+                    np.array(PAPModel(currentClamp=j,
+                                      bLen=i,
+                                      bWid=bWid,
+                                      somaSize=somaSize,
+                                      mode=0,
+                                      bNum=int(bNum),
+                                      papWid=papWid,
+                                      Glu=True).vSoma) + 85,
+                    key=abs
+                ))
+                vPAPList.append(max(
+                    np.array(PAPModel(currentClamp=j,
+                                      bLen=i,
+                                      bWid=bWid,
+                                      somaSize=somaSize,
+                                      mode=0,
+                                      bNum=int(bNum),
+                                      somaCheck=False,
+                                      papWid=papWid,
+                                      Glu=True).vPAP) + 85,
+                    key=abs
+                ))
+        # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
+        vList = [vSomaList,vPAPList]
+                
+        with open(f'ballStick.pickle', 'wb') as handle:
+            pickle.dump([dList,cList,vList], handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # Create a figure and a 3D axis
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
+    for i,v in enumerate(vList):
+        fig = plt.figure()
+        ax = plt.axes(projection='3d')
 
-    # Create the scatter plot
-    ax.scatter3D(dList, cList, vList, c=vList, cmap='viridis')
+        # Create the scatter plot
+        ax.scatter3D(dList, cList, v, c=v, cmap='viridis')
 
-    # Set labels and title
-    ax.set_xlabel('distance')
-    ax.set_ylabel('channel Count')
-    ax.set_zlabel('Somatic Voltage')
+        # Set labels and title
+        ax.set_xlabel('distance')
+        ax.set_ylabel('channel Count')
+        if i == 0:
+            name = 'soma'
+        else:
+            name = 'pap'
+        ax.set_zlabel(f'Voltage Change{name}')
 
-    # Show the plot
-    plt.savefig('./3Dplot.pdf')
+        # Show the plot
+        plt.savefig(f'./3Dplot{name}.pdf')
 
 
 def find_nan_inf_index(lst):
@@ -400,7 +438,9 @@ def measureRi(x):
 if __name__ == "__main__":
     #measureCond('IV')
     #multiChannel()
-    measureRi([3,  30,  4.28,  4.3e-4,  1])
-    # multiDistance((6.197,  4.094,  1))
+    # measureRi([3,  30,  4.28,  4.3e-4,  1])
+    # Soma 2.5836550239043317 MOhm
+    # PAP 1035.108930679734 MOhm
+    multiDistance([3,  30,  4.28,  4.3e-4,  1])
     # measureRi((2.8e8,50,3.5e7,3))
     # print(minimize(measureRi,(10,30,5,0.02,1),method='Nelder-Mead',bounds=[(1,None),(10,None),(1,None),(0.000001,None),(1,50)],options={'disp':True},tol=0.01))
