@@ -529,11 +529,18 @@ if __name__ == "__main__" or parallel:
     # measureRi([3,  30,  4.28,  4.3e-4,  1])
     # Soma 2.5836550239043317 MOhm
     # PAP 1035.108930679734 MOhm
-    start = time.time()
+    if parallel:
+        comm.Barrier()
+        start = time.time()
+        comm.bcast(start,root=0)
     multiDistance([3,  30,  4.28,  4.3e-4,  1])
-    end = time.time()
-    time_took = end - start
-    with open(f'timeres{size}.txt','w') as f:
-        f.write(str(time_took))
+    if parallel:
+        comm.Barrier()
+        end = time.time()
+        comm.bcast(end,root=0)
+    if parallel and rank == 0:
+        time_took = end - start
+        with open(f'timeres{size}.txt','w') as f:
+            f.write(str(time_took))
     # measureRi((2.8e8,50,3.5e7,3))
     # print(minimize(measureRi,(10,30,5,0.02,1),method='Nelder-Mead',bounds=[(1,None),(10,None),(1,None),(0.000001,None),(1,50)],options={'disp':True},tol=0.01))
