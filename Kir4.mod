@@ -2,13 +2,14 @@ TITLE inward rectifier potassium (Kir4) channel
 
 COMMENT
 This is kinetics of Kir4.1 channels used in the Janic et al. 2022 paper.
+MAYBE needs electrode current statement
 
 
 ENDCOMMENT
 NEURON {
     SUFFIX kir4 			
-    USEION k READ ko WRITE ik	
-    RANGE  ik, gkir, NormK, Pkir, v, dz, vs, delta, DeltazB, vkir, ki
+    USEION k READ ki,ko WRITE ik
+    RANGE  gkir, NormK, Pkir, dz, vs, delta, DeltazB, vkir
         
 }
 
@@ -31,14 +32,12 @@ CONSTANT {
     
 
 PARAMETER {
-    v 		(mV)
     Pkir = 9.485e-08 (cm3/s)
     dz = 1.0 : >1.0
     vs = 25.7 (mV)
     delta = 0.4 : 0.5
     DeltazB = -3.1 : 0.45
     vkir = -55 (mV) : -45 (mV)
-    ki = 130     (mM)
     : va1 = -14.83 (mV) 	
     : va2 = -105.82 (mV) : 34 (mV)
     : va3 = 19.23 (mV)
@@ -49,8 +48,10 @@ PARAMETER {
 }
 
 ASSIGNED {
+    v 		(mV)
     ik      (nA)
     
+    ki      (mM)
     ko      (mM)
 }
 
@@ -61,5 +62,6 @@ BREAKPOINT {
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
 	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
         : consider different channel dynamics
-}
+    }
+    
 
