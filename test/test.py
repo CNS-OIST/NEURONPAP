@@ -12,7 +12,7 @@ import numpy as np
 
 class cell():
     soma = object()
-    tstop = 500
+    tstop = 1000
     dt = 0.01
     celsius = 37
     v_init = -85
@@ -44,7 +44,6 @@ class cell():
         #     vc.dur[0] = h.tstop
         #     vc.amp[0] = clamp  # mV depolarization (dV = 20)
 
-        h.init()
         h.run()
 
     def morphology(self):
@@ -69,6 +68,7 @@ class cell():
         compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
+        compartment.insert('kdifl')
         # compartment.ki = 130 * mM
         # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
 
@@ -79,6 +79,8 @@ class cell():
         self.vSoma.record(self.soma(0.5)._ref_v)
         self.iKSoma = h.Vector()
         self.iKSoma.record(self.soma(0.5)._ref_ik)
+        self.KconcSoma = h.Vector()
+        self.KconcSoma.record(self.soma(0.5)._ref_ko)
         self.time = h.Vector()
         self.time.record(h._ref_t)
         
@@ -88,10 +90,12 @@ class cell():
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
         
-    def setK(self,initialKo):
-        h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
-        # h.ko0_k_ion = initialKo * mM # Global concentration
-        self.soma.ki = h.ki0_k_ion
+    def setK(self,initialKo,initialKi=70):
+        # initialKi tweaked for maintaining RMP of -85
+        h.init()
+        h.ki0_k_ion = initialKi * mM # Global concentration for astrocytes from Savtchenko
+        h.ko0_k_ion = initialKo * mM # Global concentration
+        self.soma.ki = initialKi * mM
         self.soma.ko = initialKo * mM
         self.soma.ek = -90 * mV
         
@@ -99,7 +103,7 @@ def main():
     astrocyte = cell()
     astrocyte.record()
 
-    for Kconc in [8.5]:
+    for Kconc in [2.5,5,8.5]:
         astrocyte.setK(Kconc)
         print(astrocyte.soma.psection())
         astrocyte.run()

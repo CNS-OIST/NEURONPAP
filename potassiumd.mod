@@ -19,8 +19,13 @@ UNITS {
 }
 
 INITIAL {
+    VERBATIM
+
+	ki = _ion_ki;
 	
-	ki = ki0
+	ENDVERBATIM
+        : figure a way to set ko to global default ko
+
 	
 	ka = ki
 }

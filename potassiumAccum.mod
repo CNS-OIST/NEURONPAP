@@ -33,12 +33,13 @@ STATE {
 }
 
  INITIAL {
-	: VERBATIM
+	VERBATIM
 
-	: ko = _ion_ko;
+	ko = _ion_ko;
 	
-	: ENDVERBATIM
-        ko = ko0
+	ENDVERBATIM
+        : figure a way to set ko to global default ko
+        : ko = ko0
 }
 
 BREAKPOINT {
