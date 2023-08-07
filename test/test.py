@@ -12,7 +12,7 @@ import numpy as np
 
 class cell():
     soma = object()
-    tstop = 1000
+    tstop = 500
     dt = 0.01
     celsius = 37
     v_init = -85
@@ -69,7 +69,7 @@ class cell():
         compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
-        compartment.ki = 130 * mM
+        # compartment.ki = 130 * mM
         # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
 
 
@@ -89,15 +89,17 @@ class cell():
             self.tFile.wopen("tFile.dat")
         
     def setK(self,initialKo):
-        h.ki0_k_ion = 130 * mM # Global concentration
+        h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
         # h.ko0_k_ion = initialKo * mM # Global concentration
-        self.soma(0.5).K_acc.ko0 = initialKo * mM
+        self.soma.ki = h.ki0_k_ion
+        self.soma.ko = initialKo * mM
+        self.soma.ek = -90 * mV
         
 def main():
     astrocyte = cell()
     astrocyte.record()
 
-    for Kconc in [2.5, 5, 8.5]:
+    for Kconc in [8.5]:
         astrocyte.setK(Kconc)
         print(astrocyte.soma.psection())
         astrocyte.run()

@@ -19,6 +19,7 @@ PARAMETER {
     
     ik 	(mA/cm2)
     ko0 = 2.5 (mM)
+    tauk = 100 (ms)
     
 }
 
@@ -45,5 +46,5 @@ BREAKPOINT {
     }
     
     DERIVATIVE state {
-        ko' = ik / (F * area)
+        ko' = ik / (F * area) - (ko - ko0)/tauk
 }
