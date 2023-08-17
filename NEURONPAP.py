@@ -123,6 +123,17 @@ class PAPModel():
         compartment.insert('pas')
         compartment.e_pas = -85
         compartment.g_pas = 1/11150
+        compartment.insert('kir4')
+        compartment.insert('twik')
+        compartment.insert('K_acc')
+        compartment.insert('kleak')
+        compartment.insert('kdifl')
+        h.ki0_k_ion = 70 * mM # Tweaked for RMP -85
+        h.ko0_k_ion = 2.5 * mM # Global concentration
+        compartment.ki = 70 * mM
+        compartment.ko = 2.5 * mM
+        compartment.ek = -90 * mV
+
 
     def morph(self,isolate=False,printTopology=False):
         # Access the PAP object

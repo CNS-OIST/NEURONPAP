@@ -8,7 +8,9 @@ Parameters:
 from neuron import h
 from neuron.units import mM,mV
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 import numpy as np
+import pickle
 
 class cell():
     soma = object()
@@ -31,18 +33,18 @@ class cell():
         self.morphology()
         self.astroMem(self.soma)
 
-    def run(self): #,clamp=2,mode=0):
+    def run(self,clamp=0,mode=0):
         # Clamp settings
-        # if mode > 0:
-        #     #Step Current
-        #     ic = h.IClamp(self.soma(0.5))
-        #     ic.dur = h.tstop
-        #     ic.delay = 0 # ms starts with glutamate
-        #     ic.amp = clamp * 0.001  # nA current injection (1 pA)
-        # else:
-        #     vc = h.VClamp(self.soma(0.5))
-        #     vc.dur[0] = h.tstop
-        #     vc.amp[0] = clamp  # mV depolarization (dV = 20)
+        if mode > 1:
+            #Step Current
+            ic = h.IClamp(self.soma(0.5))
+            ic.dur = h.tstop
+            ic.delay = 0 # ms starts with glutamate
+            ic.amp = clamp * 0.001  # nA current injection (1 pA)
+        elif mode > 0:
+            vc = h.VClamp(self.soma(0.5))
+            vc.dur[0] = h.tstop
+            vc.amp[0] = clamp  # mV depolarization (dV = 20)
 
         h.run()
 
@@ -57,18 +59,21 @@ class cell():
         # add astrocyte properties
         compartment.Ra = 100
         compartment.cm = 0.8
-        # compartment.insert('pas')
-        # compartment.e_pas = -85
-        # compartment.g_pas = 1/11150
-        self.channels(compartment)
+        compartment.insert('pas')
+        compartment.e_pas = -85
+        compartment.g_pas = 1/11150
 
-    def channels(self,compartment):
+    def channels(self,compartment,**kwargs):
+        channelLibrary = ['kir4','twik','K_acc','kleak','kdifl']
+        
+        switch = set(kwargs.keys()) & set(channelLibrary)
+        for k,v in kwargs.items():
+            if k in switch and v:
+                compartment.insert(k)
         # insert relevant channels
-        compartment.insert('kir4')
-        compartment.insert('twik')
-        compartment.insert('K_acc')
-        compartment.insert('kleak')
-        compartment.insert('kdifl')
+        default = set(channelLibrary) - set(switch)
+        for channel in default:
+            compartment.insert(channel)
         # compartment.ki = 130 * mM
         # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
 
@@ -77,6 +82,8 @@ class cell():
         #Save Stuff
         self.vSoma = h.Vector()
         self.vSoma.record(self.soma(0.5)._ref_v)
+        self.iSoma = h.Vector()
+        self.iSoma.record(self.soma(0.5)._ref_i_pas)
         self.iKSoma = h.Vector()
         self.iKSoma.record(self.soma(0.5)._ref_ik)
         self.KconcSoma = h.Vector()
@@ -98,14 +105,21 @@ class cell():
         self.soma.ki = initialKi * mM
         self.soma.ko = initialKo * mM
         self.soma.ek = -90 * mV
+
+    def overexpressionKir(self, multiple):
+        # captures reducing depolarization
+        for seg in self.soma:
+            seg.kir4.Pkir = multiple * seg.kir4.Pkir
         
-def main():
+def testKoConc():
     astrocyte = cell()
+    astrocyte.channels(astrocyte.soma,twik=False)
     astrocyte.record()
 
     for Kconc in [2.5,5,8.5]:
         astrocyte.setK(Kconc)
         print(astrocyte.soma.psection())
+        # astrocyte.overexpressionKir(30)
         astrocyte.run()
         # plt.plot(astrocyte.time,astrocyte.vSoma)
         print(astrocyte.soma.psection())
@@ -115,6 +129,75 @@ def main():
         plt.ylabel('voltage (mV)')
         plt.savefig(f'voltagteKo{Kconc}.pdf')
 
-if __name__ == "__main__":
-    main()
+def eq(x,a,b):
+    return a * x + b
+
+def measureCond(fName,twikExpr):
+    voltList = np.arange(-150,50,5)
+    IV = {}
+    astrocyte = cell()
+    astrocyte.channels(astrocyte.soma,
+                       twik=twikExpr,
+                       K_acc=False,
+                       kleak=False,
+                       kdifl=False
+                       )
+    astrocyte.record()
+    astrocyte.setK(5,initialKi=130)
     
+    for volt in voltList:
+        print(volt)
+        astrocyte.run(clamp=volt,mode=1)
+        IV[volt] = astrocyte.iKSoma[-1]
+    with open(f'{fName}.pickle', 'wb') as handle:
+        pickle.dump(IV, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    I = list(IV.values())
+    V = list(IV.keys())
+    popt, pcov = curve_fit(eq,V,I)
+    x = np.linspace(-150, 50, 50)
+    print(popt)
+    plt.plot(V,I,label='model')
+    plt.plot(x,eq(x,*popt),label=f'{popt[0]}x+{popt[1]}')
+    plt.legend()
+    plt.savefig(f"{fName}.pdf")
+
+    
+
+if __name__ == "__main__":
+    measureCond('Control',True)
+    measureCond('TWIKKO',False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
