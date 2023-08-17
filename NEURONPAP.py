@@ -42,7 +42,20 @@ class PAPModel():
     papWid = 0.02
     branches = []
 
-    def __init__(self,papWid=0.02,bWid=3,bNum=1,bLen=30,voltageClamp=40,somaSize=10,currentClamp=2,multiple=1,mode=2,somaCheck=True,Glu=False,printRes=False):
+    def __init__(self,
+                 papWid=0.02,
+                 bWid=3,
+                 bNum=1,
+                 bLen=30,
+                 voltageClamp=40,
+                 somaSize=10,
+                 currentClamp=2,
+                 multiple=1,
+                 mode=2,
+                 somaCheck=True,
+                 Glu=False,
+                 printRes=False,
+                 initialKo=2.5):
 
         # Load NEURON GUI and parameters
         h.load_file("stdgui.hoc")
@@ -103,7 +116,10 @@ class PAPModel():
                 self.NCs[-1].weight[0] = self.SynWeight
                 self.NCs[-1].delay = 0
 
+        for sec in h.allsec():
+            self.setK(sec, initialKo)
         self.record(sNMDA = self.NMDAs[-1])
+        
         h.init()
         h.run()
         if printRes:
@@ -123,9 +139,20 @@ class PAPModel():
         compartment.insert('pas')
         compartment.e_pas = -85
         compartment.g_pas = 1/11150
+        self.channels(compartment)
+
+    def channels(self,compartment):
+        # insert relevant channels
+        compartment.insert('kir4')
+        compartment.insert('twik')
+        compartment.insert('K_acc')
+        compartment.insert('kleak')
+        # compartment.ki = 130 * mM
+        # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
+
 
     def morph(self,isolate=False,printTopology=False):
-        # Access the PAP object
+        # Access the PAP objecnnnt
         self.pap = h.Section(name="PAP")
 
         # Set astrocyte leaf membrane parameters
@@ -223,12 +250,24 @@ class PAPModel():
             self.vFileSoma = h.File("vFileSoma.dat")
             self.vFileSoma.wopen("vFileSoma.dat")
 
+            self.iKSoma = h.Vector()
+            self.iKSoma.record(self.soma(0.5)._ref_ik)
+
+            self.iKFileSoma = h.File("iKFileSoma.dat")
+            self.iKFileSoma.wopen("iKFileSoma.dat")
 
         self.time = h.Vector()
         self.time.record(h._ref_t)
 
         self.tFile = h.File("tFile.dat")
         self.tFile.wopen("tFile.dat")
+
+    def setK(self,compartment,initialKo):
+        h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
+        # h.ko0_k_ion = initialKo * mM # Global concentration
+        compartment.ki = h.ki0_k_ion
+        compartment.ko = initialKo * mM
+        compartment.ek = -90 * mV
 
     def printRec(self):
         if hasattr(self,"iNMDA"):
@@ -245,6 +284,9 @@ class PAPModel():
         if hasattr(self,"soma"):
             self.vSoma.printf(self.vFileSoma)
             self.vFileSoma.close()
+            
+            self.iKSoma.printf(self.iKFileSoma)
+            self.iKFileSoma.close()
 
         self.time.printf(self.tFile)
         self.tFile.close()
