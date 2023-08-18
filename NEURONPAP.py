@@ -6,6 +6,7 @@ To Do:
 
 from mpi4py import MPI
 from neuron import h, load_mechanisms
+from neuron.units import mM,mV
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -19,7 +20,8 @@ import math
 import sys
 import time
 
-parallel=True
+
+parallel=False
 
 if parallel:
     comm = MPI.COMM_WORLD
@@ -135,7 +137,6 @@ class PAPModel():
         # add astrocyte properties
         compartment.Ra = 100
         compartment.cm = 0.8
-        # compartment.insert('kir4') # ASTRO KIR model
         compartment.insert('pas')
         compartment.e_pas = -85
         compartment.g_pas = 1/11150
@@ -167,7 +168,7 @@ class PAPModel():
         self.pap.nseg = 1
         self.astroMem(self.pap)
 
-        h.psection(sec=self.pap)
+        # h.psection(sec=self.pap)
         if not isolate:
             # create Soma
             self.soma = h.Section(name='soma')
@@ -176,7 +177,7 @@ class PAPModel():
             # self.soma.diam = 10 # Agulhon 2008 Neuron
             # self.soma.L = 10
             self.astroMem(self.soma)
-            h.psection(sec=self.soma)
+            # h.psection(sec=self.soma)
             
             for i in range(self.bNum):
                 # Create the branch (not included in the original hoc file)
@@ -185,7 +186,7 @@ class PAPModel():
                 self.branches[-1].diam = self.bWid
                 self.branches[-1].nseg = 10
                 self.astroMem(self.branches[-1])
-                h.psection(sec=self.branches[-1])
+                # h.psection(sec=self.branches[-1])
                 #Connect
                 self.branches[-1].connect(self.soma(0.5))
                 if i == 0:
@@ -406,6 +407,32 @@ def get_iter(distance,dist_steps,chan,chan_steps):
             iterations.append((i,j))
 
     return iterations
+
+def parallizeFor(iterations,functions,functionArgs,functionParms):
+    # Calculate the number of iterations each process will handle
+    iterations_per_process = len(iterations) // size
+
+    # Adjust the range for the last process
+    if rank == size - 1:
+        remaining_iterations = len(iterations) % size
+    else:
+        remaining_iterations = 0
+
+    # results list for each rank
+    results = [ [] for i in range(len(iterations)) ]
+
+    comm.Barrier()
+    for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
+        parmSet = iterations[index]
+        print(f'Thread {rank} is performing set {parmSet}')
+        for k,func in enumerate(functions):
+            for l,parameterName in enumerate(functionParms):
+                functionArgs[k][parameterName] = parmSet[l]
+            results[index].append(functions[k](**functionArgs[k]))
+
+    comm.Barrier()
+    return comm.gather(results, root = 0)
+
     
 def multiDistance(x,read=False):
     somaSize, bLen, bWid, papWid, bNum = x
@@ -422,13 +449,13 @@ def multiDistance(x,read=False):
         if parallel:
             # Calculate the number of iterations each process will handle
             iterations = comm.bcast(get_iter(101,10,301,10),root=0)
-            iterations_per_process = len(iterations) // size
+            # iterations_per_process = len(iterations) // size
 
-            # Adjust the range for the last process
-            if rank == size - 1:
-                remaining_iterations = len(iterations) % size
-            else:
-                remaining_iterations = 0
+            # # Adjust the range for the last process
+            # if rank == size - 1:
+            #     remaining_iterations = len(iterations) % size
+            # else:
+            #     remaining_iterations = 0
 
             # Individual list for each rank
             vSoma = []
@@ -437,37 +464,69 @@ def multiDistance(x,read=False):
             c = []
 
             comm.Barrier()
-            for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
+            funcArgs = []
+            funcArgs.append({
+                'currentClamp':20,
+                'bWid':bWid,
+                'somaSize':somaSize,
+                'mode':0,
+                'bNum':int(bNum),
+                'papWid':papWid,
+                'Glu':True                
+            })
+            funcArgs.append({
+                'currentClamp':20,
+                'bWid':bWid,
+                'somaSize':somaSize,
+                'mode':0,
+                'bNum':int(bNum),
+                'somaCheck':False,
+                'papWid':papWid,
+                'Glu':True                
+            })
+            # make sure that funcParms is in the correct order of whatever iterations spits out
+            results = parallizeFor(iterations,[PAPModel,PAPModel],funcArgs,['bLen','multiple'])
+            # for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
+            #     i,j = iterations[index]
+            #     print(f'Thread {rank} is performing distance {i}, channel count {j}')
+                # vSoma.append(max(
+                #     np.array(PAPModel(currentClamp=20,
+                #                       multiple=j,
+                #                       bLen=i,
+                #                       bWid=bWid,
+                #                       somaSize=somaSize,
+                #                       mode=0,
+                #                       bNum=int(bNum),
+                #                       papWid=papWid,
+                #                       Glu=True).vSoma) + 85,
+                #     key=abs
+                # ))
+                # vPAP.append(max(
+                #     np.array(PAPModel(currentClamp=20,
+                #                       multiple=j,
+                #                       bLen=i,
+                #                       bWid=bWid,
+                #                       somaSize=somaSize,
+                #                       mode=0,
+                #                       bNum=int(bNum),
+                #                       somaCheck=False,
+                #                       papWid=papWid,
+                #                       Glu=True).vPAP) + 85,
+                #     key=abs
+                # ))
+                # d.append(i)
+                # c.append(j)
+            comm.Barrier()
+            for index,res in enumerate(results):
                 i,j = iterations[index]
-                print(f'Thread {rank} is performing distance {i}, channel count {j}')
-                vSoma.append(max(
-                    np.array(PAPModel(currentClamp=20,
-                                      multiple=j,
-                                      bLen=i,
-                                      bWid=bWid,
-                                      somaSize=somaSize,
-                                      mode=0,
-                                      bNum=int(bNum),
-                                      papWid=papWid,
-                                      Glu=True).vSoma) + 85,
-                    key=abs
-                ))
-                vPAP.append(max(
-                    np.array(PAPModel(currentClamp=2,
-                                      multiple=j,
-                                      bLen=i,
-                                      bWid=bWid,
-                                      somaSize=somaSize,
-                                      mode=0,
-                                      bNum=int(bNum),
-                                      somaCheck=False,
-                                      papWid=papWid,
-                                      Glu=True).vPAP) + 85,
-                    key=abs
-                ))
                 d.append(i)
                 c.append(j)
-            comm.Barrier()
+                for i,rIndi in enumerate(res):
+                    if i == 0:
+                        vSoma.append(max(np.array(rIndi.vSoma) + 85, key=abs))
+                    else:
+                        vPAP.append(max(np.array(rIndi.vPAP) + 85, key=abs))
+                
             vSomaList = comm.gather(vSoma, root = 0)
             vPAPList = comm.gather(vPAP, root = 0)
             dList = comm.gather(d, root = 0)
@@ -574,13 +633,13 @@ def measureRi(x):
 if __name__ == "__main__" or parallel:
     #measureCond('IV')
     #multiChannel()
-    # measureRi([3,  30,  4.28,  4.3e-4,  1])
     # Soma 2.5836550239043317 MOhm
     # PAP 1035.108930679734 MOhm
     if parallel:
         comm.Barrier()
         start = time.time()
         comm.bcast(start,root=0)
+    # measureRi([3,  30,  4.28,  4.3e-4,  1])
     multiDistance([3,  30,  4.28,  4.3e-4,  1])
     if parallel:
         comm.Barrier()

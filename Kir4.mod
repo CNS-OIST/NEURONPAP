@@ -9,7 +9,7 @@ ENDCOMMENT
 NEURON {
     SUFFIX kir4 			
     USEION k READ ki,ko WRITE ik
-    RANGE  gkir, NormK, Pkir, dz, vs, delta, DeltazB, vkir
+    RANGE Pkir, dz, vs, delta, DeltazB, vkir
         
 }
 
@@ -35,8 +35,8 @@ PARAMETER {
     Pkir = 9.485e-08 (cm3/s)
     dz = 1.0 : >1.0
     vs = 25.7 (mV)
-    delta = 0.4 : 0.5
-    DeltazB = -3.1 : 0.45
+    delta = 0.5 : 0.4 : 0.5
+    DeltazB = 0.45 : -3.1 : 0.45
     vkir = -55 (mV) : -45 (mV)
     : va1 = -14.83 (mV) 	
     : va2 = -105.82 (mV) : 34 (mV)

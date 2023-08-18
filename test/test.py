@@ -14,7 +14,7 @@ import pickle
 
 class cell():
     soma = object()
-    tstop = 1000
+    tstop = 100
     dt = 0.01
     celsius = 37
     v_init = -85
@@ -37,14 +37,16 @@ class cell():
         # Clamp settings
         if mode > 1:
             #Step Current
-            ic = h.IClamp(self.soma(0.5))
-            ic.dur = h.tstop
-            ic.delay = 0 # ms starts with glutamate
-            ic.amp = clamp * 0.001  # nA current injection (1 pA)
+            if not hasattr(self,'ic'):
+                self.ic = h.IClamp(self.soma(0.5))
+            self.ic.dur = h.tstop
+            self.ic.delay = 0 # ms starts with glutamate
+            self.ic.amp = clamp * 0.001  # nA current injection (1 pA)
         elif mode > 0:
-            vc = h.VClamp(self.soma(0.5))
-            vc.dur[0] = h.tstop
-            vc.amp[0] = clamp  # mV depolarization (dV = 20)
+            if not hasattr(self,'vc'):
+                self.vc = h.VClamp(self.soma(0.5))
+            self.vc.dur[0] = h.tstop
+            self.vc.amp[0] = clamp  # mV depolarization (dV = 20)
 
         h.run()
 
@@ -104,7 +106,7 @@ class cell():
         h.ko0_k_ion = initialKo * mM # Global concentration
         self.soma.ki = initialKi * mM
         self.soma.ko = initialKo * mM
-        self.soma.ek = -90 * mV
+        # self.soma.ek = -90 * mV
 
     def overexpressionKir(self, multiple):
         # captures reducing depolarization
@@ -132,18 +134,19 @@ def testKoConc():
 def eq(x,a,b):
     return a * x + b
 
-def measureCond(fName,twikExpr):
+def measureCond(fName,twikExpr,kirExpr,gmax=True):
     voltList = np.arange(-150,50,5)
     IV = {}
     astrocyte = cell()
     astrocyte.channels(astrocyte.soma,
                        twik=twikExpr,
+                       kir4=kirExpr,
                        K_acc=False,
                        kleak=False,
                        kdifl=False
                        )
     astrocyte.record()
-    astrocyte.setK(5,initialKi=130)
+    astrocyte.setK(50,initialKi=130)
     
     for volt in voltList:
         print(volt)
@@ -153,51 +156,37 @@ def measureCond(fName,twikExpr):
         pickle.dump(IV, handle, protocol=pickle.HIGHEST_PROTOCOL)
     I = list(IV.values())
     V = list(IV.keys())
-    popt, pcov = curve_fit(eq,V,I)
+    plt.plot(V,I,label='model')
+    if gmax:
+        # print(np.array(list(zip(I,V))))
+        gmaxValue = max(np.gradient(np.array(I)))/5
+        b = I[0] - gmaxValue * V[0]
+        popt = [gmaxValue,b]
+        
+    else:
+        popt, pcov = curve_fit(eq,V,I)
     x = np.linspace(-150, 50, 50)
     print(popt)
-    plt.plot(V,I,label='model')
-    plt.plot(x,eq(x,*popt),label=f'{popt[0]}x+{popt[1]}')
+    # plt.plot(x,eq(x,*popt),label=f'{popt[0]:.2f}x+{popt[1]:.2f}')
     plt.legend()
     plt.savefig(f"{fName}.pdf")
 
     
 
 if __name__ == "__main__":
-    measureCond('Control',True)
-    measureCond('TWIKKO',False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    astrocyte = cell()
+    astrocyte.channels(astrocyte.soma,
+                       twik=True,
+                       kir4=False,
+                       K_acc=False,
+                       kleak=False,
+                       kdifl=False
+                       )
+    astrocyte.record()
+    astrocyte.setK(50,initialKi=130)
+    astrocyte.run(clamp=-100,mode=1)
+    plt.plot(astrocyte.time,astrocyte.iKSoma)
+    plt.show()
+    # measureCond('Control',True,True)
+    # measureCond('TWIKKO',False,True)
+    # measureCond('KIRKO',True,False)
