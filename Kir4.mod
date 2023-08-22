@@ -9,7 +9,7 @@ ENDCOMMENT
 NEURON {
     SUFFIX kir4 			
     USEION k READ ki,ko WRITE ik
-    RANGE Pkir, dz, vs, delta, DeltazB, vkir
+    RANGE Pkir, dz, vs, delta, DeltazB, vkir, tauKir, nkir
         
 }
 
@@ -38,6 +38,8 @@ PARAMETER {
     delta = 0.5 : 0.4 : 0.5
     DeltazB = 0.45 : -3.1 : 0.45
     vkir = -55 (mV) : -45 (mV)
+    tauKir = 600 (ms) :Sibille J. 2015
+    nkir = 1 : guessed for now
     : va1 = -14.83 (mV) 	
     : va2 = -105.82 (mV) : 34 (mV)
     : va3 = 19.23 (mV)
@@ -55,13 +57,21 @@ ASSIGNED {
     ko      (mM)
 }
 
+STATE { n }
+
+INITIAL { n = 0 }
 
 
 BREAKPOINT {
-    ik = z*F*Pkir*(ki - ko * exp(-dz*v/vs))/(exp(-delta*(DeltazB+dz)*(v-vkir)/vs) + 1)
+    SOLVE state METHOD derivimplicit
+    ik = n * z*F*Pkir*(ki - ko * exp(-dz*v/vs))/(exp(-delta*(DeltazB+dz)*(v-vkir)/vs) + 1)
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
 	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
         : consider different channel dynamics
+        : gating particle added to equation 
     }
     
+    DERIVATIVE state {
+        n' = (nkir - n) / tauKir
+        }
 
