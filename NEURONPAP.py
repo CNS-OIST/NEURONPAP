@@ -32,6 +32,48 @@ if parallel:
     comm.Barrier()
 
 
+class GENEManipulation():
+    compartment = object()
+    GENE = dict()
+
+    def kir4Change(self,multiple):
+        for seg in self.compartment:
+            seg.kir4.Pkir = seg.kir4.Pkir/multiple
+            if seg.kir4.Pkir > 1.0:
+                seg.kir4.Pkir = 1.0
+    
+class GENExpression(GENEManipulation):
+    compartment = object()
+    GENE = dict()
+
+    def __init__(self,compartment,GENE):
+        self.compartment = compartment
+
+        if type(GENE) == dict:
+            self.GENE = GENE
+        else:
+            print(f'Error: GENE{GENE} should be dict type')
+            return
+        self.checkExpressionStatement()
+        for gName,xfold in GENE.items():
+            self.changeExpression(gName,xfoldXpression=xfold)
+
+    def changeExpression(self,gName,xfoldXpression= None):
+        if gName in self.GENE.keys():
+            if xfoldXpression == None:
+                xfoldXpression = self.GENE[gName]
+            if hasattr(f'{gName}Change',self): # check if method is implemented
+                exec(f'self.{gName}Change({xfoldXpression})')
+            else:
+                print(f'No {gName} skipped')
+        
+
+    def checkExpressionStatement(self):
+        for gName, multiple in self.GENE.items():
+            if type(gName) != str and type(multiple) != float:
+                print(f'Error: GENE{GENE} should be name and float')
+                return
+
 class PAPModel():
     tstop = 100
     dt = 0.00001 #0.00001
@@ -56,8 +98,9 @@ class PAPModel():
                  mode=2,
                  somaCheck=True,
                  Glu=False,
-                 printRes=False,
-                 initialKo=2.5):
+                 initialKo=2.5,
+                 **kwargs
+                 ):
 
         # Load NEURON GUI and parameters
         h.load_file("stdgui.hoc")
@@ -120,9 +163,12 @@ class PAPModel():
 
         for sec in h.allsec():
             self.setK(sec, initialKo)
+            GENExpression(sec,kwargs)
         self.record(sNMDA = self.NMDAs[-1])
+
         
-        h.init()
+
+    def run(self,printRes=False):
         h.run()
         if printRes:
             self.printRec()
@@ -145,7 +191,7 @@ class PAPModel():
     def channels(self,compartment):
         # insert relevant channels
         compartment.insert('kir4')
-        compartment.insert('twik')
+        # compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
         compartment.insert('kdifl')
@@ -156,7 +202,6 @@ class PAPModel():
         compartment.ek = -90 * mV
         # compartment.ki = 130 * mM
         # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
-
 
     def morph(self,isolate=False,printTopology=False):
         # Access the PAP objecnnnt
@@ -193,6 +238,7 @@ class PAPModel():
                     self.pap.connect(self.branches[-1])
         if printTopology:
             h.topology()
+
             
     def readParameters(self,fDir='./results/optimize'):
         # Load optimization parameters
@@ -270,6 +316,7 @@ class PAPModel():
         self.tFile.wopen("tFile.dat")
 
     def setK(self,compartment,initialKo):
+        h,init()
         h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
         # h.ko0_k_ion = initialKo * mM # Global concentration
         compartment.ki = h.ki0_k_ion
@@ -472,7 +519,8 @@ def multiDistance(x,read=False):
                 'mode':0,
                 'bNum':int(bNum),
                 'papWid':papWid,
-                'Glu':True                
+                'Glu':True,
+                'kir4':2
             })
             funcArgs.append({
                 'currentClamp':20,
@@ -482,7 +530,8 @@ def multiDistance(x,read=False):
                 'bNum':int(bNum),
                 'somaCheck':False,
                 'papWid':papWid,
-                'Glu':True                
+                'Glu':True,
+                'kir4':2
             })
             # make sure that funcParms is in the correct order of whatever iterations spits out
             results = parallizeFor(iterations,[PAPModel,PAPModel],funcArgs,['bLen','multiple'])
