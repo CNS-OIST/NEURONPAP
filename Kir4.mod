@@ -38,8 +38,14 @@ PARAMETER {
     delta = 0.5 : 0.4 : 0.5
     DeltazB = 0.45 : -3.1 : 0.45
     vkir = -55 (mV) : -45 (mV)
-    tauKir = 600 (ms) :Sibille J. 2015
-    nkir = 1 : guessed for now
+    :    tauKir = 600 (ms) :Sibille J. 2015
+    :nkir = 1 : guessed for now
+    kl = 10.89       (mV)    		: Stegen et al. 2012
+    vhalft=67.0828	 (mV)    		: fitted #100 \muM sens curr 350a,  Stegen et al. 2012
+    at=0.00610779	 (/ms)   		: Stegen et al. 2012
+    bt=0.0817741	 (/ms)	 		: Note: typo in Stegen et al. 2012    
+    celsius         (degC)  		: unused if q10 == 1.    
+    q10 = 1.                              	: temperature scaling
     : va1 = -14.83 (mV) 	
     : va2 = -105.82 (mV) : 34 (mV)
     : va3 = 19.23 (mV)
@@ -55,6 +61,8 @@ ASSIGNED {
     
     ki      (mM)
     ko      (mM)
+    tauKir (ms)
+    nkir (1)
 }
 
 STATE { n }
@@ -72,6 +80,13 @@ BREAKPOINT {
     }
     
     DERIVATIVE state {
+        rate(v)
         n' = (nkir - n) / tauKir
-        }
-
+    }
+    PROCEDURE rate(v (mV)) {
+        LOCAL qt
+        nkir = 1/(1 + exp((v-vkir)/kl))			: l_steadystate
+	qt=q10^((celsius-33)/10) 	
+ 	tauKir = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))	
+   
+    }
