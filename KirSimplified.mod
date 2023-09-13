@@ -95,3 +95,4 @@ PROCEDURE rate(v (mV)) { :callable from hoc
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))	
 }
+

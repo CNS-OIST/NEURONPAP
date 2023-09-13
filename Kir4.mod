@@ -72,7 +72,7 @@ INITIAL { n = 0 }
 
 BREAKPOINT {
     SOLVE state METHOD derivimplicit
-    ik = n * z*F*Pkir*(ki - ko * exp(-dz*v/vs))/(exp(-delta*(DeltazB+dz)*(v-vkir)/vs) + 1)
+    ik = n *PKir* z*F*(ki - ko * exp(-dz*v/vs))/(exp(-delta*(DeltazB+dz)*(v-vkir)/vs) + 1)
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
 	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
         : consider different channel dynamics
@@ -81,7 +81,7 @@ BREAKPOINT {
     
     DERIVATIVE state {
         rate(v)
-        n' = (nkir - n) / tauKir
+        n' = (nKir - n) / tauKir
     }
     PROCEDURE rate(v (mV)) {
         LOCAL qt
