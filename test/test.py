@@ -15,9 +15,9 @@ import os
 
 class cell():
     soma = object()
-    tstop = 200
+    tstop = 300
     dt = 0.01
-    celsius = 37
+    celsius = 25
     v_init = -85
     
     def __init__(self):
@@ -67,7 +67,7 @@ class cell():
         compartment.g_pas = 1/11150
 
     def channels(self,compartment,**kwargs):
-        channelLibrary = ['kir4','twik','K_acc','kleak','kdifl']
+        channelLibrary = ['kir2','kir4','twik','K_acc','kleak','kdifl']
         
         switch = set(kwargs.keys()) & set(channelLibrary)
         for k,v in kwargs.items():
@@ -220,24 +220,25 @@ def testKDExpression(**kwargs):
 def eq(x,a,b):
     return a * x + b
 
-def measureCond(fName,twikExpr,kirExpr,gmax=True):
+def measureCond(fName,gmax=True,ko=2.5):
     vStep = 5
-    voltList = np.arange(-80,100,vStep)
+    voltList = np.arange(-120,0,vStep)
     IV = {}
     astrocyte = cell()
     astrocyte.channels(astrocyte.soma,
-                       twik=True,
-                       kir4=True,
-                       K_acc=True,
-                       kleak=True,
-                       kdifl=True
+                       twik=False,
+                       kir2=True,
+                       kir4=False,
+                       K_acc=False,
+                       kleak=False,
+                       kdifl=False
                        )
     astrocyte.record()
-    astrocyte.setK(50,initialKi=130)
-    if not twikExpr:
-        astrocyte.overexpressionTwik(1/100)
-    if not kirExpr:
-        astrocyte.overexpressionKir(1/100)
+    astrocyte.setK(ko,initialKi=110)
+    # if not twikExpr:
+    #     astrocyte.overexpressionTwik(1/100)
+    # if not kirExpr:
+    #     astrocyte.overexpressionKir(1/100)
         
 
     
@@ -261,26 +262,29 @@ def measureCond(fName,twikExpr,kirExpr,gmax=True):
         
     else:
         popt, pcov = curve_fit(eq,V,I)
-    x = np.linspace(-150, 50, 50)
+    x = np.linspace(-120, 0, 50)
     # print(popt)
-    # plt.plot(x,eq(x,*popt),label=f'gmax slope:{popt[0]:.2f}x+{popt[1]:.2f}')
-    # plt.legend()
-    # plt.xlabel('voltage (mv)')
-    # plt.ylabel('current (nA)')
-    # plt.savefig(f"{fName}.pdf")
-    # plt.cla()
-    # plt.clf()
-    relG = np.gradient(np.array(I))/max(np.gradient(np.array(I)))
-    plt.scatter(V,relG,label=f'{fName}')
-    # plt.plot(V,gVals/gmaxValue,label=f'{fName}')
+    plt.scatter(V,I)
+    plt.plot(x,eq(x,*popt),label=f'gmax slope:{popt[0]:.2f}x+{popt[1]:.2f}')
     plt.legend()
     plt.xlabel('voltage (mv)')
-    plt.ylabel('relative conductance (g/gmax)')
-    plt.savefig(f"{fName}_relG.pdf")
+    plt.ylabel('current (nA)')
+    plt.savefig(f"{fName}_{ko}.pdf")
+    plt.cla()
+    plt.clf()
+    # relG = np.gradient(np.array(I))/max(np.gradient(np.array(I)))
+    # plt.scatter(V,relG,label=f'{fName}')
+    # # plt.plot(V,gVals/gmaxValue,label=f'{fName}')
+    # plt.legend()
+    # plt.xlabel('voltage (mv)')
+    # plt.ylabel('relative conductance (g/gmax)')
+    # plt.savefig(f"{fName}_relG.pdf")
     # plt.cla()
     # plt.clf()
+    return popt[0]
 
-    
+def sqrtCurve(x,a,b,c):
+    return a*np.sqrt(b*x) + c
 
 if __name__ == "__main__":
     # testKDExpression(
@@ -290,20 +294,33 @@ if __name__ == "__main__":
     #     kleak=False,
     #     kdifl=False
     # )
-    # astrocyte = cell()
-    # astrocyte.channels(astrocyte.soma,
-    #                    twik=True,
-    #                    kir4=True,
-    #                    K_acc=False,
-    #                    kleak=False,
-    #                    kdifl=False
-    #                    )
-    # astrocyte.record()
-    # astrocyte.setK(50,initialKi=130)
-    # astrocyte.run(clamp=30,mode=1)
-    # plt.plot(astrocyte.time,astrocyte.iKSoma)
+    # for volt in np.arange(-160,0,160/9):
+    #     astrocyte = cell()
+    #     astrocyte.channels(astrocyte.soma,
+    #                        twik=False,
+    #                        kir2=True,
+    #                        kir4=False,
+    #                        K_acc=False,
+    #                        kleak=False,
+    #                        kdifl=False
+    #                        )
+    #     astrocyte.record()
+    #     astrocyte.setK(5,initialKi=135)
+    #     astrocyte.run(clamp=volt,mode=1)
+    #     plt.plot(astrocyte.time,astrocyte.iKSoma)
     # plt.show()
-    measureCond('Control',True,True)
-    measureCond('TWIKKO',False,True)
+    # measureCond('Control',True,True)
+    conductances = []
+    koList = [3,5,9,20]
+    for ko in koList:
+        conductances.append(measureCond('KOAlternative',ko=ko))
+    plt.scatter(koList,conductances)
+    popt,pcov = curve_fit(sqrtCurve,koList,conductances)
+    koLine = np.linspace(3,20)
+    plt.plot(koLine,sqrtCurve(koLine,*popt))
+    plt.ylabel('conductance (S)')
+    plt.xlabel('[Ko] (mM)')
+    plt.savefig('conductances')
+    
     # measureCond('KIRKO',True,False)
     # testKoConc()

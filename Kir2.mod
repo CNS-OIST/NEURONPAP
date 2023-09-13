@@ -31,16 +31,16 @@ UNITS {
 
 PARAMETER {
 	v 		(mV)
-	gkbar  = 1.44e-05	(S/cm2) 	: to be fitted     	
+	gkbar  = 5e-11	(S/cm2) 	: 50 pS single channel conductance
 
 	: Boltzman steady state curve	
         vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
         kl = 10.89       (mV)    		: Stegen et al. 2012
 
 	: tau_infty 
-        vhalft=67.0828	 (mV)    		: fitted #100 \muM sens curr 350a,  Stegen et al. 2012
-        at=0.00610779	 (/ms)   		: Stegen et al. 2012
-	bt=0.0817741	 (/ms)	 		: Note: typo in Stegen et al. 2012
+        vhalft=-59.6170749	 (mV)    	: refitted with VC from Olsen 2012 Methods Mol Biol
+        at=1.98752141	 (/ms)   		: 
+	bt=0.0143908141	 (/ms)	 		: 
 
 	: Temperature dependence
         celsius         (degC)  		: unused if q10 == 1.
@@ -50,8 +50,8 @@ PARAMETER {
 
 
 NEURON {
-	SUFFIX kir 			
-	USEION k READ ek WRITE ik	
+	SUFFIX kir2 			
+	USEION k READ ek,ko WRITE ik	
         RANGE  ik, gkbar, vhalfl, kl, vhalft, at, bt, q10 
         GLOBAL linf,taul
 }
@@ -67,6 +67,7 @@ ASSIGNED {
         ek                              (mV)
         linf      
         taul
+        ko                              (mM)
 }
 
 
@@ -78,7 +79,7 @@ INITIAL {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = gkbar*l			: use state l to calulate gk
+	gk = gkbar*l*sqrt(ko/1 (mM))	: use state l to calulate gk
         ik = gk * ( v - ek )		: calculate ik 
 }
 
@@ -93,5 +94,5 @@ PROCEDURE rate(v (mV)) { :callable from hoc
         LOCAL qt
 	qt=q10^((celsius-33)/10) 	
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate
- 	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))	
+ 	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }
