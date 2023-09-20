@@ -55,6 +55,8 @@ NEURON {
 	USEION k READ ek,ko WRITE ik	
         RANGE  ik, gkbar, vhalfl, kl, vhalft, at, bt, q10 
         GLOBAL linf,taul
+        
+        THREADSAFE
 }
 
 
