@@ -45,6 +45,7 @@ PARAMETER {
 	: Temperature dependence
         celsius         (degC)  		: unused if q10 == 1.
         q10 = 1.                              	: temperature scaling
+        A = 0.09534626                          : fit to sqrt rule
 }
 
 
@@ -79,7 +80,8 @@ INITIAL {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = gkbar*l*sqrt(ko/1 (mM))	: use state l to calulate gk
+	gk = gkbar*l*(A*sqrt(ko/1 (mM)))	: use state l to calulate gk
+        : calculate gkbar from fitting single channel recording
         ik = gk * ( v - ek )		: calculate ik 
 }
 
@@ -93,7 +95,7 @@ DERIVATIVE states {
 PROCEDURE rate(v (mV)) { :callable from hoc
         LOCAL qt
 	qt=q10^((celsius-33)/10) 	
-        linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate
+        linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }
 
