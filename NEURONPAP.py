@@ -41,6 +41,10 @@ class GENEManipulation():
             seg.kir4.Pkir = seg.kir4.Pkir/multiple
             if seg.kir4.Pkir > 1.0:
                 seg.kir4.Pkir = 1.0
+
+    def kir2Change(self,multiple):
+        for seg in self.compartment:
+            seg.kir2.gkbar = seg.kir2.gkbar*multiple
     
 class GENExpression(GENEManipulation):
     compartment = object()
@@ -190,7 +194,7 @@ class PAPModel():
 
     def channels(self,compartment):
         # insert relevant channels
-        compartment.insert('kir4')
+        compartment.insert('kir2')
         # compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
@@ -520,7 +524,7 @@ def multiDistance(x,read=False):
                 'bNum':int(bNum),
                 'papWid':papWid,
                 'Glu':True,
-                'kir4':2
+                'kir2':2
             })
             funcArgs.append({
                 'currentClamp':20,
@@ -531,7 +535,7 @@ def multiDistance(x,read=False):
                 'somaCheck':False,
                 'papWid':papWid,
                 'Glu':True,
-                'kir4':2
+                'kir2':2
             })
             # make sure that funcParms is in the correct order of whatever iterations spits out
             results = parallizeFor(iterations,[PAPModel,PAPModel],funcArgs,['bLen','multiple'])
