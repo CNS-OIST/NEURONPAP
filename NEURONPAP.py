@@ -21,7 +21,7 @@ import sys
 import time
 
 
-parallel=False
+parallel=True
 
 if parallel:
     comm = MPI.COMM_WORLD
@@ -66,6 +66,8 @@ class GENExpression(GENEManipulation):
         if gName in self.GENE.keys():
             if xfoldXpression == None:
                 xfoldXpression = self.GENE[gName]
+            print(gName)
+            print(type(f'{gName}Change'))
             if hasattr(f'{gName}Change',self): # check if method is implemented
                 exec(f'self.{gName}Change({xfoldXpression})')
             else:
@@ -320,7 +322,7 @@ class PAPModel():
         self.tFile.wopen("tFile.dat")
 
     def setK(self,compartment,initialKo):
-        h,init()
+        h.init()
         h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
         # h.ko0_k_ion = initialKo * mM # Global concentration
         compartment.ki = h.ki0_k_ion
