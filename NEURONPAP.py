@@ -66,9 +66,7 @@ class GENExpression(GENEManipulation):
         if gName in self.GENE.keys():
             if xfoldXpression == None:
                 xfoldXpression = self.GENE[gName]
-            print(gName)
-            print(type(f'{gName}Change'))
-            if hasattr(f'{gName}Change',self): # check if method is implemented
+            if hasattr(self,f'{gName}Change'): # check if method is implemented
                 exec(f'self.{gName}Change({xfoldXpression})')
             else:
                 print(f'No {gName} skipped')
