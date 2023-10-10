@@ -67,8 +67,8 @@ BREAKPOINT {
     SOLVE state METHOD derivimplicit
     
     ik = pow(n,powk) * Pkp(ko) * pow(F,2) * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / 1000
-    printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
-    printf("exp:%g\n",exp(-z*v/vs))
+    : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
+    : printf("exp:%g\n",exp(-z*v/vs))
     : ionMove()
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
 	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
