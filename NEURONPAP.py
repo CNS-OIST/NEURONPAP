@@ -1,6 +1,6 @@
 """
 To Do:
-[ ] TDQM
+[x] TDQM
 
 """
 
@@ -19,17 +19,24 @@ from mpl_toolkits import mplot3d
 import math
 import sys
 import time
+import tqdm
 
 
-parallel=True
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+if size > 1:
+    parallel = True
+else:
+    parallel = False
+sys.stdout.flush()
 
 if parallel:
-    comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     print(f'rank{rank} initialized')
-    size = comm.Get_size()
-    sys.stdout.flush()
-    comm.Barrier()
+    tag_end = 23
+    comm.bcast(tag_end,root=0)
+
+comm.Barrier()
 
 
 class GENEManipulation():
@@ -51,6 +58,8 @@ class GENExpression(GENEManipulation):
     GENE = dict()
 
     def __init__(self,compartment,GENE):
+        if GENE == None:
+            return
         self.compartment = compartment
 
         if type(GENE) == dict:
@@ -79,8 +88,8 @@ class GENExpression(GENEManipulation):
                 return
 
 class PAPModel():
-    tstop = 100
-    dt = 0.00001 #0.00001
+    tstop = 1000
+    dt = 0.01 #0.00001
     celsius = 37
     v_init = -85
     pap = object()
@@ -89,6 +98,20 @@ class PAPModel():
     bWid = 3
     papWid = 0.02
     branches = []
+
+    # NMDA parms
+    Tau2_0 = float()
+    Tau3_0 = float()
+    A2 = float()
+    A3 = float()
+    B2 =float()
+    B3 = float()
+    DELTA = float()
+    SynWeight = float()
+
+    # K Parms
+    defaultKo = 2.5
+    
 
     def __init__(self,
                  papWid=0.02,
@@ -107,14 +130,17 @@ class PAPModel():
                  ):
 
         # Load NEURON GUI and parameters
+        from neuron import h
         h.load_file("stdgui.hoc")
         h.load_file("params.hoc")
+        # print('loaded files')
 
         # Set simulation parameters
         h.tstop = self.tstop
         h.dt = self.dt
         h.celsius = self.celsius
         h.v_init = self.v_init
+        # print('set sim parms')
 
         # set morphology parameters
         self.somaSize = somaSize
@@ -125,9 +151,11 @@ class PAPModel():
 
         # Build Morphology
         self.morph()
+        print('built morphology')
+        sys.stdout.flush()
 
         # Clamp settings
-        if mode > 1:
+        if mode > 2:
             #Step Current
             if somaCheck:
                 ic = h.IClamp(self.soma(0.5))
@@ -136,17 +164,19 @@ class PAPModel():
             ic.dur = self.tstop
             ic.delay = 0 # ms starts with glutamate
             ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
-        elif mode > 0:
+        elif mode > 1:
             vc = h.VClamp(self.soma(0.5))
             vc.dur[0] = h.tstop
             vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
 
-        elif mode == 0:
+        elif mode > 0:
             #Impulse Current
             ic = h.IClamp(self.pap(0.5))
             ic.dur = 0.002
             ic.delay = 10 # ms starts with glutamate
             ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
+        print('clamp experiment setup')
+        sys.stdout.flush()
 
 
         self.readParameters()
@@ -165,18 +195,33 @@ class PAPModel():
                 self.NCs[-1].weight[0] = self.SynWeight
                 self.NCs[-1].delay = 0
 
+            print('placed NMDAR')
+            sys.stdout.flush()
+        # h.init()
+        # print('initialized')
+        # sys.stdout.flush()
+
+        
         for sec in h.allsec():
-            self.setK(sec, initialKo)
+            if sec == self.pap:
+                # print('set pap Ko')
+                self.setK(sec, initialKo)
+            else:
+                self.setK(sec,self.defaultKo)
             GENExpression(sec,kwargs)
+        # print('set GENE manipulation')
         self.record(sNMDA = self.NMDAs[-1])
 
         
 
     def run(self,printRes=False):
+        h.init()
         h.run()
         if printRes:
             self.printRec()
         self.cleanMorphology()
+        print('ran simulation')
+        sys.stdout.flush()
 
     def cleanMorphology(self):
         for sec in h.allsec():
@@ -195,7 +240,7 @@ class PAPModel():
     def channels(self,compartment):
         # insert relevant channels
         compartment.insert('kir2')
-        # compartment.insert('twik')
+        compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
         compartment.insert('kdifl')
@@ -208,7 +253,7 @@ class PAPModel():
         # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
 
     def morph(self,isolate=False,printTopology=False):
-        # Access the PAP objecnnnt
+        # Access the PAP object
         self.pap = h.Section(name="PAP")
 
         # Set astrocyte leaf membrane parameters
@@ -244,28 +289,41 @@ class PAPModel():
             h.topology()
 
             
-    def readParameters(self,fDir='./results/optimize'):
-        # Load optimization parameters
-        wFile = h.File()
-        wFile.ropen(f"{fDir}/optT2.dat")
-        self.Tau2_0 = wFile.scanvar()
-        self.A2 = wFile.scanvar()
-        self.B2 = wFile.scanvar()
-        wFile.close()
+    def readParameters(self,fDir='./results/optimize'):        
+        # Load optimization parameters        
+        if not parallel or rank == 0:
+            wFile = h.File()
+            wFile.ropen(f"{fDir}/optT2.dat")
+            self.Tau2_0 = wFile.scanvar()
+            self.A2 = wFile.scanvar()
+            self.B2 = wFile.scanvar()
+            wFile.close()
 
-        wFile = h.File()
-        wFile.ropen(f"{fDir}/optT3.dat")
-        self.Tau3_0 = wFile.scanvar()
-        self.A3 = wFile.scanvar()
-        self.B3 = wFile.scanvar()
-        wFile.close()
+            wFile = h.File()
+            wFile.ropen(f"{fDir}/optT3.dat")
+            self.Tau3_0 = wFile.scanvar()
+            self.A3 = wFile.scanvar()
+            self.B3 = wFile.scanvar()
+            wFile.close()
 
-        self.DELTA = 0 # Lalo 2006 J. Neuroscience
+            self.DELTA = 0 # Lalo 2006 J. Neuroscience
 
-        wFile = h.File()
-        wFile.ropen(f"{fDir}/optW.dat")
-        self.SynWeight = wFile.scanvar()
-        wFile.close()
+            wFile = h.File()
+            wFile.ropen(f"{fDir}/optW.dat")
+            self.SynWeight = wFile.scanvar()
+            wFile.close()
+
+        if parallel:
+            comm.bcast(self.Tau2_0,root=0)
+            comm.bcast(self.A2,root=0)
+            comm.bcast(self.B2,root=0)
+            comm.bcast(self.Tau3_0,root=0)
+            comm.bcast(self.A2,root=0)
+            comm.bcast(self.B3,root=0)
+            comm.bcast(self.DELTA,root=0)
+            comm.bcast(self.SynWeight,root=0)
+
+            
 
     def nmda(self):        
         sNMDA = h.Exp5NMDA(self.pap(0.5))
@@ -320,12 +378,12 @@ class PAPModel():
         self.tFile.wopen("tFile.dat")
 
     def setK(self,compartment,initialKo):
-        h.init()
         h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
         # h.ko0_k_ion = initialKo * mM # Global concentration
         compartment.ki = h.ki0_k_ion
         compartment.ko = initialKo * mM
         compartment.ek = -90 * mV
+        # print('Potassium Parms')
 
     def printRec(self):
         if hasattr(self,"iNMDA"):
@@ -459,13 +517,17 @@ def get_iter(distance,dist_steps,chan,chan_steps):
 
     return iterations
 
-def parallizeFor(iterations,functions,functionArgs,functionParms):
+def parallizeFor(iterations,functions,functionArgs,functionParms,callmethods):
+    tmpsize = size - 1 # Exclude root
+    # Set up tqdm
+    if rank == 0:
+        pbar = tqdm.tqdm(total = len(iterations))
     # Calculate the number of iterations each process will handle
-    iterations_per_process = len(iterations) // size
+    iterations_per_process = len(iterations) // tmpsize
 
     # Adjust the range for the last process
     if rank == size - 1:
-        remaining_iterations = len(iterations) % size
+        remaining_iterations = len(iterations) % tmpsize
     else:
         remaining_iterations = 0
 
@@ -473,13 +535,30 @@ def parallizeFor(iterations,functions,functionArgs,functionParms):
     results = [ [] for i in range(len(iterations)) ]
 
     comm.Barrier()
-    for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
-        parmSet = iterations[index]
-        print(f'Thread {rank} is performing set {parmSet}')
-        for k,func in enumerate(functions):
-            for l,parameterName in enumerate(functionParms):
-                functionArgs[k][parameterName] = parmSet[l]
-            results[index].append(functions[k](**functionArgs[k]))
+    if rank == 0:
+        remaining = len(iterations)
+        while remaining > 0:
+            print(remaining)
+            sys.stdout.flush()
+            s = MPI.Status()
+            comm.Probe(status=s)
+            if s.tag == compute_tag:
+                update_msg = comm.recv(tag=compute_tag)  
+                pbar.update(1)
+                remaining -= 1
+                print(f'recieved end {remaining}')
+                sys.stdout.flush()
+    else:
+        for index in range((rank-1) * iterations_per_process, rank * iterations_per_process + remaining_iterations):
+            parmSet = iterations[index]
+            print(f'Thread {rank} is performing set {parmSet}')
+            for k,func in enumerate(functions):
+                for l,parameterName in enumerate(functionParms):
+                    functionArgs[k][parameterName] = parmSet[l]
+                tmpInstance = functions[k](**functionArgs[k])
+                results[index].append(getattr(tmpInstance,callmethods[k])())
+            # update tqdm
+            comm.send(update_msg,dest=0,tag=compute_tag)
 
     comm.Barrier()
     return comm.gather(results, root = 0)
@@ -499,7 +578,7 @@ def multiDistance(x,read=False):
         vPAPList = []
         if parallel:
             # Calculate the number of iterations each process will handle
-            iterations = comm.bcast(get_iter(101,10,301,10),root=0)
+            iterations = comm.bcast(get_iter(101,100,301,10),root=0)
             # iterations_per_process = len(iterations) // size
 
             # # Adjust the range for the last process
@@ -538,7 +617,7 @@ def multiDistance(x,read=False):
                 'kir2':2
             })
             # make sure that funcParms is in the correct order of whatever iterations spits out
-            results = parallizeFor(iterations,[PAPModel,PAPModel],funcArgs,['bLen','multiple'])
+            results = parallizeFor(iterations,[PAPModel,PAPModel],funcArgs,['bLen','multiple'],['run','run'])
             # for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
             #     i,j = iterations[index]
             #     print(f'Thread {rank} is performing distance {i}, channel count {j}')
@@ -587,32 +666,36 @@ def multiDistance(x,read=False):
 
         else:
             for i in range(1,101,10):
-                for j in range(1,101,10):
+                for j in range(100,101,1):
                     dList.append(i)
                     cList.append(j)
+                    sim = PAPModel(multiple=j,
+                                   bLen=i,
+                                   currentClamp=1,
+                                   bWid=bWid,
+                                   somaSize=somaSize,
+                                   mode=0,
+                                   bNum=int(bNum),
+                                   papWid=papWid,
+                                   Glu=True)
+                    sim.run()
                     vSomaList.append(max(
-                        np.array(PAPModel(multiple=j,
-                                          bLen=i,
-                                          currentClamp=1,
-                                          bWid=bWid,
-                                          somaSize=somaSize,
-                                          mode=0,
-                                          bNum=int(bNum),
-                                          papWid=papWid,
-                                          Glu=True).vSoma) + 85,
+                        np.array(sim.vSoma) + 85,
                         key=abs
                     ))
+                    sim = PAPModel(multiple=j,
+                                   bLen=i,
+                                   bWid=bWid,
+                                   currentClamp=1,
+                                   somaSize=somaSize,
+                                   mode=0,
+                                   bNum=int(bNum),
+                                   somaCheck=False,
+                                   papWid=papWid,
+                                   Glu=True)
+                    sim.run()
                     vPAPList.append(max(
-                        np.array(PAPModel(multiple=j,
-                                          bLen=i,
-                                          bWid=bWid,
-                                          currentClamp=1,
-                                          somaSize=somaSize,
-                                          mode=0,
-                                          bNum=int(bNum),
-                                          somaCheck=False,
-                                          papWid=papWid,
-                                          Glu=True).vPAP) + 85,
+                        np.array(sim.vPAP) + 85,
                         key=abs
                     ))
         # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
@@ -641,7 +724,14 @@ def multiDistance(x,read=False):
             ax.set_zlabel(f'Voltage Change{name}')
 
             # Show the plot
-            plt.savefig(f'./3Dplot{name}.pdf')
+            j=""
+            while os.path.isfile(f'./3Dplot{name}{j}.pdf'):
+                if j == "":
+                    j = 1
+                else:
+                    j += 1
+                
+            plt.savefig(f'./3Dplot{name}{j}.pdf')
 
 
 def find_nan_inf_index(lst):
@@ -694,6 +784,8 @@ if __name__ == "__main__" or parallel:
         comm.bcast(start,root=0)
     # measureRi([3,  30,  4.28,  4.3e-4,  1])
     multiDistance([3,  30,  4.28,  4.3e-4,  1])
+    # cell = PAPModel(currentClamp=0, bLen=20, bWid=4.28, somaSize=3, mode=2,bNum=1,papWid=4/3e-4)
+    # cell.run()
     if parallel:
         comm.Barrier()
         end = time.time()
