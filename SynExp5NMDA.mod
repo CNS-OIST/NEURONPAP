@@ -39,15 +39,15 @@ PARAMETER {
 : Parameters Control Neurotransmitter and Voltage-dependent gating of NMDAR
 	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
 : parameters control exponential rise to a maximum of tau2
-	tau2_0 = 3.97	(ms)
-	a2 = 0.70		(ms)
-	b2 = 0.0243		(1/mV)
+	tau2_0 = 57.91 (ms) :3.97	(ms)
+	a2 = 17.31 (ms) :0.70		(ms)
+	b2 = 0.01524 (ms) :0.0243		(1/mV)
 	wtau2= 0.65		<1e-9,1> : Hestrin90
 	
 : parameters control exponential rise to a maximum of tau3
-	tau3_0 = 41.62	(ms)
-	a3 = 34.69		(ms)
-	b3 = 0.01		(1/mV)
+	tau3_0 = 88.88 (ms) :41.62	(ms)
+	a3 = 25.77 (ms) :34.69		(ms)
+	b3 = 0.02249 (ms) :0.01		(1/mV)
 	: Hestrin90 CA1 soma  [Mg=1 v=-40 celcius=30-32] the decay of the NMDA component of the EPSC recorded at temperatures above 30 degC 
 	: the fast phase of decay, which accounted for 65%-+12% of the decay, had a time constant of 23.5-+3.8 ms, 
 	: whereas the slow component had a time constant of 123-+83 ms.
