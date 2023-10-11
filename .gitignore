@@ -12,6 +12,7 @@ arm64
 .DS_Store
 
 *.pdf
+*.zip
 
 !results/
 
