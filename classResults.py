@@ -5,7 +5,21 @@ class ResultsPAPModel():
     # iMem = list()
     # iKSoma = list()
     # time = list()
-    to_be_copied = ['vPAP','vSoma','iNMDA','iMem','iKSoma','time']
+    to_be_copied = [
+        'vPAP',
+        'vSoma',
+        'iNMDA',
+        'iMem',
+        'iKSoma',
+        'time',
+        'bLen',
+        'somaSize',
+        'papWid',
+        'bWid',
+        'initialKo',
+        'KoPAP',
+        'KoSoma'
+    ]
 
     def copyAttr(self):
         newInstance = ResultsPAPModel()

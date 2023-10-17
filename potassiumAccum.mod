@@ -28,8 +28,7 @@ ASSIGNED {
 }
 
 STATE {
-	ko (mM)
-	
+	ko (mM)	
 }
 
 :  INITIAL {

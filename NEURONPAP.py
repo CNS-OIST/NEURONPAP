@@ -7,7 +7,7 @@ To Do:
 from mpi4py import MPI
 import textSDIO
 from neuron import h, load_mechanisms
-from neuron.units import mM,mV
+from neuron.units import mM,mV,ms
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -23,7 +23,7 @@ import time
 import tqdm
 import copy
 
-
+RMP = -88
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -110,7 +110,9 @@ class ResultsPAPModel():
         'somaSize',
         'papWid',
         'bWid',
-        'initialKo'
+        'initialKo',
+        'KoPAP',
+        'KoSoma'
     ]
 
     def copyAttr(self):
@@ -120,11 +122,11 @@ class ResultsPAPModel():
 
 
 class PAPModel(ResultsPAPModel):
-    tstop = 500
+    tstop = 1000
+    initTstop= 500
     dt = 0.01 #0.00001 # not enabled
     celsius = 37
     v_init = -85
-    pap = object()
     somaSize = 10 # Soma Size
     bLen = 30 # Branch Size
     bWid = 3
@@ -184,6 +186,9 @@ class PAPModel(ResultsPAPModel):
         self.papWid = papWid
         self.multiple = multiple
 
+        # set K parms
+        self.initialKo = initialKo
+
         # Build Morphology
         self.morph()
         # print('built morphology')
@@ -223,7 +228,7 @@ class PAPModel(ResultsPAPModel):
             stim = h.NetStim(self.pap(0.5))
             stim.interval = 1
             stim.number = 1
-            stim.start = 10
+            stim.start = 1 * ms
             stim.noise = 0
             self.NMDAs.append(self.nmda())
             if Glu:
@@ -233,12 +238,14 @@ class PAPModel(ResultsPAPModel):
 
             # print('placed NMDAR')
             # sys.stdout.flush()
-        h.init()
         # print('initialized')
         # sys.stdout.flush()
 
         
-        # for sec in h.allsec():
+        for sec in h.allsec():
+            if not hasattr(self,'GENEDict'):
+                GENExpression(sec,kwargs)
+                self.GENEDict = kwargs
         #     if sec == self.pap:
         #         self.initialKo = initialKo
         #         # print('set pap Ko')
@@ -250,36 +257,47 @@ class PAPModel(ResultsPAPModel):
             # print(sec.ki)
             # print(h.ki0_k_ion)
             # print(h.ko0_k_ion)
-            # GENExpression(sec,kwargs)
         # print('set GENE manipulation')
         self.record(sNMDA = self.NMDAs[-1])
 
         
+    def initialize(self,saveState=False):
+        # print('initializing')
+        # sys.stdout.flush()
+        h.ki0_k_ion = 70 * mM # Global concentration for astrocytes from Savtchenko        
+        # h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
+        self.setK()
+        h.continuerun(self.initTstop * ms)
+        if saveState:
+            s = h.SaveState()
+            s.save()
+            with open(f'initializedState{rank}.dat','wb') as f:
+                s.fwrite(f)
 
     def run(self,printRes=False):
-        h.run()
+        h.continuerun((self.tstop)* ms)
         if printRes:
             self.printRec()
 
-        if not parallel:
-            self.cleanMorphology()  
+        self.cleanMorphology()  
         # print('ran simulation')
         # sys.stdout.flush()
 
     def cleanMorphology(self):
         # Fails for parallel run (Probably no need when each instance has memory address)
+        for sec in h.allsec():
+            h.delete_section(sec=sec) 
         self.branches = []
         self.soma = None
         self.pap = None
-        for sec in h.allsec():
-            h.delete_section(sec=sec) 
+        delattr(self,'GENEDict')
 
     def astroMem(self,compartment):
         # add astrocyte properties
         compartment.Ra = 100
         compartment.cm = 0.8
         compartment.insert('pas')
-        compartment.e_pas = -85
+        compartment.e_pas = RMP
         compartment.g_pas = 1/11150
         self.channels(compartment)
 
@@ -290,38 +308,33 @@ class PAPModel(ResultsPAPModel):
         compartment.insert('K_acc')
         compartment.insert('kleak')
         compartment.insert('kdifl')
-        # h.ki0_k_ion = 70 * mM # Tweaked for RMP -85
+        # h.ki0_k_ion = 110 * mM # Tweaked for RMP -85
         # h.ko0_k_ion = 2.5 * mM # Global concentration
-        # compartment.ki = 70 * mM
-        # # compartment.ko = 2.5 * mM
-        # compartment.ek = -90 * mV
-        # # compartment.ki = 130 * mM
-        # compartment.ko = 8.5 * mM # STEPHEN F. 1988 for seizure induction
 
     def morph(self,isolate=False,printTopology=False):
         # Access the PAP object
-        # if not hasattr(self,'pap'):
-        self.pap = h.Section(name="PAP")
+        if not hasattr(self,'pap'):
+            self.pap = h.Section(name="PAP")
+            self.astroMem(self.pap)
 
         # Set astrocyte leaf membrane parameters
         self.pap.L = 0.3
         self.pap.diam = self.papWid
         self.pap.nseg = 1
-        self.astroMem(self.pap)
 
         # h.psection(sec=self.pap)
         if not isolate:
             # create Soma
-            # if not hasattr(self,'soma'):
-            self.soma = h.Section(name='soma')
+            if not hasattr(self,'soma'):
+                self.soma = h.Section(name='soma')
+                self.astroMem(self.soma)
             self.soma.diam = self.somaSize
             self.soma.L = self.somaSize
             # self.soma.diam = 10 # Agulhon 2008 Neuron
             # self.soma.L = 10
-            self.astroMem(self.soma)
             # h.psection(sec=self.soma)
-            
-            for i in range(self.bNum):
+
+            for i in range(self.bNum - len(self.branches)):
                 # Create the branch (not included in the original hoc file)
                 self.branches.append(h.Section(name=f'branch{i}'))
                 self.branches[-1].L = self.bLen
@@ -390,6 +403,12 @@ class PAPModel(ResultsPAPModel):
         self.vFile = h.File("vFile.dat")
         self.vFile.wopen("vFile.dat")
 
+        self.KoPAP = h.Vector()
+        self.KoPAP.record(self.pap(0.5)._ref_ko)
+
+        self.KoFile = h.File("KoFile.dat")
+        self.KoFile.wopen("KoFile.dat")
+
         if hasattr(self,"soma"):
             self.vSoma = h.Vector()
             self.vSoma.record(self.soma(0.5)._ref_v)
@@ -403,27 +422,38 @@ class PAPModel(ResultsPAPModel):
             self.iKFileSoma = h.File("iKFileSoma.dat")
             self.iKFileSoma.wopen("iKFileSoma.dat")
 
+            self.KoSoma = h.Vector()
+            self.KoSoma.record(self.soma(0.5)._ref_ko)
+
+            self.KoFileSoma = h.File("KoFileSoma.dat")
+            self.KoFileSoma.wopen("KoFileSoma.dat")
+
         self.time = h.Vector()
         self.time.record(h._ref_t)
 
         self.tFile = h.File("tFile.dat")
         self.tFile.wopen("tFile.dat")
 
-    def setK(self,initialKo=70):
-        h.ki0_k_ion = 70 * mM # Global concentration for astrocytes from Savtchenko
-        # h.ko0_k_ion = Ko * mM # Local concentration
+    def setK(self,initialKo=None):
+        if initialKo == None:
+            initialKo = self.initialKo
+        h.init() # quite important
+        # h.finitialize(RMP * mV)
         for sec in h.allsec():
             # h.psection(sec=sec)
             if sec == self.pap:
-                sec.ko0_K_acc = initialKo * mM
-                sec.ko = initialKo * mM
+                for seg in sec:
+                    # h.ko0_k_ion = initialKo * mM # Local concentration
+                    # seg.ko0_K_acc = initialKo * mM
+                    seg.ko = initialKo * mM
                 # print('set pap Ko')
             else:
-                sec.ko0_K_acc = self.defaultKo * mM
-                sec.ko = self.defaultKo * mM
-            sec.ki = 70 * mM # global
-        
-        # compartment.ek = -90 * mV
+                for seg in sec:
+                    # seg.ko0_K_acc = self.defaultKo * mM
+                    seg.ko = self.defaultKo * mM
+            # sec.ki = 70 * mM # global
+
+            sec.ek = -90 * mV
         # print('Potassium Parms')
 
     def printRec(self):
@@ -542,7 +572,7 @@ def multiChannel(itr=100):
     dList = []
     for i in range(1,itr + 1):
         PAPModel(40,multiple=i,mode=0)
-        dList.append(plot(".") + 85)
+        dList.append(plot(".") - RMP)
     with open(f'dList.pickle', 'wb') as handle:
         pickle.dump(dList, handle, protocol=pickle.HIGHEST_PROTOCOL)
     plt.cla()
@@ -558,13 +588,15 @@ def get_iter(distance,dist_steps,chan,chan_steps):
 
     return iterations
 
-def parallizeFor(iterations,functions,functionArgs,functionParms,callmethods):
+def parallizeFor(iterations,functions,functionArgs,functionParms,callmethods,methodArgs):
     # Calculate the number of iterations each process will handle
     iterations_per_process = len(iterations) // size
 
     # Adjust the range for the last process
-    if rank == size - 1:
-        remaining_iterations = len(iterations) % size
+    if len(iterations) % size == 0:
+        remaining_iterations = 0
+    elif rank >= size - len(iterations) % size:
+        remaining_iterations = 1
     else:
         remaining_iterations = 0
 
@@ -591,8 +623,8 @@ def parallizeFor(iterations,functions,functionArgs,functionParms,callmethods):
                 functionArgs[k][parameterName] = parmSet[l]
             tmpInstance = functions[k](**functionArgs[k])
 
-            for method in callmethods[k]:
-                getattr(tmpInstance,method)()
+            for l,method in enumerate(callmethods[k]):
+                getattr(tmpInstance,method)(**methodArgs[k][l])
 
             results[-1].append(tmpInstance.copyAttr()) # default workaround for mpi section pickle bug
 
@@ -622,7 +654,7 @@ def multiDistance(x,read=False):
         vPAPList = []
         if parallel:
             # Calculate the number of iterations each process will handle
-            iterations = comm.bcast(get_iter(101,10,301,10),root=0)
+            iterations = comm.bcast(get_iter(501,50,201,50),root=0)
             # iterations_per_process = len(iterations) // size
 
             # # Adjust the range for the last process
@@ -647,12 +679,12 @@ def multiDistance(x,read=False):
                 'bNum':int(bNum),
                 'papWid':papWid,
                 'Glu':True,
-                'initialKo':8.5,
-                'kir2':2
+                'initialKo':5,
+                'kir2':1e8
             })
             # make sure that funcParms is in the correct order of whatever iterations spits out
             # results are collected only on rank 0
-            results = parallizeFor(iterations,[PAPModel],funcArgs,['bLen','multiple'],[['setK','run']])
+            results = parallizeFor(iterations,[PAPModel],funcArgs,['bLen','multiple'],[['initialize','setK','run']],[[{},{'initialKo':8.5},{}]])
             # for index in range(rank * iterations_per_process, (rank + 1) * iterations_per_process + remaining_iterations):
             #     i,j = iterations[index]
             #     print(f'Thread {rank} is performing distance {i}, channel count {j}')
@@ -691,8 +723,8 @@ def multiDistance(x,read=False):
                     dList.append(i)
                     cList.append(j)
                     for i,rIndi in enumerate(res):
-                        vSomaList.append(max(np.array(rIndi.vSoma) + 85, key=abs))
-                        vPAPList.append(max(np.array(rIndi.vPAP) + 85, key=abs))
+                        vSomaList.append(max(np.array(rIndi.vSoma) - RMP, key=abs))
+                        vPAPList.append(max(np.array(rIndi.vPAP) - RMP, key=abs))
                 
             # vSomaList = comm.gather(vSoma, root = 0)
             # vPAPList = comm.gather(vPAP, root = 0)
@@ -716,7 +748,7 @@ def multiDistance(x,read=False):
                                    Glu=True)
                     sim.run()
                     vSomaList.append(max(
-                        np.array(sim.vSoma) + 85,
+                        np.array(sim.vSoma) - RMP,
                         key=abs
                     ))
                     sim = PAPModel(multiple=j,
@@ -731,7 +763,7 @@ def multiDistance(x,read=False):
                                    Glu=True)
                     sim.run()
                     vPAPList.append(max(
-                        np.array(sim.vPAP) + 85,
+                        np.array(sim.vPAP) - RMP,
                         key=abs
                     ))
         # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
@@ -791,8 +823,14 @@ def measureRi(x):
     vSomaList = []
     vPAPList = []
     for current in cList:
-        vSomaList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum),papWid=papWid).vSoma)
-        vPAPList.append(PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=2,bNum=int(bNum),somaCheck=False,papWid=papWid).vPAP)
+        simSoma = PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=3,bNum=int(bNum),papWid=papWid,somaCheck=True)
+        simSoma.initialize()
+        simSoma.run()
+        vSomaList.append(simSoma.vSoma)
+        simPAP = PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=3,bNum=int(bNum),somaCheck=False,papWid=papWid)
+        simPAP.initialize()
+        simPAP.run()
+        vPAPList.append(simPAP.vPAP)
         # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
 
     
@@ -818,8 +856,15 @@ if __name__ == "__main__" or parallel:
         comm.Barrier()
         start = time.time()
         comm.bcast(start,root=0)
+
+    # Measuring Ri
+    # print(minimize(measureRi,(10,30,5,0.02,1),method='Nelder-Mead',bounds=[(1,None),(10,None),(1,None),(1e-10,None),(1,50)],options={'disp':True},tol=0.00001))
     # measureRi([3,  30,  4.28,  4.3e-4,  1])
+
+    # Plot for vatious distnace channel counts
     multiDistance([3,  30,  4.28,  4.3e-4,  1])
+
+    # single run
     # funcArgs = []
     # funcArgs.append({
     #     'currentClamp':20,
@@ -827,18 +872,25 @@ if __name__ == "__main__" or parallel:
     #     'somaSize':3,
     #     'mode':0,
     #     'bNum':1,
+    #     'bLen':80,
     #     'papWid':4.3e-4,
     #     'Glu':True,
-    #     'initialKo':8.5,
-    #     'kir2':1
+    #     'kir2':1e9,
     # })
     # cells = PAPModel(**funcArgs[-1])
+    # # cells.setK()
+    # cells.initialize()
+    # cells.setK(initialKo=8.5)
     # cells.run()
     # cells = cells.copyAttr()
     # AllCells = comm.gather(cells,root=0)
     # if rank == 0:
     #     for cell in AllCells:
-    #         print(list(cell.vSoma))
+    #         plt.plot(list(cells.time),list(cell.vPAP),label='PAP')
+    #         plt.plot(list(cells.time),list(cell.vSoma),label='Soma')
+    #         plt.title('time vs Vm')
+    #         plt.legend()
+    #     plt.savefig('KoCon.pdf')
     if parallel:
         comm.Barrier()
         end = time.time()
@@ -848,4 +900,3 @@ if __name__ == "__main__" or parallel:
         with open(f'timeres{size}.txt','w') as f:
             f.write(str(time_took))
     # measureRi((2.8e8,50,3.5e7,3))
-    # print(minimize(measureRi,(10,30,5,0.02,1),method='Nelder-Mead',bounds=[(1,None),(10,None),(1,None),(0.000001,None),(1,50)],options={'disp':True},tol=0.01))
