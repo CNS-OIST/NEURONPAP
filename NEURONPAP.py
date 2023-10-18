@@ -1,6 +1,7 @@
 """
 To Do:
 [x] TDQM
+[ ]FInitializeHandler for setK
 
 """
 
@@ -264,8 +265,7 @@ class PAPModel(ResultsPAPModel):
     def initialize(self,saveState=False):
         # print('initializing')
         # sys.stdout.flush()
-        h.ki0_k_ion = 70 * mM # Global concentration for astrocytes from Savtchenko        
-        # h.ki0_k_ion = 110 * mM # Global concentration for astrocytes from Savtchenko
+        h.ki0_k_ion = 70 * mM # Global concentration for astrocytes from Savtchenko
         self.setK()
         h.continuerun(self.initTstop * ms)
         if saveState:
@@ -307,7 +307,6 @@ class PAPModel(ResultsPAPModel):
         compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
-        compartment.insert('kdifl')
         # h.ki0_k_ion = 110 * mM # Tweaked for RMP -85
         # h.ko0_k_ion = 2.5 * mM # Global concentration
 

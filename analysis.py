@@ -8,12 +8,12 @@ with open('resultsParallel.pickle','rb') as handle:
     
 for i,res in enumerate(results):
     if (i+1) %6  == 0:
-        plt.scatter(list(res[0].vPAP),list(res[0].vSoma),c=np.array(range(len(list(res[0].vPAP))))/len((list(res[0].vPAP))))
-        plt.colorbar(label="Time")
+        plt.scatter(list(res[0].vPAP),list(res[0].vSoma),c=list(res[0].time))
+        plt.colorbar(label="Time (ms)")
         plt.title(f'branch L:{res[0].bLen}')
         plt.xlabel('PAP membrane potential (mV)')
         plt.ylabel('Soma membrane potential (mV)')
-        # plt.ylim((-89,-88))
+        # plt.ylim((-88.97,-88.965))
         plt.savefig(f'result{i}-IsolatedPAP.pdf')
         plt.cla()
         plt.clf()
