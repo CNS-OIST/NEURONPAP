@@ -2,6 +2,7 @@
 To Do:
 [x] TDQM
 [ ]FInitializeHandler for setK
+[ ] smarter RMP detection
 
 """
 
@@ -24,7 +25,6 @@ import time
 import tqdm
 import copy
 
-RMP = -88
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -120,6 +120,11 @@ class ResultsPAPModel():
         newInstance = ResultsPAPModel()
         newInstance.__dict__ = {attr:copy.deepcopy(self.__dict__[attr])  for attr in self.__dict__ if attr in self.to_be_copied}
         return newInstance
+
+    def getRMP(self):
+        RMP = list(self.vSoma)[-1]
+        return RMP
+
 
 
 class PAPModel(ResultsPAPModel):
@@ -222,9 +227,11 @@ class PAPModel(ResultsPAPModel):
 
         if not parallel:
             self.readParameters() # readfile in parallel causes errors
-        self.NMDAs = []
-        self.NCs = []
-        for i in range(self.multiple):
+        if not hasattr(self,'NMDAs'):
+            self.NMDAs = []
+            self.NCs = []
+        
+        for i in range(self.multiple - len(self.NMDAs)):
             # Create the synaptic NMDA conductance
             stim = h.NetStim(self.pap(0.5))
             stim.interval = 1
@@ -278,15 +285,21 @@ class PAPModel(ResultsPAPModel):
         h.continuerun((self.tstop)* ms)
         if printRes:
             self.printRec()
-
-        self.cleanMorphology()  
+        self.cleanMorphology()
         # print('ran simulation')
         # sys.stdout.flush()
+
+    def getRMP(self):
+        self.initialize()
+        self.run()
+        RMP = sum(list(self.vSoma))/len(list(self.vSoma))
+        self.RMP = RMP
+        return RMP
 
     def cleanMorphology(self):
         # Fails for parallel run (Probably no need when each instance has memory address)
         for sec in h.allsec():
-            h.delete_section(sec=sec) 
+            h.delete_section(sec=sec)
         self.branches = []
         self.soma = None
         self.pap = None
@@ -297,7 +310,7 @@ class PAPModel(ResultsPAPModel):
         compartment.Ra = 100
         compartment.cm = 0.8
         compartment.insert('pas')
-        compartment.e_pas = RMP
+        compartment.e_pas = -85
         compartment.g_pas = 1/11150
         self.channels(compartment)
 
@@ -307,6 +320,7 @@ class PAPModel(ResultsPAPModel):
         compartment.insert('twik')
         compartment.insert('K_acc')
         compartment.insert('kleak')
+        compartment.insert('kdifl')        
         # h.ki0_k_ion = 110 * mM # Tweaked for RMP -85
         # h.ko0_k_ion = 2.5 * mM # Global concentration
 
@@ -332,8 +346,11 @@ class PAPModel(ResultsPAPModel):
             # self.soma.diam = 10 # Agulhon 2008 Neuron
             # self.soma.L = 10
             # h.psection(sec=self.soma)
-
-            for i in range(self.bNum - len(self.branches)):
+            sl = h.SectionList() # section shows up again bug
+            branchCount = len([branch
+                               for branch in self.branches
+                               if branch in list(sl)])
+            for i in range(self.bNum - branchCount):
                 # Create the branch (not included in the original hoc file)
                 self.branches.append(h.Section(name=f'branch{i}'))
                 self.branches[-1].L = self.bLen
@@ -570,8 +587,9 @@ def plot(dir,zoom=False,ext=False):
 def multiChannel(itr=100):
     dList = []
     for i in range(1,itr + 1):
-        PAPModel(40,multiple=i,mode=0)
-        dList.append(plot(".") - RMP)
+        sim = PAPModel(40,multiple=i,mode=0)
+        sim.run()
+        dList.append(plot(".") - sim.getRMP())
     with open(f'dList.pickle', 'wb') as handle:
         pickle.dump(dList, handle, protocol=pickle.HIGHEST_PROTOCOL)
     plt.cla()
@@ -722,8 +740,11 @@ def multiDistance(x,read=False):
                     dList.append(i)
                     cList.append(j)
                     for i,rIndi in enumerate(res):
-                        vSomaList.append(max(np.array(rIndi.vSoma) - RMP, key=abs))
-                        vPAPList.append(max(np.array(rIndi.vPAP) - RMP, key=abs))
+                        vSomaList.append(max(np.array(rIndi.vSoma) - rIndi.getRMP(), key=abs))
+                        vPAPList.append(max(np.array(rIndi.vPAP) - rIndi.getRMP(), key=abs))
+                        # if index == 0:
+                        #     print(plt.plot(np.array(rIndi.vPAP)))
+                        #     plt.show()
                 
             # vSomaList = comm.gather(vSoma, root = 0)
             # vPAPList = comm.gather(vPAP, root = 0)
@@ -747,7 +768,7 @@ def multiDistance(x,read=False):
                                    Glu=True)
                     sim.run()
                     vSomaList.append(max(
-                        np.array(sim.vSoma) - RMP,
+                        np.array(sim.vSoma) - sim.getRMP(),
                         key=abs
                     ))
                     sim = PAPModel(multiple=j,
@@ -762,7 +783,7 @@ def multiDistance(x,read=False):
                                    Glu=True)
                     sim.run()
                     vPAPList.append(max(
-                        np.array(sim.vPAP) - RMP,
+                        np.array(sim.vPAP) - sim.getRMP(),
                         key=abs
                     ))
         # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
@@ -877,10 +898,17 @@ if __name__ == "__main__" or parallel:
     #     'kir2':1e9,
     # })
     # cells = PAPModel(**funcArgs[-1])
+    # print(cells.branches)
     # # cells.setK()
     # cells.initialize()
     # cells.setK(initialKo=8.5)
     # cells.run()
+    # cells = PAPModel(**funcArgs[-1])
+    # print(cells.branches)
+    # cells.initialize()
+    # cells.setK(initialKo=8.5)
+    # cells.run()
+    
     # cells = cells.copyAttr()
     # AllCells = comm.gather(cells,root=0)
     # if rank == 0:

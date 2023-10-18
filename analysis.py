@@ -7,7 +7,7 @@ with open('resultsParallel.pickle','rb') as handle:
     results = pickle.load(handle)
     
 for i,res in enumerate(results):
-    if (i+1) %6  == 0:
+    if (i+1) %6  == 0 or i == 0:
         plt.scatter(list(res[0].vPAP),list(res[0].vSoma),c=list(res[0].time))
         plt.colorbar(label="Time (ms)")
         plt.title(f'branch L:{res[0].bLen}')
