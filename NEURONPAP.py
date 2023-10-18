@@ -1,8 +1,8 @@
 """
 To Do:
 [x] TDQM
-[ ]FInitializeHandler for setK
-[ ] smarter RMP detection
+[ ] FInitializeHandler for setK
+[x] smarter RMP detection
 
 """
 
