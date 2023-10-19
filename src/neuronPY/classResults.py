@@ -1,10 +1,8 @@
+import copy
+
 class ResultsPAPModel:
-    # vPAP = list()
-    # vSoma = list()
-    # iNMDA = list()
-    # iMem = list()
-    # iKSoma = list()
-    # time = list()
+    # class to copy data of simulations
+    # necessary for MPI copy as NEURON components cannot be copied
     to_be_copied = [
         "vPAP",
         "vSoma",
@@ -29,3 +27,7 @@ class ResultsPAPModel:
             if attr in self.to_be_copied
         }
         return newInstance
+
+    def getRMP(self):
+        RMP = list(self.vSoma)[-1]
+        return RMP

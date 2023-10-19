@@ -1,49 +1,6 @@
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
-import os
-from mpl_toolkits import mplot3d
-import math
 import sys
-import time
-import tqdm
-import copy
-
-
-class ResultsPAPModel:
-    # class to copy data of simulations
-    # necessary for MPI copy as NEURON components cannot be copied
-    to_be_copied = [
-        "vPAP",
-        "vSoma",
-        "iNMDA",
-        "iMem",
-        "iKSoma",
-        "time",
-        "bLen",
-        "somaSize",
-        "papWid",
-        "bWid",
-        "initialKo",
-        "KoPAP",
-        "KoSoma",
-    ]
-
-    def copyAttr(self):
-        newInstance = ResultsPAPModel()
-        newInstance.__dict__ = {
-            attr: copy.deepcopy(self.__dict__[attr])
-            for attr in self.__dict__
-            if attr in self.to_be_copied
-        }
-        return newInstance
-
-    def getRMP(self):
-        RMP = list(self.vSoma)[-1]
-        return RMP
-
 
 class PAPModel(ResultsPAPModel):
     tstop = 1000
