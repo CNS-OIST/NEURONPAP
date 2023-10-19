@@ -200,30 +200,11 @@ class PAPModel(ResultsPAPModel):
         # print('built morphology')
         # sys.stdout.flush()
 
-        # Clamp settings
-        if mode > 2:
-            #Step Current
-            if somaCheck:
-                ic = h.IClamp(self.soma(0.5))
-            else:
-                ic = h.IClamp(self.pap(0.5))
-            ic.dur = self.tstop
-            ic.delay = 0 # ms starts with glutamate
-            ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
-        elif mode > 1:
-            vc = h.VClamp(self.soma(0.5))
-            vc.dur[0] = h.tstop
-            vc.amp[0] = voltageClamp  # mV depolarization (dV = 20)
-
-        elif mode > 0:
-            #Impulse Current
-            ic = h.IClamp(self.pap(0.5))
-            ic.dur = 0.002
-            ic.delay = 10 # ms starts with glutamate
-            ic.amp = currentClamp * 0.001  # nA current injection (1 pA)
-        # print('clamp experiment setup')
-        # sys.stdout.flush()
-
+        # set clamp parms
+        self.mode = mode
+        self.voltageClamp = voltageClamp
+        self.currentClamp = currentClamp
+        self.somaCheck = somaCheck
 
         if not parallel:
             self.readParameters() # readfile in parallel causes errors
@@ -282,6 +263,30 @@ class PAPModel(ResultsPAPModel):
                 s.fwrite(f)
 
     def run(self,printRes=False):
+        # Clamp settings
+        if self.mode > 2:
+            #Step Current
+            if self.somaCheck:
+                ic = h.IClamp(self.soma(0.5))
+            else:
+                ic = h.IClamp(self.pap(0.5))
+            ic.dur = self.tstop
+            ic.delay = 0 * ms # ms starts with glutamate
+            ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
+        elif self.mode > 1:
+            vc = h.VClamp(self.soma(0.5))
+            vc.dur[0] = h.tstop
+            vc.amp[0] = self.voltageClamp  # mV depolarization (dV = 20)
+
+        elif self.mode > 0:
+            #Impulse Current
+            ic = h.IClamp(self.pap(0.5))
+            ic.dur = 0.002
+            ic.delay = 10 # ms starts with glutamate
+            ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
+        # print('clamp experiment setup')
+        # sys.stdout.flush()
+        
         h.continuerun((self.tstop)* ms)
         if printRes:
             self.printRec()
@@ -826,44 +831,53 @@ def find_nan_inf_index(lst):
     for i, value in enumerate(lst):
         if math.isnan(value) or math.isinf(value):
             return i
-    return -1  # Return -1 if no NaN or inf value is found
+    return 'stop'  # Return -1 if no NaN or inf value is found
 
 def remove_nan_values(lst,lst2):
     index = find_nan_inf_index(lst)
-    while index != -1:
+    while index != 'stop':
         del lst[index]
         lst2 = np.delete(lst2,index)
         index = find_nan_inf_index(lst)
-    return lst,lst2
+    if len(lst) == len(lst2):
+        return lst,lst2
+    else:
+        eMessage('wrong list length from removing')
 
 def measureRi(x):
     somaSize, bLen, bWid, papWid, bNum = x
     # Make a list for tested currents
-    cList = np.arange(-800,801,200)
+    cList = np.arange(-800,1601,400)
     vSomaList = []
     vPAPList = []
     for current in cList:
         simSoma = PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=3,bNum=int(bNum),papWid=papWid,somaCheck=True)
         simSoma.initialize()
         simSoma.run()
-        vSomaList.append(simSoma.vSoma)
+        vSomaList.append(list(simSoma.vSoma))
         simPAP = PAPModel(currentClamp=current, bLen=bLen, bWid=bWid, somaSize=somaSize, mode=3,bNum=int(bNum),somaCheck=False,papWid=papWid)
         simPAP.initialize()
         simPAP.run()
-        vPAPList.append(simPAP.vPAP)
-        # plt.plot(np.array(range(len(vList[-1])))*PAPModel.dt,vList[-1],label=f'{current} pA')
+        vPAPList.append(list(simPAP.vPAP))
+        # plt.plot(np.array(range(len(vSomaList[-1])))*PAPModel.dt,vSomaList[-1],label=f'{current} pA')
 
     
     vList,somaC = remove_nan_values([ v[-1] for v in vSomaList],cList)
-    somapopt, pcov = curve_fit(eq,vList,somaC)
+    if len(vList) > 1:
+        somapopt, pcov = curve_fit(eq,vList,somaC)
+        print(f'{abs(1/somapopt[0])} MOhm')
+    else:
+        somapopt = [float('inf')]
     # x = np.linspace(-600,600)
-    # plt.plot(eq(x,*popt),x)
+    # plt.plot(eq(x,*somapopt),x)
     # plt.legend()
     # plt.show()
-    print(f'{abs(1/somapopt[0])} MOhm')
     vList,papC = remove_nan_values([ v[-1] for v in vPAPList],cList)
-    pappopt, pcov = curve_fit(eq,vList,papC)
-    print(f'{abs(1/pappopt[0])} MOhm')
+    if len(vList) > 1:
+        pappopt, pcov = curve_fit(eq,vList,papC)
+        print(f'{abs(1/pappopt[0])} MOhm')
+    else:
+        pappopt = [float('inf')]
 
     return abs(1/somapopt[0] - 2.6) + abs(1/pappopt[0] - 1050) # soma input resistance score
 
