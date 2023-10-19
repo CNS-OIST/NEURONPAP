@@ -1,6 +1,9 @@
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
 import sys
+from classResults import ResultsPAPModel
+from utils import *
+from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
     tstop = 1000
@@ -50,7 +53,7 @@ class PAPModel(ResultsPAPModel):
         from neuron import h
 
         h.load_file("stdgui.hoc")
-        h.load_file("params.hoc")
+        h.load_file("./neuronhoc/params.hoc")
         # print('loaded files')
 
         # Set simulation parameters
@@ -82,7 +85,7 @@ class PAPModel(ResultsPAPModel):
         self.currentClamp = currentClamp
         self.somaCheck = somaCheck
 
-        if not parallel:
+        if self.readParms:
             self.readParameters()  # readfile in parallel causes errors
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []

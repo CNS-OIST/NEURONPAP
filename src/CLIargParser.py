@@ -20,20 +20,29 @@ def argParser(rangeInt=100):
     parser.add_argument(
         "-r",
         "--mRi",
-        dest="RiFlag",
+        dest="Ri",
         action="store_true",
         default=False,
         help="measure input Resistance",
-    )  # flags deigo
+    )  
 
     parser.add_argument(
         "-s",
         "--singleRun",
-        dest="Single",
+        dest="single",
         action="store_true",
         default=False,
         help="Used to run a single simulation",
-    )  # AP set
+    )
+     
+    parser.add_argument(
+        "-d",
+        "--distance",
+        dest="distance",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for various distances"
+    )  
     parser.add_argument(
         "--debug",
         dest="debug",
