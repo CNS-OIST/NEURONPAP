@@ -1,3 +1,14 @@
+import math
+from mpi4py import MPI
+import tqdm
+import numpy as np
+
+
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+
+
 def MPIReadlines(fName):
     # if simultaneous access creates errors update this function
     # fails in parallel must think of a better way

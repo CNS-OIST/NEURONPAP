@@ -1,8 +1,6 @@
 """
 To Do:
-[x] TDQM
 [ ] FInitializeHandler for setK
-[x] smarter RMP detection
 
 """
 
@@ -14,19 +12,21 @@ from experiments import procedure
 from utils import *
 
 def callExperimentMode(**kwargs):
-    procedure.parallel = kwargs['parallel']
+    exp = procedure()
+    
+    exp.parallel = kwargs['parallel']
     
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
         print('single run')
-        procedure.singleRun()
+        exp.singleRun()
     if "cond" in kwargs.keys() and kwargs["cond"]:
         # measureconductance
-        procedure.measureCond("IV")
+        exp.measureCond("IV")
 
     if "chan" in kwargs.keys() and kwargs["chan"]:
         # multiChannelEffects
-        procedure.multiChannel()
+        exp.multiChannel()
 
     if "Ri" in kwargs.keys() and kwargs["Ri"]:
         # Optimal Ri
@@ -35,7 +35,7 @@ def callExperimentMode(**kwargs):
 
         print(
             minimize(
-                procedure.measureRi,
+                exp.measureRi,
                 (10, 30, 5, 0.02, 1),
                 method="Nelder-Mead",
                 bounds=[(1, None), (10, None), (1, None), (1e-10, None), (1, 50)],
@@ -45,7 +45,7 @@ def callExperimentMode(**kwargs):
         )
     if "distance" in kwargs.keys() and kwargs["distance"]:
         # Plot for vatious distnace channel counts
-        procedure.multiDistance([3, 30, 4.28, 4.3e-4, 1])
+        exp.multiDistance([3, 30, 4.28, 4.3e-4, 1])
 
 
     
@@ -69,7 +69,7 @@ if __name__ == "__main__" or parallel:
         start = time.time()
         comm.bcast(start, root=0)
 
-    print(args.__dict__)
+    # print(args.__dict__)
     args.__dict__['parallel'] = True
     callExperimentMode(**args.__dict__)
 

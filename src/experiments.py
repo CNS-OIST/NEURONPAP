@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import os
 import utils
-
+import numpy as np
+from utils import *
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -14,8 +15,8 @@ rank = comm.Get_rank()
 
 class procedure():
     
-    def measureCond(fName):
-        if not os.path.isfile(f"{fName}.pickle"):
+    def measureCond(self,fName):
+        if not os.path.isfile(os.path.join('intermediaryData',f"{fName}.pickle")):
             voltList = np.arange(0, 100, 5)
             IV = {}
             IVslow = {}
@@ -28,10 +29,10 @@ class procedure():
                 print(iS, iF)
             IV["slow"] = IVslow
             IV["fast"] = IVfast
-            with open(f"{fName}.pickle", "wb") as handle:
+            with open(os.path.join('intermediaryData',f"{fName}.pickle"), "wb") as handle:
                 pickle.dump(IV, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            with open(f"{fName}.pickle", "rb") as handle:
+            with open(os.path.join('intermediaryData',f"{fName}.pickle"), "rb") as handle:
                 IV = pickle.load(handle)
 
         for mode in IV.keys():
@@ -46,30 +47,30 @@ class procedure():
             plt.plot(V, I, label="model")
             plt.plot(x, eq(x, *popt), label=f"{popt[0]}x+{popt[1]}")
             plt.legend()
-            plt.savefig(f"{fName}{mode}.pdf")
+            plt.savefigf(os.path.join('../results/codeSortTest',"{fName}{mode}.pdf"))
 
 
-    def multiChannel(itr=100):
+    def multiChannel(self,itr=100):
         dList = []
         for i in range(1, itr + 1):
             sim = PAPModel(40, multiple=i, mode=0)
             sim.run()
             dList.append(plot(".") - sim.getRMP())
-        with open(f"dList.pickle", "wb") as handle:
+        with open(os.path.join('intermediaryData',f"dList.pickle"), "wb") as handle:
             pickle.dump(dList, handle, protocol=pickle.HIGHEST_PROTOCOL)
         plt.cla()
         plt.clf()
         plt.scatter(range(1, itr + 1), dList)
-        plt.savefig("patchXDepolar.pdf")
+        plt.savefig(os.path.join('../results/codeSortTest',"patchXDepolar.pdf"))
 
 
-    def multiDistance(x, read=False):
+    def multiDistance(self,x, read=False):
         somaSize, bLen, bWid, papWid, bNum = x
         dList = []
         cList = []
         vList = []
         if read:
-            with open(f"ballStick.pickle", "rb") as handle:
+            with openf(os.path.join('intermediaryData',"ballStick.pickle"), "rb") as handle:
                 dList, cList, vList = pickle.load(handle)
 
         else:
@@ -113,7 +114,7 @@ class procedure():
                 )
                 comm.Barrier()
                 if rank == 0:
-                    with open("resultsParallel.pickle", "wb") as handle:
+                    with open(os.path.join('intermediaryData',"resultsParallel.pickle"), "wb") as handle:
                         pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
                     for index, res in enumerate(results):
                         i, j = iterations[index]
@@ -172,7 +173,7 @@ class procedure():
             vList = [vSomaList, vPAPList]
 
             if not self.parallel or rank == 0:
-                with open(f"ballStick.pickle", "wb") as handle:
+                with open(os.path.join('intermediaryData',f"ballStick.pickle"), "wb") as handle:
                     pickle.dump(
                         [dList, cList, vList], handle, protocol=pickle.HIGHEST_PROTOCOL
                     )
@@ -206,7 +207,7 @@ class procedure():
                 plt.savefig(f"./3Dplot{name}{j}.pdf")
 
 
-    def measureRi(x):
+    def measureRi(self,x):
         somaSize, bLen, bWid, papWid, bNum = x
         # Make a list for tested currents
         cList = np.arange(-800, 1601, 400)
@@ -263,7 +264,7 @@ class procedure():
         )  # soma input resistance score
 
 
-    def singleRun():
+    def singleRun(self):
         # single run
         funcArgs = []
         funcArgs.append(
@@ -294,4 +295,4 @@ class procedure():
                 plt.plot(list(cells.time), list(cell.vSoma), label="Soma")
                 plt.title("time vs Vm")
                 plt.legend()
-            plt.savefig("KoCon.pdf")
+            plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))
