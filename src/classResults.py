@@ -1,6 +1,6 @@
 import copy
 
-class ResultsPAPModel:
+class ResultsPAPModel():
     # class to copy data of simulations
     # necessary for MPI copy as NEURON components cannot be copied
     to_be_copied = [
@@ -12,11 +12,13 @@ class ResultsPAPModel:
         "time",
         "bLen",
         "somaSize",
-        "papWid",
+        "PAPWid",
         "bWid",
         "initialKo",
         "KoPAP",
         "KoSoma",
+        "KiPAP",
+        "KiSoma",
     ]
 
     def copyAttr(self):

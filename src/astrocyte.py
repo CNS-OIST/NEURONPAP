@@ -10,11 +10,11 @@ class PAPModel(ResultsPAPModel):
     initTstop = 500
     dt = 0.01  # not enabled
     celsius = 37
-    v_init = -85
+    v_init = -89
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
-    papWid = 0.02
+    PAPWid = 0.02
     branches = []
 
     # NMDA parms
@@ -33,27 +33,27 @@ class PAPModel(ResultsPAPModel):
     defaultKo = 2.5
 
     def __init__(
-        self,
-        papWid=0.02,
-        bWid=3,
-        bNum=1,
-        bLen=30,
-        voltageClamp=40,
-        somaSize=10,
-        currentClamp=2,
-        multiple=1,
-        mode=2,
-        somaCheck=False,
-        Glu=False,
-        initialKo=2.5,
-        **kwargs,
+            self,
+            readHoc=True,
+            PAPWid=0.02,
+            bWid=3,
+            bNum=1,
+            bLen=30,
+            voltageClamp=40,
+            somaSize=10,
+            currentClamp=2,
+            multiple=1,
+            mode=2,
+            somaCheck=False,
+            Glu=False,
+            initialKo=2.5,
+            **kwargs,
     ):
-
         # Load NEURON GUI and parameters
         from neuron import h
 
         h.load_file("stdgui.hoc")
-        h.load_file("./neuronhoc/params.hoc")
+        h.load_file("./neuronHoc/params.hoc")
         # print('loaded files')
 
         # Set simulation parameters
@@ -63,21 +63,9 @@ class PAPModel(ResultsPAPModel):
         h.v_init = self.v_init
         # print('set sim parms')
 
-        # set morphology parameters
-        self.somaSize = somaSize
-        self.bLen = bLen
-        self.bWid = bWid
-        self.bNum = bNum
-        self.papWid = papWid
+        # set NMDA
         self.multiple = multiple
-
-        # set K parms
-        self.initialKo = initialKo
-
-        # Build Morphology
-        self.morph()
-        # print('built morphology')
-        # sys.stdout.flush()
+        
 
         # set clamp parms
         self.mode = mode
@@ -85,6 +73,58 @@ class PAPModel(ResultsPAPModel):
         self.currentClamp = currentClamp
         self.somaCheck = somaCheck
 
+        self.readHoc = readHoc
+
+        # set morphology parameters
+        self.somaSize = somaSize
+        self.bLen = bLen
+        self.bWid = bWid
+        self.bNum = bNum
+        self.PAPWid = PAPWid
+
+        if readHoc:
+            # subsitute
+            # - morphology
+            # - NMDA setting up
+            # - membrane properties
+            
+            h.load_file("stdgui.hoc")
+            h('xopen("./neuronHoc/astrocyte.hoc")')
+            # set morphology parameters
+            h.soma.L = self.somaSize
+            h.branch.L = self.bLen
+            h.branch.diam = self.bWid 
+            h.PAP.L = self.PAPWid
+
+            # set K parms
+            self.initialKo = 2.5
+
+            # match sections to self
+            self.PAP = h.PAP
+            self.soma = h.soma
+            self.branch = h.branch
+
+
+        else:
+            # set K parms
+            self.initialKo = initialKo
+
+            # Build Morphology
+            self.morph()
+            # print('built morphology')
+            # sys.stdout.flush()
+
+        self.Glu = Glu
+        h.FInitializeHandler(3,self.setNMDAs)
+
+        for sec in h.allsec():
+            if not hasattr(self, "GENEDict"):
+                GENExpression(sec, kwargs)
+                self.GENEDict = kwargs
+        # print('set GENE manipulation')
+        self.record()
+
+    def setNMDAs(self):
         if self.readParms:
             self.readParameters()  # readfile in parallel causes errors
         if not hasattr(self, "NMDAs"):
@@ -93,13 +133,13 @@ class PAPModel(ResultsPAPModel):
 
         for i in range(self.multiple - len(self.NMDAs)):
             # Create the synaptic NMDA conductance
-            stim = h.NetStim(self.pap(0.5))
+            stim = h.NetStim(self.PAP(0.5))
             stim.interval = 1
             stim.number = 1
             stim.start = 1 * ms
             stim.noise = 0
             self.NMDAs.append(self.nmda())
-            if Glu:
+            if self.Glu:
                 self.NCs.append(
                     h.NetCon(stim, self.NMDAs[-1])
                 )  # Must be in outer later with python address allocated
@@ -111,18 +151,13 @@ class PAPModel(ResultsPAPModel):
         # print('initialized')
         # sys.stdout.flush()
 
-        for sec in h.allsec():
-            if not hasattr(self, "GENEDict"):
-                GENExpression(sec, kwargs)
-                self.GENEDict = kwargs
-        # print('set GENE manipulation')
-        self.record(sNMDA=self.NMDAs[-1])
-
     def initialize(self, saveState=False):
         # print('initializing')
         # sys.stdout.flush()
-        h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
-        self.setK()
+        if not self.readHoc:
+            h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
+            self.setK()
+        h.finitialize(self.v_init)
         h.continuerun(self.initTstop * ms)
         if saveState:
             s = h.SaveState()
@@ -132,31 +167,54 @@ class PAPModel(ResultsPAPModel):
 
     def run(self, printRes=False):
         # Clamp settings
-        if self.mode > 2:
-            # Step Current
-            if self.somaCheck:
-                ic = h.IClamp(self.soma(0.5))
-            else:
-                ic = h.IClamp(self.pap(0.5))
-            ic.dur = self.tstop
-            ic.delay = 0 * ms  # ms starts with glutamate
-            ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
-        elif self.mode > 1:
-            # voltage clamp
-            vc = h.VClamp(self.soma(0.5))
-            vc.dur[0] = h.tstop
-            vc.amp[0] = self.voltageClamp  # mV depolarization (dV = 20)
+        if self.readHoc:
+            if self.mode > 2:
+                if self.somaCheck:
+                    h.clampSwitch(3,self.currentClamp)
+                else:
+                    h.clampSwitch(2,self.currentClamp)
+                    
+            elif self.mode >1:
+                h.clampSwitch(1,self.voltageClamp)
 
-        elif self.mode > 0:
-            # Impulse Current
-            ic = h.IClamp(self.pap(0.5))
-            ic.dur = 0.002
-            ic.delay = 10  # ms starts with glutamate
-            ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
-        # print('clamp experiment setup')
-        # sys.stdout.flush()
+            elif self.mode>0:
+                h.clampSwitch(0,self.currentClamp)
+                    
 
-        h.continuerun((self.tstop) * ms)
+        else:
+            if self.mode > 2:
+                # Step Current
+                if self.somaCheck:
+                    ic = h.IClamp(self.soma(0.5))
+                else:
+                    ic = h.IClamp(self.PAP(0.5))
+                ic.dur = self.tstop
+                ic.delay = 0 * ms  # ms starts with glutamate
+                ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
+            elif self.mode > 1:
+                # voltage clamp
+                vc = h.VClamp(self.soma(0.5))
+                vc.dur[0] = h.tstop
+                vc.amp[0] = self.voltageClamp  # mV depolarization (dV = 20)
+
+            elif self.mode > 0:
+                # Impulse Current
+                ic = h.IClamp(self.PAP(0.5))
+                ic.dur = 0.002
+                ic.delay = 10  # ms starts with glutamate
+                ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
+            # print('clamp experiment setup')
+            # sys.stdout.flush()
+            
+        try:
+            h.continuerun((self.tstop) * ms)
+        except RuntimeError as e:
+            if "hocobj_call" in str(e):
+                print("skip run")
+                vPAP = ['nan']
+                vSoma = ['nan']
+                
+        
         if printRes:
             self.printRec()
         self.cleanMorphology()
@@ -175,7 +233,7 @@ class PAPModel(ResultsPAPModel):
             h.delete_section(sec=sec)
         self.branches = []
         self.soma = None
-        self.pap = None
+        self.PAP = None
         delattr(self, "GENEDict")
 
     def astroMem(self, compartment):
@@ -183,7 +241,7 @@ class PAPModel(ResultsPAPModel):
         compartment.Ra = 100
         compartment.cm = 0.8
         compartment.insert("pas")
-        compartment.e_pas = -85
+        compartment.e_pas = self.v_init
         compartment.g_pas = 1 / 11150
         self.channels(compartment)
 
@@ -197,16 +255,16 @@ class PAPModel(ResultsPAPModel):
 
     def morph(self, isolate=False, printTopology=False):
         # Access the PAP object
-        if not hasattr(self, "pap"):
-            self.pap = h.Section(name="PAP")
-            self.astroMem(self.pap)
+        if not hasattr(self, "PAP"):
+            self.PAP = h.Section(name="PAP")
+            self.astroMem(self.PAP)
 
         # Set astrocyte leaf membrane parameters
-        self.pap.L = 0.3
-        self.pap.diam = self.papWid
-        self.pap.nseg = 1
+        self.PAP.L = 0.3
+        self.PAP.diam = self.PAPWid
+        self.PAP.nseg = 1
 
-        # h.psection(sec=self.pap)
+        # h.psection(sec=self.PAP)
         if not isolate:
             # create Soma
             if not hasattr(self, "soma"):
@@ -231,7 +289,7 @@ class PAPModel(ResultsPAPModel):
                 # Connect
                 self.branches[-1].connect(self.soma(0.5))
                 if i == 0:
-                    self.pap.connect(self.branches[-1])
+                    self.PAP.connect(self.branches[-1])
         if printTopology:
             h.topology()
 
@@ -254,7 +312,7 @@ class PAPModel(ResultsPAPModel):
         self.SynWeight = lines[0]
 
     def nmda(self):
-        sNMDA = h.Exp5NMDA(self.pap(0.5))
+        sNMDA = h.Exp5NMDA(self.PAP(0.5))
         if self.readParms:
             # load files if parameters are read
             sNMDA.tau2_0 = self.Tau2_0
@@ -277,24 +335,28 @@ class PAPModel(ResultsPAPModel):
                 self.iFile.wopen("iFile.dat")
 
         self.iMem = h.Vector()
-        self.iMem.record(self.pap(0.5)._ref_i_pas)
+        self.iMem.record(self.PAP(0.5)._ref_i_pas)
         if toFile:
             self.iFileMem = h.File("iFileMem.dat")
             self.iFileMem.wopen("iFileMem.dat")
 
         self.vPAP = h.Vector()
-        self.vPAP.record(self.pap(0.5)._ref_v)
+        self.vPAP.record(self.PAP(0.5)._ref_v)
 
         if toFile:
             self.vFile = h.File("vFile.dat")
             self.vFile.wopen("vFile.dat")
 
         self.KoPAP = h.Vector()
-        self.KoPAP.record(self.pap(0.5)._ref_ko)
+        self.KoPAP.record(self.PAP(0.5)._ref_ko)
+        self.KiPAP = h.Vector()
+        self.KiPAP.record(self.PAP(0.5)._ref_ki)
 
         if toFile:
             self.KoFile = h.File("KoFile.dat")
             self.KoFile.wopen("KoFile.dat")
+            self.KiFile = h.File("KiFile.dat")
+            self.KiFile.wopen("KiFile.dat")
 
         if hasattr(self, "soma"):
             self.vSoma = h.Vector()
@@ -313,10 +375,14 @@ class PAPModel(ResultsPAPModel):
 
             self.KoSoma = h.Vector()
             self.KoSoma.record(self.soma(0.5)._ref_ko)
+            self.KiSoma = h.Vector()
+            self.KiSoma.record(self.soma(0.5)._ref_ki)
 
             if toFile:
                 self.KoFileSoma = h.File("KoFileSoma.dat")
                 self.KoFileSoma.wopen("KoFileSoma.dat")
+                self.KiFileSoma = h.File("KiFileSoma.dat")
+                self.KiFileSoma.wopen("KiFileSoma.dat")
 
         self.time = h.Vector()
         self.time.record(h._ref_t)
@@ -325,21 +391,24 @@ class PAPModel(ResultsPAPModel):
             self.tFile.wopen("tFile.dat")
 
     def setK(self, initialKo=None):
-        if initialKo == None:
-            initialKo = self.initialKo
-        h.init()  # quite important
-        for sec in h.allsec():
-            # h.psection(sec=sec)
-            if sec == self.pap:
-                for seg in sec:
-                    seg.ko = initialKo * mM
-                # print('set pap Ko')
-            else:
-                for seg in sec:
-                    seg.ko = self.defaultKo * mM
+        if self.readHoc:
+            h.setK(initialKo)
+        else:
+            if initialKo == None:
+                initialKo = self.initialKo
+            h.init()  # quite important
+            for sec in h.allsec():
+                # h.psection(sec=sec)
+                if sec == self.PAP:
+                    for seg in sec:
+                        seg.ko = initialKo * mM
+                    # print('set PAP Ko')
+                else:
+                    for seg in sec:
+                        seg.ko = self.defaultKo * mM
 
-            sec.ek = -90 * mV
-        # print('Potassium Parms')
+                sec.ek = -90 * mV
+            # print('Potassium Parms')
 
     def printRec(self):
         if hasattr(self, "iNMDA"):

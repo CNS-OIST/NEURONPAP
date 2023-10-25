@@ -36,7 +36,7 @@ def callExperimentMode(**kwargs):
         print(
             minimize(
                 exp.measureRi,
-                (10, 30, 5, 0.02, 1),
+                (20,  30,  2,  8e-04,1),
                 method="Nelder-Mead",
                 bounds=[(1, None), (10, None), (1, None), (1e-10, None), (1, 50)],
                 options={"disp": True},

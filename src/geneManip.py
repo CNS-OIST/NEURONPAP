@@ -1,5 +1,4 @@
-import textSDIO
-
+from textSDIO import *
 
 class GENEManipulation:
     compartment = object()

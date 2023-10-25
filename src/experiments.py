@@ -65,7 +65,7 @@ class procedure():
 
 
     def multiDistance(self,x, read=False):
-        somaSize, bLen, bWid, papWid, bNum = x
+        somaSize, bLen, bWid, PAPWid, bNum = x
         dList = []
         cList = []
         vList = []
@@ -96,7 +96,7 @@ class procedure():
                         "somaSize": somaSize,
                         "mode": 0,
                         "bNum": int(bNum),
-                        "papWid": papWid,
+                        "PAPWid": PAPWid,
                         "Glu": True,
                         "initialKo": 5,
                         "kir2": 1e8,
@@ -149,7 +149,7 @@ class procedure():
                             somaSize=somaSize,
                             mode=0,
                             bNum=int(bNum),
-                            papWid=papWid,
+                            PAPWid=PAPWid,
                             initialKo=8.5,
                             Glu=True,
                         )
@@ -163,7 +163,7 @@ class procedure():
                             somaSize=somaSize,
                             mode=0,
                             bNum=int(bNum),
-                            papWid=papWid,
+                            PAPWid=PAPWid,
                             initialKo=8.5,
                             Glu=True,
                         )
@@ -193,7 +193,7 @@ class procedure():
                 if i == 0:
                     name = "soma"
                 else:
-                    name = "pap"
+                    name = "PAP"
                 ax.set_zlabel(f"Voltage Change{name}")
 
                 # Show the plot
@@ -208,9 +208,9 @@ class procedure():
 
 
     def measureRi(self,x):
-        somaSize, bLen, bWid, papWid, bNum = x
+        somaSize, bLen, bWid, PAPWid, bNum = x
         # Make a list for tested currents
-        cList = np.arange(-800, 1601, 400)
+        cList = np.arange(-800, 801, 400)
         vSomaList = []
         vPAPList = []
         for current in cList:
@@ -221,12 +221,13 @@ class procedure():
                 somaSize=somaSize,
                 mode=3,
                 bNum=int(bNum),
-                papWid=papWid,
+                PAPWid=PAPWid,
                 somaCheck=True,
             )
             simSoma.initialize()
             simSoma.run()
             vSomaList.append(list(simSoma.vSoma))
+            
             simPAP = PAPModel(
                 currentClamp=current,
                 bLen=bLen,
@@ -235,7 +236,7 @@ class procedure():
                 mode=3,
                 bNum=int(bNum),
                 somaCheck=False,
-                papWid=papWid,
+                PAPWid=PAPWid,
             )
             simPAP.initialize()
             simPAP.run()
@@ -252,16 +253,16 @@ class procedure():
         # plt.plot(eq(x,*somapopt),x)
         # plt.legend()
         # plt.show()
-        vList, papC = remove_nan_values([v[-1] for v in vPAPList], cList)
+        vList, PAPC = remove_nan_values([v[-1] for v in vPAPList], cList)
         if len(vList) > 1:
-            pappopt, pcov = curve_fit(eq, vList, papC)
-            print(f"{abs(1/pappopt[0])} MOhm")
+            PAPpopt, pcov = curve_fit(eq, vList, PAPC)
+            print(f"{abs(1/PAPpopt[0])} MOhm")
         else:
-            pappopt = [float("inf")]
+            PAPpopt = [float("inf")]
 
         return abs(1 / somapopt[0] - 2.6) + abs(
-            1 / pappopt[0] - 1050
-        )  # soma input resistance score
+            1 / PAPpopt[0] - 1050
+        )/105  # soma input resistance score
 
 
     def singleRun(self):
@@ -275,24 +276,35 @@ class procedure():
                 "mode": 0,
                 "bNum": 1,
                 "bLen": 80,
-                "papWid": 4.3e-4,
+                "PAPWid": 4.3e-4,
                 "Glu": True,
                 "kir2": 1e9,
             }
         )
         cells = PAPModel(**funcArgs[-1])
-        print(cells.branches)
-        # cells.setK()
         cells.initialize()
-        cells.setK(initialKo=8.5)
+        cells.setK(8.5)
         cells.run()
 
         cells = cells.copyAttr()
         AllCells = comm.gather(cells, root=0)
         if rank == 0:
             for cell in AllCells:
-                plt.plot(list(cells.time), list(cell.vPAP), label="PAP")
-                plt.plot(list(cells.time), list(cell.vSoma), label="Soma")
-                plt.title("time vs Vm")
-                plt.legend()
+                fig, ax = plt.subplots()
+                
+                ax.plot(list(cells.time), list(cell.KoPAP), label="PAP Ko")
+                ax.plot(list(cells.time), list(cell.KoSoma), label="Soma Ko")
+                ax.plot(list(cells.time), list(cell.KiPAP), label="PAP Ki")
+                ax.plot(list(cells.time), list(cell.KiSoma), label="Soma Ki")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('[K] (mM)')
+                ax.legend()
+
+                ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2.plot(list(cells.time), list(cell.vPAP), label="PAP")
+                ax2.plot(list(cells.time), list(cell.vSoma), label="Soma")
+                ax2.set_ylabel('Vm')
+                ax2.set_xlabel('time')
+                ax2.legend()
+                
             plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))

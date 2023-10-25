@@ -1,0 +1,120 @@
+objref nil
+
+strdef astro_name
+astro_name = "CA1"
+
+// clear morphology
+forall {
+    delete_section()
+}
+
+// construct morphology
+create branch
+branch {
+    L = 30
+    diam =  3
+    nseg = 10 
+}
+
+create soma
+soma {
+    L = 10
+    diam = 10
+    nseg = 1
+}
+
+soma connect branch(0),1
+
+create PAP
+PAP {
+    L = 8.4e-04
+    diam = 8.4e-04
+    nseg = 1
+}
+
+branch connect PAP(0),1
+
+// inserting membrane mechanisms
+forall {
+    Ra = 100
+    cm = 0.8
+    insert pas
+    e_pas = -85
+    g_pas = 1 /  11150
+    
+    insert kir2
+    insert twik
+    insert K_acc
+    insert kleak
+    insert kdifl
+}
+
+//initialize Ko
+proc initK(){local iki
+    iki = 70
+    
+    // set global Ki
+    ki0_k_ion = iki
+
+    
+    // set initial Ko Ki
+    forall {
+        ko = 2.5
+        ki = iki
+        ek = -90
+    }    
+}
+
+
+objref FinK
+FinK = new FInitializeHandler(3,"initK()")
+
+// Experimental manipulations
+proc setK(){
+    forsec "PAP" {
+        ko = $1
+    }
+}
+
+
+objref ic,vc,electrodeList
+electrodeList = new List()
+
+proc clampSwitch() {
+    if ($1 > 1) {
+        //------------current Clamp---------------------------
+        if ($1 > 2){
+            access soma
+            ic = new IClamp(0.5)
+        } else {
+            access PAP
+            ic = new IClamp(0.5)
+        }
+        ic.dur = tstop
+        ic.del = 0  // ms starts with glutamate
+        ic.amp = $2 * 0.001  // nA current injection (1 pA)
+        electrodeList.append(ic)
+        //---------------------------------------------------
+    } else if ($1 > 0) {
+        // voltage clamp
+        access PAP
+        vc = new VClamp(0.5)
+        vc.dur[0] = tstop
+        vc.amp[0] = $2  // mV depolarization (dV = 20)
+        electrodeList.append(vc)
+        //---------------------------------------------------
+        
+    } else {
+        // Pulse Current
+        access PAP
+        ic = new IClamp(0.5)
+        ic.dur = 0.002
+        ic.delay = 10  // ms starts with glutamate
+        ic.amp = $2 * 0.001  // nA current injection
+        electrodeList.append(ic)
+        //---------------------------------------------------
+    }
+}
+
+
+
