@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from classResults import ResultsPAPModel
-with open('resultsParallel.pickle','rb') as handle:
+with open('intermediaryData/resultsParallel.pickle','rb') as handle:
     results = pickle.load(handle)
     
 for i,res in enumerate(results):

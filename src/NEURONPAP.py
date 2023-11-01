@@ -36,16 +36,17 @@ def callExperimentMode(**kwargs):
         print(
             minimize(
                 exp.measureRi,
-                (20,  30,  2,  8e-04,1),
+                # (20,  30,  2,  8e-04,1),
+                (10,  10,  2, 1e-02 ,1),
                 method="Nelder-Mead",
-                bounds=[(1, None), (10, None), (1, None), (1e-10, None), (1, 50)],
+                bounds=[(1, None), (1, None), (1, None), (1e-10, None), (1, 1)],
                 options={"disp": True},
                 tol=0.00001,
             )
         )
     if "distance" in kwargs.keys() and kwargs["distance"]:
         # Plot for vatious distnace channel counts
-        exp.multiDistance([3, 30, 4.28, 4.3e-4, 1])
+        exp.multiDistance((7.671,  1.035e1,  2.07,  1.066e-10,1))
 
 
     

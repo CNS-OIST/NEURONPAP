@@ -19,6 +19,7 @@ class ResultsPAPModel():
         "KoSoma",
         "KiPAP",
         "KiSoma",
+        "ekPAP"
     ]
 
     def copyAttr(self):
