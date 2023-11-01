@@ -6,11 +6,11 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 1000
-    initTstop = 500
-    dt = 0.01  # not enabled
+    tstop = 100 * ms
+    initTstop = 2 * ms
+    dt = 0.001 * ms
     celsius = 37
-    v_init = -89
+    v_init = -89 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -46,7 +46,7 @@ class PAPModel(ResultsPAPModel):
             mode=2,
             somaCheck=False,
             Glu=False,
-            initialKo=2.5,
+            Ko=2.5,
             **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -84,9 +84,9 @@ class PAPModel(ResultsPAPModel):
 
         if readHoc:
             # subsitute
-            # - morphology
-            # - NMDA setting up
-            # - membrane properties
+            # [x] morphology
+            # [x] NMDA setting up
+            # [x] membrane properties
             
             h.load_file("stdgui.hoc")
             h('xopen("./neuronHoc/astrocyte.hoc")')
@@ -97,7 +97,7 @@ class PAPModel(ResultsPAPModel):
             h.PAP.L = self.PAPWid
 
             # set K parms
-            self.initialKo = 2.5
+            self.Ko = 2.5
 
             # match sections to self
             self.PAP = h.PAP
@@ -107,7 +107,7 @@ class PAPModel(ResultsPAPModel):
 
         else:
             # set K parms
-            self.initialKo = initialKo
+            self.Ko = Ko
 
             # Build Morphology
             self.morph()
@@ -136,7 +136,7 @@ class PAPModel(ResultsPAPModel):
             stim = h.NetStim(self.PAP(0.5))
             stim.interval = 1
             stim.number = 1
-            stim.start = 1 * ms
+            stim.start = (self.initTstop + 1) * ms
             stim.noise = 0
             self.NMDAs.append(self.nmda())
             if self.Glu:
@@ -159,6 +159,7 @@ class PAPModel(ResultsPAPModel):
             self.setK()
         h.finitialize(self.v_init)
         h.continuerun(self.initTstop * ms)
+        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP for local or global
         if saveState:
             s = h.SaveState()
             s.save()
@@ -222,6 +223,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
     def getRMP(self):
+        # decapreated
         self.initialize()
         self.run()
         RMP = sum(list(self.vSoma)) / len(list(self.vSoma))
@@ -234,7 +236,8 @@ class PAPModel(ResultsPAPModel):
         self.branches = []
         self.soma = None
         self.PAP = None
-        delattr(self, "GENEDict")
+        if hasattr(self,"GENEDict"):
+            delattr(self, "GENEDict")
 
     def astroMem(self, compartment):
         # add astrocyte properties
@@ -250,7 +253,6 @@ class PAPModel(ResultsPAPModel):
         compartment.insert("kir2")
         compartment.insert("twik")
         compartment.insert("K_acc")
-        compartment.insert("kleak")
         compartment.insert("kdifl")
 
     def morph(self, isolate=False, printTopology=False):
@@ -347,6 +349,13 @@ class PAPModel(ResultsPAPModel):
             self.vFile = h.File("vFile.dat")
             self.vFile.wopen("vFile.dat")
 
+        self.ekPAP = h.Vector()
+        self.ekPAP.record(self.PAP(0.5)._ref_ek)
+
+        if toFile:
+            self.ekFile = h.File("ekFile.dat")
+            self.ekFile.wopen("ekFile.dat")
+
         self.KoPAP = h.Vector()
         self.KoPAP.record(self.PAP(0.5)._ref_ko)
         self.KiPAP = h.Vector()
@@ -390,18 +399,19 @@ class PAPModel(ResultsPAPModel):
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
-    def setK(self, initialKo=None):
+    def setK(self, Ko=None,restKo=2.5):
+        if Ko == None:
+            Ko = self.Ko
+            
         if self.readHoc:
-            h.setK(initialKo)
+            h.setK(Ko,restKo)
         else:
-            if initialKo == None:
-                initialKo = self.initialKo
             h.init()  # quite important
             for sec in h.allsec():
                 # h.psection(sec=sec)
                 if sec == self.PAP:
                     for seg in sec:
-                        seg.ko = initialKo * mM
+                        seg.ko = Ko * mM
                     # print('set PAP Ko')
                 else:
                     for seg in sec:
@@ -411,6 +421,7 @@ class PAPModel(ResultsPAPModel):
             # print('Potassium Parms')
 
     def printRec(self):
+        #  need to update to fit new record function
         if hasattr(self, "iNMDA"):
             self.iNMDA.printf(self.iFile)
             self.iFile.close()
