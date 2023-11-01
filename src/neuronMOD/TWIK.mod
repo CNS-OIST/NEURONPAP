@@ -25,7 +25,7 @@ CONSTANT {
 	T = 273.16	(degC)
 	F = 9.6485e4	(coul)	: Faraday's constant (coulombs/mol)
 	R = 8.314	(J/degC): universal gas constant (joules/mol/K)
-	z = 1		()		: valency of K+
+	z = 1		(1)		: valency of K+
 }
     
 
@@ -42,7 +42,7 @@ PARAMETER {
 
 ASSIGNED {
     v 		(mV)
-    ik      (nA)
+    ik      (nA/um2)
     
     : Pkp (cm3/s)
     : vkp (mV)
@@ -66,7 +66,10 @@ INITIAL {
 BREAKPOINT {
     SOLVE state METHOD derivimplicit
     
-    ik = pow(n,powk) * Pkp(ko) * pow(F,2) * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / 1000
+    ik = pow(n,powk) * Pkp(ko) * pow(F,2) * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / (4e5)
+    : divided by estimated surface area Radulescu A. et al (2022)
+    : printf("ik:%g\n",ik)
+    
     : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
     : printf("exp:%g\n",exp(-z*v/vs))
     : ionMove()
@@ -97,3 +100,4 @@ FUNCTION Pkp(ko (mM)) (cm3/s){
 FUNCTION vkp(ko (mM)) (mV) {
     vkp = vzerokp - Skp * vs * log(ko/kob)    
 }
+

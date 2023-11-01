@@ -44,9 +44,9 @@ forall {
     
     insert kir2
     insert twik
-    insert K_acc
-    insert kleak
+    insert k_acc
     insert kdifl
+    ki0_kdifl = 70
 }
 
 //initialize Ko
@@ -62,7 +62,7 @@ proc initK(){local iki
         ko = 2.5
         ki = iki
         ek = -90
-    }    
+    }
 }
 
 
@@ -72,10 +72,15 @@ FinK = new FInitializeHandler(3,"initK()")
 // Experimental manipulations
 proc setK(){
     forsec "PAP" {
+        if ($2 > 2.5){
+            flag_k_acc = 1
+        } else {
+            flag_k_acc = 0
+        }
         ko = $1
+        ko0_k_acc = $2
     }
 }
-
 
 objref ic,vc,electrodeList
 electrodeList = new List()

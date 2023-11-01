@@ -7,6 +7,9 @@ import os
 import utils
 import numpy as np
 from utils import *
+from neuron import h, load_mechanisms
+from neuron.units import mM, mV, ms
+
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -78,7 +81,7 @@ class procedure():
             vPAPList = []
             if self.parallel:
                 # Calculate the number of iterations for all parm sets
-                iterations = comm.bcast(get_iter(501, 50, 201, 50), root=0)
+                iterations = comm.bcast(get_iter(501, 50, 101, 10), root=0)
 
                 # # Adjust the range for the last process
                 # Individual list for each rank
@@ -97,8 +100,7 @@ class procedure():
                         "mode": 0,
                         "bNum": int(bNum),
                         "PAPWid": PAPWid,
-                        "Glu": True,
-                        "initialKo": 5,
+                        "Ko": 5,
                         "kir2": 1e8,
                     }
                 )
@@ -109,8 +111,8 @@ class procedure():
                     [PAPModel],
                     funcArgs,
                     ["bLen", "multiple"],
-                    [["initialize", "setK", "run"]],
-                    [[{}, {"initialKo": 8.5}, {}]],
+                    [["initialize", "run"]],
+                    [[{}, {}]],
                 )
                 comm.Barrier()
                 if rank == 0:
@@ -121,11 +123,13 @@ class procedure():
                         dList.append(i)
                         cList.append(j)
                         for i, rIndi in enumerate(res):
+                            if i == 0:
+                                RMP =  rIndi.getRMP()
                             vSomaList.append(
-                                max(np.array(rIndi.vSoma) - rIndi.getRMP(), key=abs)
+                                max(np.array(rIndi.vSoma))
                             )
                             vPAPList.append(
-                                max(np.array(rIndi.vPAP) - rIndi.getRMP(), key=abs)
+                                max(np.array(rIndi.vPAP))
                             )
                             # if index == 0:
                             #     print(plt.plot(np.array(rIndi.vPAP)))
@@ -150,7 +154,7 @@ class procedure():
                             mode=0,
                             bNum=int(bNum),
                             PAPWid=PAPWid,
-                            initialKo=8.5,
+                            Ko=8.5,
                             Glu=True,
                         )
                         sim.run()
@@ -164,7 +168,7 @@ class procedure():
                             mode=0,
                             bNum=int(bNum),
                             PAPWid=PAPWid,
-                            initialKo=8.5,
+                            Ko=8.5,
                             Glu=True,
                         )
                         sim.run()
@@ -210,34 +214,30 @@ class procedure():
     def measureRi(self,x):
         somaSize, bLen, bWid, PAPWid, bNum = x
         # Make a list for tested currents
-        cList = np.arange(-800, 801, 400)
+        cList = np.arange(-80, 81, 20)
         vSomaList = []
         vPAPList = []
+        funcArgs = []
         for current in cList:
-            simSoma = PAPModel(
-                currentClamp=current,
-                bLen=bLen,
-                bWid=bWid,
-                somaSize=somaSize,
-                mode=3,
-                bNum=int(bNum),
-                PAPWid=PAPWid,
-                somaCheck=True,
+            funcArgs.append(
+                {
+                    'currentClamp':current,
+                    'bLen':bLen,
+                    'bWid':bWid,
+                    'somaSize':somaSize,
+                    'mode':3,
+                    'bNum':int(bNum),
+                    'PAPWid':PAPWid,
+                    'somaCheck':True,
+                }
             )
+            simSoma = PAPModel(**funcArgs[-1])
             simSoma.initialize()
             simSoma.run()
             vSomaList.append(list(simSoma.vSoma))
-            
-            simPAP = PAPModel(
-                currentClamp=current,
-                bLen=bLen,
-                bWid=bWid,
-                somaSize=somaSize,
-                mode=3,
-                bNum=int(bNum),
-                somaCheck=False,
-                PAPWid=PAPWid,
-            )
+
+            funcArgs[-1]['somaCheck'] = False
+            simPAP = PAPModel(**funcArgs[-1])
             simPAP.initialize()
             simPAP.run()
             vPAPList.append(list(simPAP.vPAP))
@@ -245,8 +245,8 @@ class procedure():
 
         vList, somaC = remove_nan_values([v[-1] for v in vSomaList], cList)
         if len(vList) > 1:
-            somapopt, pcov = curve_fit(eq, vList, somaC)
-            print(f"{abs(1/somapopt[0])} MOhm")
+            somapopt, pcov = curve_fit(eq, somaC,vList)
+            print(f"{abs(somapopt[0])} MOhm")
         else:
             somapopt = [float("inf")]
         # x = np.linspace(-600,600)
@@ -255,36 +255,37 @@ class procedure():
         # plt.show()
         vList, PAPC = remove_nan_values([v[-1] for v in vPAPList], cList)
         if len(vList) > 1:
-            PAPpopt, pcov = curve_fit(eq, vList, PAPC)
-            print(f"{abs(1/PAPpopt[0])} MOhm")
+            PAPpopt, pcov = curve_fit(eq, PAPC,vList)
+            print(f"{abs(PAPpopt[0])} MOhm")
         else:
             PAPpopt = [float("inf")]
 
-        return abs(1 / somapopt[0] - 2.6) + abs(
+        return abs(1 / somapopt[0] - 2.6)*0.1/2.6 + abs(
             1 / PAPpopt[0] - 1050
-        )/105  # soma input resistance score
+        )*0.9/1050  # soma input resistance score
 
 
     def singleRun(self):
-        # single run
-        funcArgs = []
-        funcArgs.append(
-            {
-                "currentClamp": 20,
-                "bWid": 4.28,
-                "somaSize": 3,
-                "mode": 0,
-                "bNum": 1,
-                "bLen": 80,
-                "PAPWid": 4.3e-4,
-                "Glu": True,
-                "kir2": 1e9,
-            }
-        )
-        cells = PAPModel(**funcArgs[-1])
-        cells.initialize()
-        cells.setK(8.5)
-        cells.run()
+
+        for i in range(1):
+            # single run
+            funcArgs = []
+            funcArgs.append(
+                {
+                    "bWid": 7.67,
+                    "somaSize": 10.35,
+                    "mode": 0,
+                    "bLen": 10,
+                    "PAPWid": 1.0e-10,
+                    "kir2":1e9
+                }
+            )
+            cells = PAPModel(**funcArgs[-1])
+            cells.initialize()
+            cells.setK(8.5,8.5)
+            h.continuerun(10 *ms)
+            cells.setK(8.5,2.5)
+            cells.run()
 
         cells = cells.copyAttr()
         AllCells = comm.gather(cells, root=0)
@@ -292,10 +293,10 @@ class procedure():
             for cell in AllCells:
                 fig, ax = plt.subplots()
                 
-                ax.plot(list(cells.time), list(cell.KoPAP), label="PAP Ko")
-                ax.plot(list(cells.time), list(cell.KoSoma), label="Soma Ko")
-                ax.plot(list(cells.time), list(cell.KiPAP), label="PAP Ki")
-                ax.plot(list(cells.time), list(cell.KiSoma), label="Soma Ki")
+                ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
+                ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
+                ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('[K] (mM)')
                 ax.legend()
@@ -307,4 +308,23 @@ class procedure():
                 ax2.set_xlabel('time')
                 ax2.legend()
                 
-            plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))
+                plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))
+
+                plt.cla()
+                plt.clf()
+                fig, ax = plt.subplots()
+                
+                ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
+                ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
+                ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('[K] (mM)')
+                ax.legend()
+
+                ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2.plot(list(cells.time), list(cell.ekPAP))
+                ax2.set_ylabel('ek')
+                ax2.set_xlabel('time')
+                
+                plt.savefig(os.path.join('../results/codeSortTest','ekPlot.pdf'))
+            
