@@ -282,9 +282,7 @@ class procedure():
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(8.5,8.5)
-            h.continuerun(10 *ms)
-            cells.setK(8.5,2.5)
+            cells.setK(8.5, mode='step')
             cells.run()
 
         cells = cells.copyAttr()

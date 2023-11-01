@@ -6,7 +6,7 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 100 * ms
+    tstop = 1000 * ms
     initTstop = 2 * ms
     dt = 0.001 * ms
     celsius = 37
@@ -399,25 +399,32 @@ class PAPModel(ResultsPAPModel):
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
-    def setK(self, Ko=None,restKo=2.5):
+    def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500):
         if Ko == None:
             Ko = self.Ko
-            
-        if self.readHoc:
-            h.setK(Ko,restKo)
-        else:
-            h.init()  # quite important
-            for sec in h.allsec():
-                # h.psection(sec=sec)
-                if sec == self.PAP:
-                    for seg in sec:
-                        seg.ko = Ko * mM
-                    # print('set PAP Ko')
-                else:
-                    for seg in sec:
-                        seg.ko = self.defaultKo * mM
 
-                sec.ek = -90 * mV
+        if self.readHoc:
+            if mode == 'pulse':
+                h.setK(Ko,restKo)
+            if mode == 'step':
+                h.setK(Ko,Ko)
+                h.continuerun(dur *ms)
+                h.setK(Ko,restKo)
+
+        else:
+            if mode == 'pulse':
+                h.init()  # quite important
+                for sec in h.allsec():
+                    # h.psection(sec=sec)
+                    if sec == self.PAP:
+                        for seg in sec:
+                            seg.ko = Ko * mM
+                        # print('set PAP Ko')
+                    else:
+                        for seg in sec:
+                            seg.ko = self.defaultKo * mM
+
+                    sec.ek = -90 * mV
             # print('Potassium Parms')
 
     def printRec(self):
