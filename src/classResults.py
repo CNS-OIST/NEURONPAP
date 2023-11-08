@@ -23,12 +23,22 @@ class ResultsPAPModel():
         "ekPAP"
     ]
 
+    dont_copy = [
+        "PAP",
+        "soma",
+        "branches",
+        "branch",
+        "NMDAs",
+        "NCs"
+        ]
+
     def copyAttr(self):
         newInstance = ResultsPAPModel()
         newInstance.__dict__ = {
             attr: copy.deepcopy(self.__dict__[attr])
+            # print(attr)
             for attr in self.__dict__
-            if attr in self.to_be_copied
+            if attr not in self.dont_copy
         }
         return newInstance
 
