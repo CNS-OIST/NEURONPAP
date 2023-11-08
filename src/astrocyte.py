@@ -6,11 +6,11 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 1000 * ms
-    initTstop = 2 * ms
+    tstop = 60 * ms
+    initTstop = 50 * ms
     dt = 0.001 * ms
     celsius = 37
-    v_init = -89 * mV
+    v_init = -85 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -114,30 +114,32 @@ class PAPModel(ResultsPAPModel):
             # print('built morphology')
             # sys.stdout.flush()
 
+        # NMDA setup
         self.Glu = Glu
-        h.FInitializeHandler(3,self.setNMDAs)
-
         for sec in h.allsec():
             if not hasattr(self, "GENEDict"):
                 GENExpression(sec, kwargs)
                 self.GENEDict = kwargs
         # print('set GENE manipulation')
-        self.record()
 
-    def setNMDAs(self):
+    def initNMDAs(self):
         if self.readParms:
             self.readParameters()  # readfile in parallel causes errors
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
             self.NCs = []
+            
+    def setNMDAs(self):
+        self.initNMDAs()
+        # Create the synaptic NMDA conductance
+        stim = h.NetStim(h.PAP(0.5))
+        stim.interval = 1
+        stim.number = 1
+        stim.start = (self.initTstop + 1) * ms
+        stim.noise = 0
 
+        # print(range(self.multiple - len(self.NMDAs)))
         for i in range(self.multiple - len(self.NMDAs)):
-            # Create the synaptic NMDA conductance
-            stim = h.NetStim(self.PAP(0.5))
-            stim.interval = 1
-            stim.number = 1
-            stim.start = (self.initTstop + 1) * ms
-            stim.noise = 0
             self.NMDAs.append(self.nmda())
             if self.Glu:
                 self.NCs.append(
@@ -145,9 +147,11 @@ class PAPModel(ResultsPAPModel):
                 )  # Must be in outer later with python address allocated
                 self.NCs[-1].weight[0] = self.SynWeight
                 self.NCs[-1].delay = 0
+        
+                
 
-            # print('placed NMDAR')
-            # sys.stdout.flush()
+        # print('placed NMDAR')
+        # sys.stdout.flush()
         # print('initialized')
         # sys.stdout.flush()
 
@@ -157,7 +161,12 @@ class PAPModel(ResultsPAPModel):
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
+        self.setNMDAs()
+        self.record(sNMDA=self.NMDAs[-1])
         h.finitialize(self.v_init)
+        h.fcurrent()
+
+        
         h.continuerun(self.initTstop * ms)
         self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP for local or global
         if saveState:
@@ -314,7 +323,8 @@ class PAPModel(ResultsPAPModel):
         self.SynWeight = lines[0]
 
     def nmda(self):
-        sNMDA = h.Exp5NMDA(self.PAP(0.5))
+        sNMDA = h.Exp5NMDA(h.PAP(0.5))
+
         if self.readParms:
             # load files if parameters are read
             sNMDA.tau2_0 = self.Tau2_0
@@ -328,6 +338,7 @@ class PAPModel(ResultsPAPModel):
         return sNMDA
 
     def record(self, sNMDA=None, toFile=False):
+        h.frecord_init()
         # Save Stuff
         if sNMDA != None:
             self.iNMDA = h.Vector()
@@ -381,6 +392,13 @@ class PAPModel(ResultsPAPModel):
             if toFile:
                 self.iKFileSoma = h.File("iKFileSoma.dat")
                 self.iKFileSoma.wopen("iKFileSoma.dat")
+
+            self.iKPAP = h.Vector()
+            self.iKPAP.record(self.PAP(0.5)._ref_ik)
+
+            if toFile:
+                self.iKFilePAP = h.File("iKFilePAP.dat")
+                self.iKFilePAP.wopen("iKFilePAP.dat")
 
             self.KoSoma = h.Vector()
             self.KoSoma.record(self.soma(0.5)._ref_ko)

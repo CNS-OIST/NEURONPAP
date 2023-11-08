@@ -39,7 +39,7 @@ def callExperimentMode(**kwargs):
                 # (20,  30,  2,  8e-04,1),
                 (10,  10,  2, 1e-02 ,1),
                 method="Nelder-Mead",
-                bounds=[(1, None), (1, None), (1, None), (1e-10, None), (1, 1)],
+                bounds=[(1, None), (1, None), (1, None), (1e-20, None), (1, 1)],
                 options={"disp": True},
                 tol=0.00001,
             )

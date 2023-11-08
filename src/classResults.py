@@ -9,6 +9,7 @@ class ResultsPAPModel():
         "iNMDA",
         "iMem",
         "iKSoma",
+        "iKPAP",
         "time",
         "bLen",
         "somaSize",

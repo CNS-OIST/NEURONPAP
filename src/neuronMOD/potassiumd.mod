@@ -31,7 +31,7 @@ INITIAL {
 }
 PARAMETER {
     ki0 = 110 (mM)
-	Dk = 1.96 (micron2/ms)
+	Dk = 0.6 (micron2/ms)
 	iextra = 0 (milliamp/cm2)
 	
 }
@@ -55,6 +55,6 @@ KINETIC conc {
 	COMPARTMENT PI*diam*diam/4 {ka}
 	LONGITUDINAL_DIFFUSION Dk*diam*diam*PI/4 {ka}
 	: LONGITUDINAL_DIFFUSION Dk {ka}
-	~ ka << (-(ik-iextra)/(FARADAY)*PI*diam)
+	~ ka << (-(ik-iextra)/(FARADAY)*PI*diam*(1e4))
 	ki = ka
 }

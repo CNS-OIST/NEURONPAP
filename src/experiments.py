@@ -277,14 +277,17 @@ class procedure():
                     "mode": 0,
                     "bLen": 10,
                     "PAPWid": 1.0e-10,
-                    "kir2":1e9
+                    "kir2":1,
+                    "Glu":True,
+                    "multiple":100
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(8.5, mode='step')
+            # cells.setK(8.5,mode='step',dur=4)
             cells.run()
-
+            # initStep = int(cells.initTstop / cells.dt)
+        initStep=0
         cells = cells.copyAttr()
         AllCells = comm.gather(cells, root=0)
         if rank == 0:
@@ -300,8 +303,12 @@ class procedure():
                 ax.legend()
 
                 ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
-                ax2.plot(list(cells.time), list(cell.vPAP), label="PAP")
-                ax2.plot(list(cells.time), list(cell.vSoma), label="Soma")
+                ax2.plot(list(cells.time)[initStep:],
+                         list(cell.vPAP)[initStep:],
+                         label="PAP")
+                ax2.plot(list(cells.time)[initStep:],
+                         list(cell.vSoma)[initStep:],
+                         label="Soma")
                 ax2.set_ylabel('Vm')
                 ax2.set_xlabel('time')
                 ax2.legend()
@@ -325,4 +332,23 @@ class procedure():
                 ax2.set_xlabel('time')
                 
                 plt.savefig(os.path.join('../results/codeSortTest','ekPlot.pdf'))
-            
+
+                plt.cla()
+                plt.clf()
+                fig, ax = plt.subplots()
+                
+                ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
+                ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
+                ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
+                ax.plot(list(cell.time), list(cell.iMem), label="iMem")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('Currents (nA)')
+                ax.legend()
+
+                ax2 = ax.inset_axes([0.6, 0.2, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2.plot(list(cells.time), list(cell.vPAP),color='orange')
+                ax2.set_ylabel('Vm')
+                ax2.set_xlabel('time')
+                
+                plt.savefig(os.path.join('../results/codeSortTest','ikPlot.pdf'))
+

@@ -83,7 +83,8 @@ PARAMETER {
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
 	delta = 0.8	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95 (0.8)
 : The Parameter Controls Ohm haw in NMDAR
-	e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
+e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
+multiple = 1 (1) : increases channelconductance
 }
 
 CONSTANT {
@@ -145,8 +146,9 @@ BREAKPOINT {
 	: we found acceptable results with "runge" integration method
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
-
-	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+        
+	i = (wtau3*C + wtau2*B - A)*multiple * (gVI + gVD)*Mgblock(v)*(v - e)
+        : multiple linear assumption as the models is fit to a single channel conductance
 }
 
 DERIVATIVE state {

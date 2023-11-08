@@ -44,14 +44,15 @@ forall {
     
     insert kir2
     insert twik
+    // insert kleak
     insert k_acc
     insert kdifl
-    ki0_kdifl = 70
+    ki0_kdifl = 110
 }
 
 //initialize Ko
 proc initK(){local iki
-    iki = 70
+    iki = 110
     
     // set global Ki
     ki0_k_ion = iki
@@ -67,7 +68,7 @@ proc initK(){local iki
 
 
 objref FinK
-FinK = new FInitializeHandler(3,"initK()")
+FinK = new FInitializeHandler(1,"initK()")
 
 // Experimental manipulations
 proc setK(){
