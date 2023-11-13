@@ -31,7 +31,7 @@ UNITS {
 
 PARAMETER {
 	v 		(mV)
-	gkbar  = 5e-11	(S) 	: 50 single channel conductance Yang et al 2000 
+	gkbar  = 5e-11	(S) 	: 50 pS single channel conductance Yang et al 2000 
 
 	: Boltzman steady state curve	
         vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
@@ -53,7 +53,7 @@ PARAMETER {
 NEURON {
 	SUFFIX kir2 			
 	USEION k READ ek,ko WRITE ik	
-        RANGE  ik, gkbar, vhalfl, kl, vhalft, at, bt, q10 
+        RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10 
         GLOBAL linf,taul
         
         THREADSAFE
