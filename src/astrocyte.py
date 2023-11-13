@@ -6,7 +6,7 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 100 * ms
+    tstop = 200 * ms
     initTstop = 50 * ms
     dt = 0.001 * ms
     celsius = 37
@@ -432,7 +432,7 @@ class PAPModel(ResultsPAPModel):
                 h.setK(Ko,restKo)
             if mode == 'step':
                 h.setK(Ko,Ko)
-                h.continuerun(dur *ms)
+                h.continuerun(dur * ms + h.t)
                 h.setK(Ko,restKo)
 
         else:

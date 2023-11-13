@@ -24,7 +24,15 @@ def argParser(rangeInt=100):
         action="store_true",
         default=False,
         help="measure input Resistance",
-    )  
+    )
+    parser.add_argument(
+        "-o",
+        "--optimize",
+        dest="Optimize",
+        action="store_true",
+        default=False,
+        help="flag for optimization (works with input Resistance Flag"
+    )
 
     parser.add_argument(
         "-s",

@@ -272,11 +272,11 @@ class procedure():
             funcArgs = []
             funcArgs.append(
                 {
-                    "bWid": 7.67,
-                    "somaSize": 10.35,
+                    "bWid": 2,
+                    "somaSize": 10,
                     "mode": 0,
                     "bLen": 10,
-                    "PAPWid": 1.0e-10,
+                    "PAPWid": 1.3,
                     "kir2":1,
                     "Glu":True,
                     "multiple":100,
@@ -285,7 +285,7 @@ class procedure():
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(10,mode='step',dur=20)
+            cells.setK(Ko=8.5,mode='step',dur=10)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
