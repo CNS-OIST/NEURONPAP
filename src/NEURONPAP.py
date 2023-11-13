@@ -48,6 +48,10 @@ def callExperimentMode(**kwargs):
         # Plot for vatious distnace channel counts
         exp.multiDistance((7.671,  1.035e1,  2.07,  1.066e-10,1))
 
+    if "nonhoc" in kwargs.keys() and kwargs["nonhoc"]:
+        # Plot for vatious distnace channel counts
+        exp.singleRun(readHoc=False)
+        
 
     
 if __name__ == "__main__" or parallel:

@@ -265,7 +265,7 @@ class procedure():
         )*0.9/1050  # soma input resistance score
 
 
-    def singleRun(self):
+    def singleRun(self,readHoc=True):
 
         for i in range(1):
             # single run
@@ -279,12 +279,13 @@ class procedure():
                     "PAPWid": 1.0e-10,
                     "kir2":1,
                     "Glu":True,
-                    "multiple":100
+                    "multiple":100,
+                    "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            # cells.setK(8.5,mode='step',dur=4)
+            cells.setK(10,mode='step',dur=20)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
@@ -340,7 +341,8 @@ class procedure():
                 ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
                 ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
-                ax.plot(list(cell.time), list(cell.iMem), label="iMem")
+                ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
+                ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('Currents (nA)')
                 ax.legend()

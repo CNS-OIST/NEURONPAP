@@ -34,6 +34,14 @@ def argParser(rangeInt=100):
         default=False,
         help="Used to run a single simulation",
     )
+    parser.add_argument(
+        "-n",
+        "--nonhoc",
+        dest="nonhoc",
+        action="store_true",
+        default=False,
+        help="Used to run a single simulation in nonhoc",
+    )
      
     parser.add_argument(
         "-d",

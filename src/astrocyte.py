@@ -6,7 +6,7 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 60 * ms
+    tstop = 100 * ms
     initTstop = 50 * ms
     dt = 0.001 * ms
     celsius = 37
@@ -132,7 +132,7 @@ class PAPModel(ResultsPAPModel):
     def setNMDAs(self):
         self.initNMDAs()
         # Create the synaptic NMDA conductance
-        stim = h.NetStim(h.PAP(0.5))
+        stim = h.NetStim(self.PAP(0.5))
         stim.interval = 1
         stim.number = 1
         stim.start = (self.initTstop + 1) * ms
@@ -261,7 +261,7 @@ class PAPModel(ResultsPAPModel):
         # insert relevant channels
         compartment.insert("kir2")
         compartment.insert("twik")
-        compartment.insert("K_acc")
+        compartment.insert("k_acc")
         compartment.insert("kdifl")
 
     def morph(self, isolate=False, printTopology=False):
@@ -323,7 +323,7 @@ class PAPModel(ResultsPAPModel):
         self.SynWeight = lines[0]
 
     def nmda(self):
-        sNMDA = h.Exp5NMDA(h.PAP(0.5))
+        sNMDA = h.Exp5NMDA(self.PAP(0.5))
 
         if self.readParms:
             # load files if parameters are read
@@ -347,8 +347,8 @@ class PAPModel(ResultsPAPModel):
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
 
-        self.iMem = h.Vector()
-        self.iMem.record(self.PAP(0.5)._ref_i_pas)
+        self.iMemPAP = h.Vector()
+        self.iMemPAP.record(self.PAP(0.5)._ref_i_pas)
         if toFile:
             self.iFileMem = h.File("iFileMem.dat")
             self.iFileMem.wopen("iFileMem.dat")
@@ -372,11 +372,20 @@ class PAPModel(ResultsPAPModel):
         self.KiPAP = h.Vector()
         self.KiPAP.record(self.PAP(0.5)._ref_ki)
 
+        
         if toFile:
             self.KoFile = h.File("KoFile.dat")
             self.KoFile.wopen("KoFile.dat")
             self.KiFile = h.File("KiFile.dat")
             self.KiFile.wopen("KiFile.dat")
+
+        self.iKPAP = h.Vector()
+        self.iKPAP.record(self.PAP(0.5)._ref_ik)
+
+
+        if toFile:
+            self.iKFilePAP = h.File("iKFilePAP.dat")
+            self.iKFilePAP.wopen("iKFilePAP.dat")
 
         if hasattr(self, "soma"):
             self.vSoma = h.Vector()
@@ -393,12 +402,9 @@ class PAPModel(ResultsPAPModel):
                 self.iKFileSoma = h.File("iKFileSoma.dat")
                 self.iKFileSoma.wopen("iKFileSoma.dat")
 
-            self.iKPAP = h.Vector()
-            self.iKPAP.record(self.PAP(0.5)._ref_ik)
+            self.iMemSoma = h.Vector()
+            self.iMemSoma.record(self.soma(0.5)._ref_i_pas)
 
-            if toFile:
-                self.iKFilePAP = h.File("iKFilePAP.dat")
-                self.iKFilePAP.wopen("iKFilePAP.dat")
 
             self.KoSoma = h.Vector()
             self.KoSoma.record(self.soma(0.5)._ref_ko)
