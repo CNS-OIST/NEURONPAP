@@ -46,8 +46,9 @@ forall {
     insert twik
     // insert kleak
     insert k_acc
-    insert kdifl
-    ki0_kdifl = 110
+    // insert kdifl
+    // ki0_kdifl = 110
+    psection()
 }
 
 //initialize Ko
