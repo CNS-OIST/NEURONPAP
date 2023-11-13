@@ -277,15 +277,15 @@ class procedure():
                     "mode": 0,
                     "bLen": 10,
                     "PAPWid": 1.3,
-                    "kir2":1,
+                    "kir2":100,
                     "Glu":True,
-                    "multiple":100,
+                    "multiple":5,
                     "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(Ko=8.5,mode='step',dur=10)
+            cells.setK(Ko=8.5,mode='step',dur=50)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0

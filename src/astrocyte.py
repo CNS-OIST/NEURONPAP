@@ -125,21 +125,31 @@ class PAPModel(ResultsPAPModel):
     def initNMDAs(self):
         if self.readParms:
             self.readParameters()  # readfile in parallel causes errors
+            
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
             self.NCs = []
             
     def setNMDAs(self):
         self.initNMDAs()
-        # Create the synaptic NMDA conductance
-        stim = h.NetStim(self.PAP(0.5))
-        stim.interval = 1
-        stim.number = 1
-        stim.start = (self.initTstop + 1) * ms
-        stim.noise = 0
+        if self.readHoc:
+            self.NMDAs.append(h.sNMDA)
+            self.NCs.append(h.nc)
+            h.stim.start = self.initTstop * ms + h.dt
+            h.nc.weight[0] = self.SynWeight
+            if self.Glu:
+                h.sNMDA.multiple = self.multiple
+            else:
+                h.sNMDA.multiple = 0
+        else:            
+            # Create the synaptic NMDA conductance
+            stim = h.NetStim(self.PAP(0.5))
+            stim.interval = 1
+            stim.number = 1
+            stim.start = (self.initTstop + 1) * ms
+            stim.noise = 0
 
-        # print(range(self.multiple - len(self.NMDAs)))
-        for i in range(self.multiple - len(self.NMDAs)):
+            # print(range(self.multiple - len(self.NMDAs)))
             self.NMDAs.append(self.nmda())
             if self.Glu:
                 self.NCs.append(
@@ -334,6 +344,7 @@ class PAPModel(ResultsPAPModel):
             sNMDA.a3 = self.A3
             sNMDA.b3 = self.B3
             sNMDA.delta = self.DELTA
+            sNMDA.multiple = self.multiple
 
         return sNMDA
 

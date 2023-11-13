@@ -19,7 +19,7 @@ ENDCOMMENT
 NEURON {
 	POINT_PROCESS Exp5NMDA 
 	NONSPECIFIC_CURRENT i
-	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1
+	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1, multiple
 	GLOBAL inf, tau2, tau3
 	THREADSAFE
 }
@@ -147,7 +147,7 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         
-	i = (wtau3*C + wtau2*B - A)*multiple * (gVI + gVD)*Mgblock(v)*(v - e)
+	i = (wtau3*C + wtau2*B - A) *multiple * (gVI + gVD)*Mgblock(v)*(v - e)
         : multiple linear assumption as the models is fit to a single channel conductance
 }
 
