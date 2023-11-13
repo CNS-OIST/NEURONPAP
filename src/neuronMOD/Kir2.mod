@@ -31,7 +31,7 @@ UNITS {
 
 PARAMETER {
 	v 		(mV)
-	gkbar  = 1e-9	(S/cm2) 	: 50 pS/0.05 cm2 single channel conductance Yang et al 2000 
+	gkbar  = 5e-11	(S) 	: 50 single channel conductance Yang et al 2000 
 
 	: Boltzman steady state curve	
         vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
