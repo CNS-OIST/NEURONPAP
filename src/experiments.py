@@ -17,41 +17,6 @@ rank = comm.Get_rank()
 
 
 class procedure():
-    
-    def measureCond(self,fName):
-        if not os.path.isfile(os.path.join('intermediaryData',f"{fName}.pickle")):
-            voltList = np.arange(0, 100, 5)
-            IV = {}
-            IVslow = {}
-            IVfast = {}
-            for volt in voltList:
-                print(volt)
-                iS, iF = PAPModel(volt)
-                IVslow[volt] = iS
-                IVfast[volt] = iF
-                print(iS, iF)
-            IV["slow"] = IVslow
-            IV["fast"] = IVfast
-            with open(os.path.join('intermediaryData',f"{fName}.pickle"), "wb") as handle:
-                pickle.dump(IV, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        else:
-            with open(os.path.join('intermediaryData',f"{fName}.pickle"), "rb") as handle:
-                IV = pickle.load(handle)
-
-        for mode in IV.keys():
-            print(mode)
-            plt.cla()
-            plt.clf()
-            I = list(IV[mode].values())
-            V = list(IV[mode].keys())
-            popt, pcov = curve_fit(eq, V, I)
-            x = np.linspace(-40, 100, 50)
-            print(popt)
-            plt.plot(V, I, label="model")
-            plt.plot(x, eq(x, *popt), label=f"{popt[0]}x+{popt[1]}")
-            plt.legend()
-            plt.savefigf(os.path.join('../results/codeSortTest',"{fName}{mode}.pdf"))
-
 
     def multiChannel(self,itr=100):
         dList = []
@@ -228,7 +193,9 @@ class procedure():
                     'mode':3,
                     'bNum':int(bNum),
                     'PAPWid':PAPWid,
+                    'readHoc':True,
                     'somaCheck':True,
+                    'Glu':False                    
                 }
             )
             simSoma = PAPModel(**funcArgs[-1])
@@ -242,7 +209,6 @@ class procedure():
             simPAP.run()
             vPAPList.append(list(simPAP.vPAP))
             # plt.plot(np.array(range(len(vSomaList[-1])))*PAPModel.dt,vSomaList[-1],label=f'{current} pA')
-
         vList, somaC = remove_nan_values([v[-1] for v in vSomaList], cList)
         if len(vList) > 1:
             somapopt, pcov = curve_fit(eq, somaC,vList)
@@ -260,8 +226,8 @@ class procedure():
         else:
             PAPpopt = [float("inf")]
 
-        return abs(1 / somapopt[0] - 2.6)*0.1/2.6 + abs(
-            1 / PAPpopt[0] - 1050
+        return abs(somapopt[0] - 2.6)*0.1/2.6 + abs(
+            PAPpopt[0] - 1050
         )*0.9/1050  # soma input resistance score
 
 
@@ -272,20 +238,26 @@ class procedure():
             funcArgs = []
             funcArgs.append(
                 {
+                    # 'currentClamp':20,
+                    # 'voltageClamp':20,
+                    # 'mode':0,
+                    'bNum':1,
+                    'readHoc':True,
+                    # 'somaCheck':True,
+                    # 'Glu':False,
                     "bWid": 2,
                     "somaSize": 10,
-                    "mode": 0,
                     "bLen": 10,
                     "PAPWid": 1.3,
-                    "kir2":100,
-                    "Glu":True,
-                    "multiple":5,
-                    "readHoc":readHoc
+                    # "kir2":100,
+                    # "Glu":True,
+                    # "multiple":5,
+                    # "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(Ko=8.5,mode='step',dur=50)
+            # cells.setK(Ko=8.5,mode='step',dur=50)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
@@ -340,7 +312,8 @@ class procedure():
                 
                 ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
-                ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
+                if cell.Glu:
+                    ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
                 ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
                 ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel('time (ms)')

@@ -136,6 +136,7 @@ class PAPModel(ResultsPAPModel):
             self.NMDAs.append(h.sNMDA)
             self.NCs.append(h.nc)
             h.stim.start = self.initTstop * ms + h.dt
+            h.stim.number = 1
             h.nc.weight[0] = self.SynWeight
             if self.Glu:
                 h.sNMDA.multiple = self.multiple
@@ -160,10 +161,6 @@ class PAPModel(ResultsPAPModel):
         
                 
 
-        # print('placed NMDAR')
-        # sys.stdout.flush()
-        # print('initialized')
-        # sys.stdout.flush()
 
     def initialize(self, saveState=False):
         # print('initializing')
@@ -171,10 +168,19 @@ class PAPModel(ResultsPAPModel):
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
-        self.setNMDAs()
-        self.record(sNMDA=self.NMDAs[-1])
+        if self.Glu:
+            self.setNMDAs()
+            # print('placed NMDAR')
+            # sys.stdout.flush()        
+            self.record(sNMDA=self.NMDAs[-1])
+        else:
+            self.record()
+        # print('setup Record')
+        # sys.stdout.flush()
         h.finitialize(self.v_init)
         h.fcurrent()
+        # print('initialized')
+        # sys.stdout.flush()
 
         
         h.continuerun(self.initTstop * ms)
@@ -191,15 +197,16 @@ class PAPModel(ResultsPAPModel):
             if self.mode > 2:
                 if self.somaCheck:
                     h.clampSwitch(3,self.currentClamp)
+                    h.ic.delay = initTstop
                 else:
                     h.clampSwitch(2,self.currentClamp)
+                    h.ic.delay = initTstop
                     
             elif self.mode >1:
                 h.clampSwitch(1,self.voltageClamp)
 
             elif self.mode>0:
                 h.clampSwitch(0,self.currentClamp)
-                    
 
         else:
             if self.mode > 2:

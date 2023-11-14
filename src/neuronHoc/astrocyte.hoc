@@ -48,28 +48,30 @@ forall {
     insert k_acc
     // insert kdifl
     // ki0_kdifl = 110
-    psection()
 }
 
 // inserting NMDARs
 objref sNMDA, stim, nc
 stim = new NetStim(.5)
 stim.interval = 1
-stim.number = 1
+stim.number = 0
 stim.start = 0
 stim.noise = 0
+
 PAP {sNMDA = new Exp5NMDA(0.5)}
 nc = new NetCon(stim,sNMDA)
+nc.weight = 0
+nc.delay = 0
 
-proc init_NMDA() {
-    //args
-    // weight
-    // multiple
+// proc init_NMDA() {
+//     //args
+//     // weight
+//     // multiple
     
-    nc.weight = $1
-    nc.delay = 0
-    sNMDA.multiple = $2
-}
+//     nc.weight = $1
+//     nc.delay = 0
+//     sNMDA.multiple = $2
+// }
 
 //initialize Ko
 proc initK(){local iki
