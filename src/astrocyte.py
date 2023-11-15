@@ -43,7 +43,7 @@ class PAPModel(ResultsPAPModel):
             somaSize=10,
             currentClamp=2,
             multiple=1,
-            mode=2,
+            mode=0,
             somaCheck=False,
             Glu=False,
             Ko=2.5,
@@ -129,6 +129,8 @@ class PAPModel(ResultsPAPModel):
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
             self.NCs = []
+        if self.readHoc:
+            h.insrtNMDA()
             
     def setNMDAs(self):
         self.initNMDAs()
@@ -197,10 +199,10 @@ class PAPModel(ResultsPAPModel):
             if self.mode > 2:
                 if self.somaCheck:
                     h.clampSwitch(3,self.currentClamp)
-                    h.ic.delay = initTstop
+                    h.ic.delay = h.t
                 else:
                     h.clampSwitch(2,self.currentClamp)
-                    h.ic.delay = initTstop
+                    h.ic.delay = h.t
                     
             elif self.mode >1:
                 h.clampSwitch(1,self.voltageClamp)
@@ -232,7 +234,6 @@ class PAPModel(ResultsPAPModel):
                 ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
             # print('clamp experiment setup')
             # sys.stdout.flush()
-            
         try:
             h.continuerun((self.tstop) * ms)
         except RuntimeError as e:

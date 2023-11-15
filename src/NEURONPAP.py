@@ -37,7 +37,7 @@ def callExperimentMode(**kwargs):
                 minimize(
                     exp.measureRi,
                     # (20,  30,  2,  8e-04,1),
-                    (10,  10,  2, 2 ,1),
+                    (11.61, 11.03, 2.157, 1.165,1),
                     method="Nelder-Mead",
                     bounds=[(1, None), (1, None), (1, None), (1e-20, None), (1, 1)],
                     options={"disp": True},
@@ -47,10 +47,9 @@ def callExperimentMode(**kwargs):
 
         else:
             # optimal Ri
-            # 2.8461429617477396 MOhm
-            # 1170.7396933420828 MOhm
-            exp.measureRi((10,  10,  2, 1.3 ,1))
-
+            # 2.4580089963064253 MOhm
+            # 1049.999549680487 MOhm
+            exp.measureRi((11.61,11.03,2.157,1.165,1))
 
     if "distance" in kwargs.keys() and kwargs["distance"]:
         # Plot for vatious distnace channel counts
