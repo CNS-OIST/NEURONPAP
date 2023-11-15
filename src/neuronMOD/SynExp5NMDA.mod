@@ -1,4 +1,4 @@
-TITLE Triple-exp model of NMDAR has (HH-type gating) (temp. sensitivity) (voltage-dependent time constants) (desensitization)
+TITLE Triple-exponential model of NMDA receptors
 
 COMMENT
 This is a Triple-exponential model of an NMDAR 
@@ -7,9 +7,9 @@ time constants are voltage-dependent and temperature sensitive
 
 Mg++ voltage dependency from Spruston95 -> Woodhull, 1973 
 
-Desensitization is introduced in this model. Actually, this model has 4 differential equations
-becasue desensitization is solved analitically. It can be reduced to 3 by solving its A state analitically.
-Removed Densitization by Nakatani
+Desensitization is introduced in this model. Actually, this model has 5 differential equations
+becasue desensitization is solved numerically. 
+It can be reduced to 3 by solving its A state analitically.
 For more info read the original paper. 
 
 Keivan Moradi 2012
@@ -19,7 +19,7 @@ ENDCOMMENT
 NEURON {
 	POINT_PROCESS Exp5NMDA 
 	NONSPECIFIC_CURRENT i
-	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1, multiple
+	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D, d,multiple
 	GLOBAL inf, tau2, tau3
 	THREADSAFE
 }
@@ -37,7 +37,8 @@ UNITS {
 
 PARAMETER {
 : Parameters Control Neurotransmitter and Voltage-dependent gating of NMDAR
-	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
+	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] 
+										: be careful: presence of Mg in solutions can change these values
 : parameters control exponential rise to a maximum of tau2
 	tau2_0 = 57.91 (ms) :3.97	(ms)
 	a2 = 17.31 (ms) :0.70		(ms)
@@ -63,8 +64,8 @@ PARAMETER {
 : Parameters control desensitization of the channel
 	: these values are from Fig.3 in Varela et al. 1997
 	: the (1) is needed for the range limits to be effective
-	d1 = 0.2 	  	(1)		< 0, 1 >     : fast depression
-	tau_D1 = 2500 	(ms)	< 1e-9, 1e9 >
+	d = 0.2 (1) < 0, 1 >     : fast depression
+	tau_D = 2500 (ms) < 1e-9, 1e9 >
 : Parameters Control voltage-dependent gating of NMDAR
 	tauV = 7		(ms)	<1e-9,1e9>	: Kim11 
 							: at 26 degC & [Mg]o = 1 mM, 
@@ -114,6 +115,7 @@ STATE {
 	A		: Gating in response to release of Glutamate
 	B		: Gating in response to release of Glutamate
 	C		: Gating in response to release of Glutamate
+	D		: Desensitization
 	gVD (uS): Voltage dependent gating
 }
 
@@ -137,48 +139,35 @@ INITIAL {
 	A = 0
 	B = 0
 	C = 0
+	D = 1
 	gVD = 0
 	wf = 1
 }
 
 BREAKPOINT {
-	SOLVE state METHOD runge : derivimplicit : 
-	: we found acceptable results with "runge" integration method
-	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
-	: to avoid probable unstability problems
-        
-	i = (wtau3*C + wtau2*B - A) *multiple * (gVI + gVD)*Mgblock(v)*(v - e)
-        : multiple linear assumption as the models is fit to a single channel conductance
+	SOLVE state METHOD derivimplicit : runge
+
+	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
 }
 
 DERIVATIVE state {
 	rates(v)
-	A' = -A/tau1
-	B' = -B/tau2
-	C' = -C/tau3
+	A' = -(A-wf*(1-d)*D')/tau1
+	B' = -(B-wf*(1-d)*D')/tau2
+	C' = -(C-wf*(1-d)*D')/tau3
+	D' = (1-D)/tau_D
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
-	: gVD' = (inf-gVD)/tau
-    }
-    
-    NET_RECEIVE(weight){
-:    , D1, tsyn (ms)) {
-	: INITIAL {
-	: : these are in NET_RECEIVE to be per-stream
-	: : this header will appear once per stream
-	: 	D1 = 1
-	: 	tsyn = t
-	: }
+}
 
-	: D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
-	: tsyn = t Removed desensitization
-
-	wf = weight*factor:*D1
+NET_RECEIVE(weight) {
+	wf = weight*factor*D
 	A = A + wf
 	B = B + wf
 	C = C + wf
 
-	: D1 = D1 * d1
+	D = D * d
+	wf = weight*factor
 }
 
 FUNCTION Mgblock(v(mV)) {
