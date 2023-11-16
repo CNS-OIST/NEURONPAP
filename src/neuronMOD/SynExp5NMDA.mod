@@ -82,10 +82,11 @@ PARAMETER {
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.8	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95 (0.8)
+	delta = 0.6	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95 (0.8)
 : The Parameter Controls Ohm haw in NMDAR
-e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
+e = 2.1		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
 multiple = 1 (1) : increases channelconductance
+shift = 3.15992e-07
 }
 
 CONSTANT {
@@ -100,6 +101,7 @@ ASSIGNED {
 	dt		(ms)
 	i		(nA)
 	g		(uS)
+        gV (mV)
 	factor
 	wf
 	q10_tau2
@@ -131,7 +133,7 @@ INITIAL {
 	rates(v)
 	wtau3 = 1 - wtau2
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
-	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
+	tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
 	
 	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
 	factor = 1/factor
@@ -142,12 +144,26 @@ INITIAL {
 	D = 1
 	gVD = 0
 	wf = 1
+        gV = v
 }
 
 BREAKPOINT {
-	SOLVE state METHOD derivimplicit : runge
-
-	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+    SOLVE state METHOD derivimplicit : runge
+    : numerical error (equiliberates at slightly off zero)
+    if (A < 1e-11){
+        if (A != 0 && B!=0 && C != 0){
+            A = 0
+            B= 0
+            C = 0
+        }
+    }
+    i = (wtau3*C + wtau2*B - A)*multiple*(gVI + gVD)*Mgblock(v)*(v - e)
+    : printf("%g,",wtau3*C + wtau2*B - A)
+    : printf("%g,%g,%g,",A,B,C)
+    : printf("%g,%g,",gVI,gVD)
+    : printf("%g,",Mgblock(v))
+    : printf("%g,%g,%g\n",e,v,i)
+    
 }
 
 DERIVATIVE state {
@@ -156,6 +172,9 @@ DERIVATIVE state {
 	B' = -(B-wf*(1-d)*D')/tau2
 	C' = -(C-wf*(1-d)*D')/tau3
 	D' = (1-D)/tau_D
+	: A' = -A/tau1
+	: B' = -B/tau2
+	: C' = -C/tau3
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
 }
@@ -167,16 +186,17 @@ NET_RECEIVE(weight) {
 	C = C + wf
 
 	D = D * d
-	wf = weight*factor
+	: wf = weight*factor
+        gV = v :inf gVD is determined by mem potential when glu arrives
 }
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
-	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
+	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*gV/R/(T+celsius)))
 }
 
 PROCEDURE rates(v (mV)) { 
-	inf = (v - gVDv0) * gVDst * gVI
+	inf = (gV - gVDv0) * gVDst
 	
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
 	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3

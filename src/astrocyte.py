@@ -6,7 +6,7 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 200 * ms
+    tstop = 300 * ms
     initTstop = 50 * ms
     dt = 0.001 * ms
     celsius = 37
@@ -132,12 +132,12 @@ class PAPModel(ResultsPAPModel):
         if self.readHoc:
             h.insrtNMDA()
             
-    def setNMDAs(self):
+    def setNMDAs(self,delay=50):
         self.initNMDAs()
         if self.readHoc:
             self.NMDAs.append(h.sNMDA)
             self.NCs.append(h.nc)
-            h.stim.start = self.initTstop * ms + h.dt
+            h.stim.start = (self.initTstop + delay) * ms + h.dt
             h.stim.number = 1
             h.nc.weight[0] = self.SynWeight
             if self.Glu:
