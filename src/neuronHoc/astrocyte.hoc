@@ -39,12 +39,12 @@ forall {
     Ra = 100
     cm = 0.8
     insert pas
-    e_pas = -85
+    e_pas = -80
     g_pas = 1 /  11150
     
     insert kir2
     insert twik
-    // insert kleak
+    insert kleak
     insert k_acc
     // insert kdifl
     // ki0_kdifl = 110
@@ -68,7 +68,7 @@ proc insrtNMDA(){
 
 //initialize Ko
 proc initK(){local iki
-    iki = 110
+    iki = 80
     
     // set global Ki
     ki0_k_ion = iki

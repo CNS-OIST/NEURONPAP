@@ -14,35 +14,36 @@ NEURON {
 
 UNITS {
 	(molar) = (1/liter)
-	(nA) = (nanoamp)
+	(mA) = (milliamp)
         (mV) = (millivolt)
 	(mM) =	(millimolar)
 	(J)  = (joules)
+        (um) = (micron)
+	F = (faraday) (coulombs)
         
     }
     
 CONSTANT {
 	T = 273.16	(degC)
-	F = 9.6485e4	(coul)	: Faraday's constant (coulombs/mol)
 	R = 8.314	(J/degC): universal gas constant (joules/mol/K)
 	z = 1		(1)		: valency of K+
 }
     
 
 PARAMETER {
-    powk = 2 
+    powk = 2  (1)
     vs = 25.7 (mV)
     : ki = 130     (mM)
     taukp = 3.0 (ms)
     PBkp = 1.24e-08 (cm3/s)
     kob = 2.5 (mM) : 5.0 (mM)
     vzerokp = -20.5 (mV)
-    Skp = 1.7 
+    Skp = 1.7 (1)
 }
 
 ASSIGNED {
     v 		(mV)
-    ik      (nA/um2)
+    ik      (mA/cm2)
     
     : Pkp (cm3/s)
     : vkp (mV)
@@ -66,8 +67,9 @@ INITIAL {
 BREAKPOINT {
     SOLVE state METHOD derivimplicit
     
-    ik = pow(n,powk) * Pkp(ko) * pow(F,2) * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / (4e5)
+    ik = (100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / (4e5 (um2))
     : divided by estimated surface area Radulescu A. et al (2022)
+    : units changes to mA/cm2 for ik
     : printf("ik:%g\n",ik)
     
     : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
@@ -87,7 +89,7 @@ DERIVATIVE state {
     n' = (nkp - n) / taukp
     }
 
-PROCEDURE rates(v (mv),ko (mM),ki (mM)) {
+PROCEDURE rates(v (mV),ko (mM),ki (mM)) {
     : Pkp = PBkp * (1 + 0.85 * log10(ko/kob))
     : vkp = vzerokp - Skp * vs * log(ko/kob)
     nkp = (1 - ko/ki)/ (1 + exp(-z * (v - vkp(ko))/vs))

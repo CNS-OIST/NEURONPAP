@@ -19,12 +19,12 @@ UNITS {
 }
 
 PARAMETER {    
-    ik 	(mA/cm2)
     ko0 = 2.5 (mM)
     tauk = 50 (ms) : Halnes chapter 9 the NEURON book
 }
 
 ASSIGNED {
+    ik 	(mA/cm2)
     area (cm2)
     kout (mM)
     flag (1) : switch between step and pulse

@@ -24,14 +24,20 @@ ENDCOMMENT
 
 
 UNITS {
-	(mA) = (milliamp)
-	(mV) = (millivolt)
-        (S)  = (siemens)
+    (mA) = (milliamp)
+    (fA) = (femtoamp)
+    (molar) = (1/liter)
+    (mM) =	(millimolar)
+    (um) = (micron)
+
+    (mV) = (millivolt)
+    (S)  = (siemens)
+    (pS) = (picosiemens)
 }
 
 PARAMETER {
 	v 		(mV)
-	gkbar  = 5e-11	(S) 	: 50 pS single channel conductance Yang et al 2000 
+	gkbar  = 50	(pS) 	: 50 pS single channel conductance Yang et al 2000 
 
 	: Boltzman steady state curve	
         vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
@@ -43,8 +49,8 @@ PARAMETER {
 	bt=0.0143908141	 (/ms)	 		: 
 
 	: Temperature dependence
-        celsius         (degC)  		: unused if q10 == 1.
-        q10 = 1.                              	: temperature scaling
+        : celsius          (degC)  		: unused if q10 == 1.
+        : q10 = 1.                              	: temperature scaling
         A = 0.09534626                          : fit to sqrt rule
 }
 
@@ -68,8 +74,8 @@ ASSIGNED {
         ik                              (mA/cm2)
         gk                              (S/cm2)
         ek                              (mV)
-        linf      
-        taul
+        linf      (1)
+        taul (ms)
         ko                              (mM)
 }
 
@@ -82,9 +88,10 @@ INITIAL {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = gkbar*l*(A*sqrt(ko/1 (mM)))	: use state l to calulate gk
+	gk = (0.0001) * gkbar*(A*sqrt(ko/1 (mM)))/(4e5 (um2))
+	: use state l to calulate gk
         : calculate gkbar from fitting single channel recording
-        ik = gk * ( v - ek )		: calculate ik 
+        ik = gk *l* ( v - ek )		: calculate ik 
 }
 
 
@@ -96,7 +103,8 @@ DERIVATIVE states {
 
 PROCEDURE rate(v (mV)) { :callable from hoc
         LOCAL qt
-	qt=q10^((celsius-33)/10) 	
+	: qt=q10^((celsius-33)/10)
+        qt = 1
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }

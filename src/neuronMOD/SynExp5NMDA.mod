@@ -86,7 +86,6 @@ PARAMETER {
 : The Parameter Controls Ohm haw in NMDAR
 e = 2.1		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
 multiple = 1 (1) : increases channelconductance
-shift = 3.15992e-07
 }
 
 CONSTANT {
@@ -150,7 +149,7 @@ INITIAL {
 BREAKPOINT {
     SOLVE state METHOD derivimplicit : runge
     : numerical error (equiliberates at slightly off zero)
-    if (A < 1e-11){
+    if (A < 5e-12){
         if (A != 0 && B!=0 && C != 0){
             A = 0
             B= 0

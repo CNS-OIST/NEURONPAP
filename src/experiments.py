@@ -179,7 +179,7 @@ class procedure():
     def measureRi(self,x):
         somaSize, bLen, bWid, PAPWid, bNum = x
         # Make a list for tested currents
-        cList = np.arange(-80, 81, 20)
+        cList = np.arange(-20, 21, 2)
         vSomaList = []
         vPAPList = []
         funcArgs = []
@@ -232,7 +232,6 @@ class procedure():
 
 
     def singleRun(self,readHoc=True):
-
         for i in range(1):
             # single run
             funcArgs = []
@@ -243,19 +242,19 @@ class procedure():
                     # 'mode':0,
                     'bNum':1,
                     'readHoc':True,
-                    'Glu':True,
-                    "bWid": 2.157,
-                    "somaSize": 11.61,
-                    "bLen": 11.03,
-                    "PAPWid": 1.165,
-                    "kir2":100,
-                    "multiple":1,
+                    'Glu':False,
+                    "bWid": 2.160,
+                    "somaSize": 7.597,
+                    "bLen": 8.237,
+                    "PAPWid": 1.21,
+                    "multiple":5,
+                    "kir2":1e7,
                     # "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            # cells.setK(Ko=8.5,mode='step',dur=50)
+            # cells.setK(Ko=10,mode='step',dur=50)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
@@ -299,6 +298,7 @@ class procedure():
 
                 ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
                 ax2.plot(list(cells.time), list(cell.ekPAP))
+                ax2.set_ylim((-100,-50))
                 ax2.set_ylabel('ek')
                 ax2.set_xlabel('time')
                 
@@ -312,16 +312,18 @@ class procedure():
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
                 if cell.Glu:
                     ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
-                ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
-                ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
+                if hasattr(cell, "iMemPAP"):
+                    ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
+                if hasattr(cell, "iMemSoma"):
+                    ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('Currents (nA)')
                 ax.legend()
 
-                ax2 = ax.inset_axes([0.6, 0.2, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2 = ax.inset_axes([0.7, 0.35, 0.2, 0.2])  # Define the position and size of the new subplot
                 ax2.plot(list(cells.time), list(cell.vPAP),color='orange')
                 ax2.set_ylabel('Vm')
-                ax2.set_xlabel('time')
+                # ax2.set_xlabel('time')
                 
                 plt.savefig(os.path.join('../results/codeSortTest','ikPlot.pdf'))
 

@@ -10,7 +10,7 @@ class PAPModel(ResultsPAPModel):
     initTstop = 50 * ms
     dt = 0.001 * ms
     celsius = 37
-    v_init = -85 * mV
+    v_init = -80 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -117,9 +117,8 @@ class PAPModel(ResultsPAPModel):
         # NMDA setup
         self.Glu = Glu
         for sec in h.allsec():
-            if not hasattr(self, "GENEDict"):
-                GENExpression(sec, kwargs)
-                self.GENEDict = kwargs
+            GENExpression(sec, kwargs)
+            self.GENEDict = kwargs
         # print('set GENE manipulation')
 
     def initNMDAs(self):
@@ -171,7 +170,7 @@ class PAPModel(ResultsPAPModel):
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
         if self.Glu:
-            self.setNMDAs()
+            self.setNMDAs(delay=0)
             # print('placed NMDAR')
             # sys.stdout.flush()        
             self.record(sNMDA=self.NMDAs[-1])
@@ -366,8 +365,9 @@ class PAPModel(ResultsPAPModel):
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
 
-        self.iMemPAP = h.Vector()
-        self.iMemPAP.record(self.PAP(0.5)._ref_i_pas)
+        if hasattr(self.PAP(0.5),"pas"):
+            self.iMemPAP = h.Vector()
+            self.iMemPAP.record(self.PAP(0.5)._ref_i_pas)
         if toFile:
             self.iFileMem = h.File("iFileMem.dat")
             self.iFileMem.wopen("iFileMem.dat")
@@ -421,8 +421,9 @@ class PAPModel(ResultsPAPModel):
                 self.iKFileSoma = h.File("iKFileSoma.dat")
                 self.iKFileSoma.wopen("iKFileSoma.dat")
 
-            self.iMemSoma = h.Vector()
-            self.iMemSoma.record(self.soma(0.5)._ref_i_pas)
+            if hasattr(self.soma(0.5),"pas"):
+                self.iMemSoma = h.Vector()
+                self.iMemSoma.record(self.soma(0.5)._ref_i_pas)
 
 
             self.KoSoma = h.Vector()

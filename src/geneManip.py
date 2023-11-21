@@ -17,6 +17,14 @@ class GENEManipulation:
         for seg in self.compartment:
             seg.kir2.gkbar = seg.kir2.gkbar * multiple
 
+    def twikChange(self, multiple):
+        for seg in self.compartment:
+            seg.twik.PBkp = seg.twik.PBkp * multiple
+
+    def kleakChange(self, multiple):
+        for seg in self.compartment:
+            seg.kleak.gleak = seg.kleak.gleak * multiple
+
 
 class GENExpression(GENEManipulation):
     compartment = object()
