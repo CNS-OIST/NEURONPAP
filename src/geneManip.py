@@ -8,35 +8,48 @@ class GENEManipulation:
     # i.e. manipulate Kir by increasing conductance
 
     def kir4Change(self, multiple):
-        for seg in self.compartment:
-            seg.kir4.Pkir = seg.kir4.Pkir / multiple
-            if seg.kir4.Pkir > 1.0:
-                seg.kir4.Pkir = 1.0
+        for sec in self.compartments:
+            for seg in sec:
+                seg.kir4.Pkir = seg.kir4.Pkir / multiple
+                if seg.kir4.Pkir > 1.0:
+                    seg.kir4.Pkir = 1.0
 
     def kir2Change(self, multiple):
-        for seg in self.compartment:
-            seg.kir2.gkbar = seg.kir2.gkbar * multiple
+        # get PAP
+        PAP = [sec for sec in self.compartments if str(sec) == "PAP"][0]
+        # get PAP area
+        PAParea = 0
+        for seg in PAP:
+            PAParea += seg.area()
+        # set channel count to uniform density
+        for sec in self.compartments:
+            for seg in sec:
+                # print(sec)
+                # print(seg.area()/PAParea)
+                seg.kir2.gkbar = seg.kir2.gkbar * multiple * seg.area() / PAParea
 
     def twikChange(self, multiple):
-        for seg in self.compartment:
-            seg.twik.PBkp = seg.twik.PBkp * multiple
+        for sec in self.compartments:
+            for seg in sec:
+                seg.twik.PBkp = seg.twik.PBkp * multiple
 
     def kleakChange(self, multiple):
-        for seg in self.compartment:
-            seg.kleak.gleak = seg.kleak.gleak * multiple
+        for sec in self.compartments:
+            for seg in sec:
+                seg.kleak.gleak = seg.kleak.gleak * multiple
 
 
 class GENExpression(GENEManipulation):
-    compartment = object()
+    compartments = object()
     GENE = dict()
 
     # class that actually calls and manipulates the
     # necessary functions to alter expressions and what not
 
-    def __init__(self, compartment, GENE):
+    def __init__(self, compartments, GENE):
         if GENE == None:
             return
-        self.compartment = compartment
+        self.compartments = compartments
 
         if type(GENE) == dict:
             self.GENE = GENE

@@ -77,6 +77,7 @@ ASSIGNED {
         linf      (1)
         taul (ms)
         ko                              (mM)
+        area (um2)
 }
 
 
@@ -88,7 +89,7 @@ INITIAL {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = (0.0001) * gkbar*(A*sqrt(ko/1 (mM)))/(4e5 (um2))
+	gk = (0.0001) * gkbar*(A*sqrt(ko/1 (mM)))/area
 	: use state l to calulate gk
         : calculate gkbar from fitting single channel recording
         ik = gk *l* ( v - ek )		: calculate ik 

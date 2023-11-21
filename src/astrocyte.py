@@ -116,9 +116,8 @@ class PAPModel(ResultsPAPModel):
 
         # NMDA setup
         self.Glu = Glu
-        for sec in h.allsec():
-            GENExpression(sec, kwargs)
-            self.GENEDict = kwargs
+        GENExpression(h.allsec(), kwargs)
+        self.GENEDict = kwargs
         # print('set GENE manipulation')
 
     def initNMDAs(self):
