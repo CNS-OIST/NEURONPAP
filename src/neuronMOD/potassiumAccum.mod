@@ -21,13 +21,16 @@ UNITS {
 PARAMETER {    
     ko0 = 2.5 (mM)
     tauk = 50 (ms) : Halnes chapter 9 the NEURON book
+    VCR = 0.01 (1): volume ratio between ECS and astrocyte
 }
 
 ASSIGNED {
     ik 	(mA/cm2)
-    area (cm2)
-    kout (mM)
+    area (um2)
+    kout (mM/s)
     flag (1) : switch between step and pulse
+    diam (um)
+    L (um)
 }
 
 STATE {
@@ -55,15 +58,17 @@ INITIAL {
 
 DERIVATIVE state {
     kClear(ko)
-    ko' =  kout
+    ko' =  (0.001) *kout
         : printf("ko0: %g\n",ko0)
     }
     
     PROCEDURE kClear(ko (mM)) {
         if (flag == 1){
-            kout = ko0 - ko
+            kout = (ko0 - ko) / 1(s)
         } else {
-            kout = ik / (F * area) - (ko-ko0)/tauk            
+            kout = (1e+07) * (ik * area/(F*VCR*PI*(diam*diam/4)*L ))
+            kout = kout - (1000) * (ko-ko0)/tauk
         }
+        : arbitarily decided
         : printf("kout: %g\n",kout)
     }
