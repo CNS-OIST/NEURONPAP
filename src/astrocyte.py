@@ -381,6 +381,9 @@ class PAPModel(ResultsPAPModel):
         self.ekPAP = h.Vector()
         self.ekPAP.record(self.PAP(0.5)._ref_ek)
 
+        self.enaPAP = h.Vector()
+        self.enaPAP.record(self.PAP(0.5)._ref_ena)
+
         if toFile:
             self.ekFile = h.File("ekFile.dat")
             self.ekFile.wopen("ekFile.dat")
@@ -399,6 +402,9 @@ class PAPModel(ResultsPAPModel):
 
         self.iKPAP = h.Vector()
         self.iKPAP.record(self.PAP(0.5)._ref_ik)
+
+        self.iNaPAP = h.Vector()
+        self.iNaPAP.record(self.PAP(0.5)._ref_ina)
 
 
         if toFile:

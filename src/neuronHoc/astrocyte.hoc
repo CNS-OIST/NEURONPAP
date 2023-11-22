@@ -39,13 +39,15 @@ forall {
     Ra = 100
     cm = 0.8
     insert pas
-    e_pas = -80
+    e_pas = -30 // removal of kir 4.1 brings the membrane potential to about -30 mV
     g_pas = 1 /  11150
     
     insert kir2
     insert twik
     insert kleak
+    insert naleak
     insert k_acc
+    // insert GluTrans
     // insert kdifl
     // ki0_kdifl = 110
 }

@@ -298,8 +298,9 @@ class procedure():
 
                 ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
                 ax2.plot(list(cells.time), list(cell.ekPAP))
-                ax2.set_ylim((-100,-50))
-                ax2.set_ylabel('ek')
+                ax2.plot(list(cells.time), list(cell.enaPAP))
+                plt.legend()
+                ax2.set_ylabel('e_rev')
                 ax2.set_xlabel('time')
                 
                 plt.savefig(os.path.join('../results/codeSortTest','ekPlot.pdf'))
@@ -309,6 +310,7 @@ class procedure():
                 fig, ax = plt.subplots()
                 
                 ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
+                ax.plot(list(cell.time), list(cell.iNaPAP), label="iNa PAP")
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
                 if cell.Glu:
                     ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
