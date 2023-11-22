@@ -381,8 +381,13 @@ class PAPModel(ResultsPAPModel):
         self.ekPAP = h.Vector()
         self.ekPAP.record(self.PAP(0.5)._ref_ek)
 
-        self.enaPAP = h.Vector()
-        self.enaPAP.record(self.PAP(0.5)._ref_ena)
+        if hasattr(self.PAP(0.5),"_ref_ena"):
+            self.enaPAP = h.Vector()
+            self.enaPAP.record(self.PAP(0.5)._ref_ena)
+        
+        if hasattr(self.PAP(0.5),"_ref_ecl"):
+            self.eclPAP = h.Vector()
+            self.eclPAP.record(self.PAP(0.5)._ref_ecl)
 
         if toFile:
             self.ekFile = h.File("ekFile.dat")
@@ -403,8 +408,13 @@ class PAPModel(ResultsPAPModel):
         self.iKPAP = h.Vector()
         self.iKPAP.record(self.PAP(0.5)._ref_ik)
 
-        self.iNaPAP = h.Vector()
-        self.iNaPAP.record(self.PAP(0.5)._ref_ina)
+        if hasattr(self.PAP(0.5),"_ref_icl"):
+            self.iNaPAP = h.Vector()
+            self.iNaPAP.record(self.PAP(0.5)._ref_ina)
+
+        if hasattr(self.PAP(0.5),"_ref_icl"):
+            self.iClPAP = h.Vector()
+            self.iClPAP.record(self.PAP(0.5)._ref_icl)
 
 
         if toFile:

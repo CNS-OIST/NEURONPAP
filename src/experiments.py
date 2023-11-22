@@ -242,19 +242,20 @@ class procedure():
                     # 'mode':0,
                     'bNum':1,
                     'readHoc':True,
-                    'Glu':True,
+                    'Glu':False,
                     "bWid": 2.160,
                     "somaSize": 7.597,
                     "bLen": 8.237,
                     "PAPWid": 1.21,
                     "multiple":5,
-                    "kir2":10
+                    "kir2":0,
+                    "twik":0
                     # "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(Ko=10,mode='step',dur=50)
+            # cells.setK(Ko=10,mode='step',dur=50)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
@@ -310,7 +311,10 @@ class procedure():
                 fig, ax = plt.subplots()
                 
                 ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
-                ax.plot(list(cell.time), list(cell.iNaPAP), label="iNa PAP")
+                if hasattr(cell,"iNaPAP"):
+                    ax.plot(list(cell.time), list(cell.iNaPAP), label="iNa PAP")
+                if hasattr(cell,"iClPAP"):
+                    ax.plot(list(cell.time), list(cell.iClPAP), label="iCl PAP")
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
                 if cell.Glu:
                     ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")

@@ -16,16 +16,20 @@ UNITS {
 
 PARAMETER {
 	Kp = 0.1 (mA/cm2)
-	Krest = 110 (mM)
 	
 }
 
 ASSIGNED {
+	Krest  (mM)
 	
 	ik (mA/cm2)
     ki       (mM)	
 	ko       (mM)
-}
+    }
+    
+    INITIAL {
+        Krest = ki
+        }
 
 BREAKPOINT {
 

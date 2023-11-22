@@ -46,6 +46,7 @@ forall {
     insert twik
     insert kleak
     insert naleak
+    insert clleak
     insert k_acc
     // insert GluTrans
     // insert kdifl
@@ -69,17 +70,20 @@ proc insrtNMDA(){
 }
 
 //initialize Ko
-proc initK(){local iki
+proc initK(){local iki,inai
     iki = 80
+    inai = 13
     
     // set global Ki
     ki0_k_ion = iki
+    nai0_na_ion = inai
 
     
     // set initial Ko Ki
     forall {
         ko = 2.5
         ki = iki
+        nai = inai
         ek = -90
     }
 }

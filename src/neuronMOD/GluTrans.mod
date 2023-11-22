@@ -25,9 +25,10 @@ ENDCOMMENT
 
 NEURON {
     SUFFIX  GluTrans
+    USEION k READ ki,ko
     RANGE part, C1, C2, C3, C4, C5, C6
     GLOBAL k12, k21, k23, k32, k34, k43, k45, k54, k56, k65, k16, k61
-    GLOBAL Nain, Naout, Kin, Kout, Gluin, charge 
+    GLOBAL Nain, Naout, Gluin, charge, Kin, Kout
     RANGE  itrans, Gluout, density, itransLog
     NONSPECIFIC_CURRENT itrans
 }
@@ -63,9 +64,7 @@ PARAMETER {
 
     Nain = 15        (mM/l)
     Naout = 150   (mM/l)
-    Kin = 120       (mM/l)
-    Kout = 3        (mM/l)
-    Gluin = 0.3      (mM/l)
+     Gluin = 0.3      (mM/l)
     Gluout = 20e-6	(mM/l)
 
     density =1e12  : (/cm2) : 10000 per um2
@@ -79,6 +78,10 @@ ASSIGNED {
     volin  (liter)
     volout (liter)
     itransLog
+    ki (mM)
+    ko (mM)
+    Kout (mM/liter)
+    Kin (mM/liter)
 }
 
 STATE {
@@ -102,9 +105,11 @@ INITIAL {
     volin = 1
     volout = 1
     surf = 1
+    koi(ki,ko)
 }
 
 BREAKPOINT {
+    koi(ki,ko)
     SOLVE kstates METHOD sparse
     
     itrans=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
@@ -131,3 +136,8 @@ KINETIC kstates {
 FUNCTION u(x(mV), th) {
     u = exp(th*x/(2*(26.7 (mV))))
 }
+
+PROCEDURE koi(ki(mM),ko(mM)){
+    Kin = ki/1 (liter)
+    Kout = ko/1(liter)
+    }
