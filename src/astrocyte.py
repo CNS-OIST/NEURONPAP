@@ -6,8 +6,8 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 300 * ms
-    initTstop = 50 * ms
+    tstop = 1000 * ms
+    initTstop = 150 * ms
     dt = 0.001 * ms
     celsius = 37
     v_init = -80 * mV
@@ -182,7 +182,6 @@ class PAPModel(ResultsPAPModel):
         # print('initialized')
         # sys.stdout.flush()
 
-        
         h.continuerun(self.initTstop * ms)
         self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP for local or global
         if saveState:
@@ -464,11 +463,13 @@ class PAPModel(ResultsPAPModel):
 
         if self.readHoc:
             if mode == 'pulse':
-                h.setK(Ko,restKo)
+                h.setK(Ko,restKo,0)
             if mode == 'step':
-                h.setK(Ko,Ko)
+                h.setK(Ko,Ko,1)
+                h.fcurrent()
                 h.continuerun(dur * ms + h.t)
-                h.setK(Ko,restKo)
+                papk = self.getPAPK()
+                h.setK(papk,restKo,0)
 
         else:
             if mode == 'pulse':
@@ -485,6 +486,11 @@ class PAPModel(ResultsPAPModel):
 
                     sec.ek = -90 * mV
             # print('Potassium Parms')
+
+    def getPAPK(self):
+        if self.readHoc:
+            return h.getPAPK()
+        
 
     def printRec(self):
         #  need to update to fit new record function

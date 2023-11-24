@@ -66,7 +66,7 @@ class procedure():
                         "bNum": int(bNum),
                         "PAPWid": PAPWid,
                         "Ko": 5,
-                        "kir2": 1e8,
+                        "kir2": 0,
                     }
                 )
                 # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -248,14 +248,13 @@ class procedure():
                     "bLen": 8.237,
                     "PAPWid": 1.21,
                     "multiple":5,
-                    "kir2":0,
-                    "twik":0
+                    "kir2":1,
                     # "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            # cells.setK(Ko=10,mode='step',dur=50)
+            cells.setK(Ko=5,mode='step',dur=600)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
         initStep=0
@@ -292,14 +291,14 @@ class procedure():
                 
                 ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
                 ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
-                ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('[K] (mM)')
                 ax.legend()
 
                 ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
                 ax2.plot(list(cells.time), list(cell.ekPAP))
-                ax2.plot(list(cells.time), list(cell.enaPAP))
+                # ax2.plot(list(cells.time), list(cell.enaPAP))
                 plt.legend()
                 ax2.set_ylabel('e_rev')
                 ax2.set_xlabel('time')
@@ -318,10 +317,10 @@ class procedure():
                 ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
                 if cell.Glu:
                     ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
-                if hasattr(cell, "iMemPAP"):
-                    ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
-                if hasattr(cell, "iMemSoma"):
-                    ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
+                # if hasattr(cell, "iMemPAP"):
+                #     ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
+                # if hasattr(cell, "iMemSoma"):
+                #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('Currents (nA)')
                 ax.legend()

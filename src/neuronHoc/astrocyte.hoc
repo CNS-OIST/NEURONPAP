@@ -95,13 +95,24 @@ FinK = new FInitializeHandler(1,"initK()")
 // Experimental manipulations
 proc setK(){
     forsec "PAP" {
-        if ($2 > 2.5){
+        if ($3 == 1){ //instantaneous switch of bath
             flag_k_acc = 1
         } else {
             flag_k_acc = 0
         }
         ko = $1
         ko0_k_acc = $2
+        // psection()
+    }
+    forsec "soma" "branch"{
+        flag_k_acc = 0
+        ko0_k_acc = 2.5
+    }
+}
+
+func getPAPK(){
+    forsec "PAP"{
+        return ko
     }
 }
 
