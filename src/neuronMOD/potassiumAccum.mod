@@ -1,5 +1,14 @@
 TITLE Potassium ion accumulation
-: Intracellular potassium ion accumulation 
+: Intracellular potassium ion accumulation
+COMMENT
+To Do
+Check with Halnes chapter 9 parameters if they are sufficient,
+Yamada Methods in Neuronal Modeling may be more suitable.
+
+Look Up Armstrong units to double check.
+
+
+ENDCOMMENT
 
 NEURON {
 	SUFFIX k_acc
