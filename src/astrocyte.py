@@ -6,7 +6,7 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 1000 * ms
+    tstop = 500 * ms
     initTstop = 150 * ms
     dt = 0.001 * ms
     celsius = 37
@@ -47,6 +47,7 @@ class PAPModel(ResultsPAPModel):
             somaCheck=False,
             Glu=False,
             Ko=2.5,
+            NMDAdelay=0,
             **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -116,6 +117,7 @@ class PAPModel(ResultsPAPModel):
 
         # NMDA setup
         self.Glu = Glu
+        self.NMDAdelay = NMDAdelay
         GENExpression(h.allsec(), kwargs)
         self.GENEDict = kwargs
         # print('set GENE manipulation')
@@ -169,7 +171,7 @@ class PAPModel(ResultsPAPModel):
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
         if self.Glu:
-            self.setNMDAs(delay=0)
+            self.setNMDAs(delay=self.NMDAdelay)
             # print('placed NMDAR')
             # sys.stdout.flush()        
             self.record(sNMDA=self.NMDAs[-1])
@@ -457,14 +459,16 @@ class PAPModel(ResultsPAPModel):
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
-    def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500):
+    def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500,delay=0):
         if Ko == None:
             Ko = self.Ko
 
         if self.readHoc:
             if mode == 'pulse':
+                h.continuerun(delay * ms + h.t)
                 h.setK(Ko,restKo,0)
             if mode == 'step':
+                h.continuerun(delay * ms + h.t)
                 h.setK(Ko,Ko,1)
                 h.fcurrent()
                 h.continuerun(dur * ms + h.t)
