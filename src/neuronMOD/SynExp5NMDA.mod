@@ -42,14 +42,14 @@ PARAMETER {
 : parameters control exponential rise to a maximum of tau2
 	tau2_0 = 57.91 (ms) :3.97	(ms)
 	a2 = 17.31 (ms) :0.70		(ms)
-	b2 = 0.01524 (ms) :0.0243		(1/mV)
+	b2 = 0.01524 (1/mV) :0.0243		(1/mV)
 	wtau2= 0.65		<1e-9,1> : Hestrin90
 	
 : parameters control exponential rise to a maximum of tau3
 	tau3_0 = 88.88 (ms) :41.62	(ms)
 	a3 = 25.77 (ms) :34.69		(ms)
-	b3 = 0.02249 (ms) :0.01		(1/mV)
-	: Hestrin90 CA1 soma  [Mg=1 v=-40 celcius=30-32] the decay of the NMDA component of the EPSC recorded at temperatures above 30 degC 
+	b3 = 0.02249 (1/mV) :0.01		(1/mV)
+n	: Hestrin90 CA1 soma  [Mg=1 v=-40 celcius=30-32] the decay of the NMDA component of the EPSC recorded at temperatures above 30 degC 
 	: the fast phase of decay, which accounted for 65%-+12% of the decay, had a time constant of 23.5-+3.8 ms, 
 	: whereas the slow component had a time constant of 123-+83 ms.
 	: wtau2= 0.78 Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] percentage of contribution of tau2 in deactivation of NMDAR
@@ -75,7 +75,7 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 1			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD is about 0.004 uS in reality
+	gVI = 1			(1)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD is about 0.004 uS in reality
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
@@ -105,7 +105,7 @@ ASSIGNED {
 	wf
 	q10_tau2
 	q10_tau3
-	inf		(uS)
+	inf		(1)  
 	tau		(ms)
 	tau2	(ms)
 	tau3	(ms)
@@ -117,7 +117,7 @@ STATE {
 	B		: Gating in response to release of Glutamate
 	C		: Gating in response to release of Glutamate
 	D		: Desensitization
-	gVD (uS): Voltage dependent gating
+	gVD: Voltage dependent gating
 }
 
 INITIAL { 
@@ -149,14 +149,14 @@ INITIAL {
 BREAKPOINT {
     SOLVE state METHOD derivimplicit : runge
     : numerical error (equiliberates at slightly off zero)
-    if (A < 5e-12){
-        if (A != 0 && B!=0 && C != 0){
-            A = 0
-            B= 0
-            C = 0
-        }
-    }
-    i = (wtau3*C + wtau2*B - A)*multiple*(gVI + gVD)*Mgblock(v)*(v - e)
+    : if (A < 5e-12){
+    :     if (A != 0 && B!=0 && C != 0){
+    :         A = 0
+    :         B= 0
+    :         C = 0
+    :     }
+    : }
+    i = (wtau3*C + wtau2*B - A)*multiple*(gVI + gVD)*(1 (uS))*Mgblock(v)*(v - e)
     : printf("%g,",wtau3*C + wtau2*B - A)
     : printf("%g,%g,%g,",A,B,C)
     : printf("%g,%g,",gVI,gVD)
@@ -166,14 +166,13 @@ BREAKPOINT {
 }
 
 DERIVATIVE state {
-	rates(v)
-	A' = -(A-wf*(1-d)*D')/tau1
-	B' = -(B-wf*(1-d)*D')/tau2
-	C' = -(C-wf*(1-d)*D')/tau3
+	: A' = -(A/tau1-wf*(1-d)*D')
+	: B' = -(B/tau2-wf*(1-d)*D')
+	: C' = -(C/tau3-wf*(1-d)*D')
 	D' = (1-D)/tau_D
-	: A' = -A/tau1
-	: B' = -B/tau2
-	: C' = -C/tau3
+	A' = -A/tau1
+	B' = -B/tau2
+	C' = -C/tau3
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
 }
@@ -195,7 +194,7 @@ FUNCTION Mgblock(v(mV)) {
 }
 
 PROCEDURE rates(v (mV)) { 
-	inf = (gV - gVDv0) * gVDst
+	inf = (v - gVDv0) * gVDst
 	
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
 	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3
