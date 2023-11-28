@@ -10,7 +10,6 @@ from utils import *
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
 
-
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -232,103 +231,111 @@ class procedure():
 
 
     def singleRun(self,readHoc=True):
-        for i in range(1):
+        koConc = [4,8,10,12]
+        AllCells = []
+        for i,ko in enumerate(koConc):
             # single run
             funcArgs = []
             funcArgs.append(
                 {
                     # 'currentClamp':0,
-                    # 'voltageClamp':20,
+                    # 'voltageClamp'nn:20,
                     # 'mode':0,
                     'bNum':1,
                     'readHoc':True,
-                    'Glu':False,
+                    'Glu':True,
                     "bWid": 2.160,
                     "somaSize": 7.597,
                     "bLen": 8.237,
                     "PAPWid": 1.21,
-                    "multiple":5,
-                    "kir2":1,
+                    "multiple":100,
+                    "NMDAdelay": i*20*ms,
+                    "kir2":100,
                     # "readHoc":readHoc
                 }
             )
             cells = PAPModel(**funcArgs[-1])
             cells.initialize()
-            cells.setK(Ko=5,mode='step',dur=600)
+            # cells.setK(Ko=ko,mode='step',dur=100,delay = i*20*ms)
+            cells.setK(Ko=ko,delay = i*20*ms)
             cells.run()
             # initStep = int(cells.initTstop / cells.dt)
-        initStep=0
-        cells = cells.copyAttr()
-        AllCells = comm.gather(cells, root=0)
-        if rank == 0:
-            for cell in AllCells:
-                fig, ax = plt.subplots()
-                
-                ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
-                ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
-                ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
-                ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
-                ax.set_xlabel('time (ms)')
-                ax.set_ylabel('[K] (mM)')
-                ax.legend()
+            initStep=0
+            cells = cells.copyAttr()
 
-                ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
+            if size < 2:
+                AllCells.append(cells)
+        if size > 1:
+            AllCells = comm.gather(cells, root=0)
+        if rank == 0:
+            fig, ax = plt.subplots()
+            cell = AllCells[0]
+            ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
+            # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+            # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
+            for i,cell in enumerate(AllCells):
+                ax.plot(list(cell.time), list(cell.KoPAP), label=f"PAP Ko {koConc[i]}")
+            ax.set_xlabel('time (ms)')
+            ax.set_ylabel('[K] (mM)')
+            ax.legend()
+
+            ax2 = ax.inset_axes([0.35, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
+            ax2.plot(list(cells.time)[initStep:],
+                     list(cell.vSoma)[initStep:],
+                     label="Soma")
+            for i,cell in enumerate(AllCells):
                 ax2.plot(list(cells.time)[initStep:],
                          list(cell.vPAP)[initStep:],
-                         label="PAP")
-                ax2.plot(list(cells.time)[initStep:],
-                         list(cell.vSoma)[initStep:],
-                         label="Soma")
-                ax2.set_ylabel('Vm')
-                ax2.set_xlabel('time')
-                ax2.legend()
-                
-                plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))
+                         label=f"PAP Ko {koConc[i]}")
+            ax2.set_ylabel('Vm')
+            ax2.set_xlabel('time')
 
-                plt.cla()
-                plt.clf()
-                fig, ax = plt.subplots()
-                
-                ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
-                ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
-                # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
-                ax.set_xlabel('time (ms)')
-                ax.set_ylabel('[K] (mM)')
-                ax.legend()
+            plt.savefig(os.path.join('../results/codeSortTest',"KoCon.pdf"))
 
-                ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
-                ax2.plot(list(cells.time), list(cell.ekPAP))
-                # ax2.plot(list(cells.time), list(cell.enaPAP))
-                plt.legend()
-                ax2.set_ylabel('e_rev')
-                ax2.set_xlabel('time')
-                
-                plt.savefig(os.path.join('../results/codeSortTest','ekPlot.pdf'))
+            plt.cla()
+            plt.clf()
+            fig, ax = plt.subplots()
 
-                plt.cla()
-                plt.clf()
-                fig, ax = plt.subplots()
-                
-                ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
-                if hasattr(cell,"iNaPAP"):
-                    ax.plot(list(cell.time), list(cell.iNaPAP), label="iNa PAP")
-                if hasattr(cell,"iClPAP"):
-                    ax.plot(list(cell.time), list(cell.iClPAP), label="iCl PAP")
-                ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
-                if cell.Glu:
-                    ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
-                # if hasattr(cell, "iMemPAP"):
-                #     ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
-                # if hasattr(cell, "iMemSoma"):
-                #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
-                ax.set_xlabel('time (ms)')
-                ax.set_ylabel('Currents (nA)')
-                ax.legend()
+            ax.plot(list(cell.time), list(cell.KoPAP), label="PAP Ko")
+            ax.plot(list(cell.time), list(cell.KoSoma), label="Soma Ko")
+            # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+            ax.set_xlabel('time (ms)')
+            ax.set_ylabel('[K] (mM)')
+            ax.legend()
 
-                ax2 = ax.inset_axes([0.7, 0.35, 0.2, 0.2])  # Define the position and size of the new subplot
-                ax2.plot(list(cells.time), list(cell.vPAP),color='orange')
-                ax2.set_ylabel('Vm')
-                # ax2.set_xlabel('time')
-                
-                plt.savefig(os.path.join('../results/codeSortTest','ikPlot.pdf'))
+            ax2 = ax.inset_axes([0.2, 0.6, 0.3, 0.3])  # Define the position and size of the new subplot
+            ax2.plot(list(cells.time), list(cell.ekPAP))
+            # ax2.plot(list(cells.time), list(cell.enaPAP))
+            plt.legend()
+            ax2.set_ylabel('e_rev')
+            ax2.set_xlabel('time')
+
+            plt.savefig(os.path.join('../results/codeSortTest','ekPlot.pdf'))
+
+            plt.cla()
+            plt.clf()
+            fig, ax = plt.subplots()
+
+            ax.plot(list(cell.time), list(cell.iKPAP), label="ik PAP")
+            if hasattr(cell,"iNaPAP"):
+                ax.plot(list(cell.time), list(cell.iNaPAP), label="iNa PAP")
+            if hasattr(cell,"iClPAP"):
+                ax.plot(list(cell.time), list(cell.iClPAP), label="iCl PAP")
+            ax.plot(list(cell.time), list(cell.iKSoma), label="ik Soma")
+            if cell.Glu:
+                ax.plot(list(cell.time), list(cell.iNMDA), label="iNMDA")
+            # if hasattr(cell, "iMemPAP"):
+            #     ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
+            # if hasattr(cell, "iMemSoma"):
+            #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
+            ax.set_xlabel('time (ms)')
+            ax.set_ylabel('Currents (nA)')
+            ax.legend()
+
+            ax2 = ax.inset_axes([0.7, 0.35, 0.2, 0.2])  # Define the position and size of the new subplot
+            ax2.plot(list(cells.time), list(cell.vPAP),color='orange')
+            ax2.set_ylabel('Vm')
+            # ax2.set_xlabel('time')
+
+            plt.savefig(os.path.join('../results/codeSortTest','ikPlot.pdf'))
 
