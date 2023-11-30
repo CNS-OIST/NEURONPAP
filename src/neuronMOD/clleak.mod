@@ -8,7 +8,7 @@ MAYBE needs electrode current statement
 ENDCOMMENT
 NEURON {
     SUFFIX clleak
-    USEION cl WRITE icl,ecl VALENCE -1
+    USEION cl WRITE icl,ecl,clo VALENCE -1
     USEION k READ ko
     USEION na READ nao
     RANGE  gleak
@@ -39,7 +39,8 @@ UNITS {
 
 PARAMETER {
     gleak = 5.57e-6 (uS) : ratio from Kalia et al. (2021) * Janic et al K leak
-    cli = 7.6 (mM) : Thapaliya P et al 2023
+    :    cli = 7.6 (mM) : Thapaliya P et al 2023
+    cli = 30 (mM): Verkhratsky A. review Adv Exp Med Biol 2019
 }
 
 ASSIGNED {

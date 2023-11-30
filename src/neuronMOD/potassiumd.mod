@@ -19,20 +19,20 @@ UNITS {
 }
 
 INITIAL {
-    VERBATIM
+    : VERBATIM
 
-	ki = _ion_ki;
+    :     ki = _ion_ki;
 	
-	ENDVERBATIM
+    :     ENDVERBATIM
         : figure a way to set ko to global default ko
 
 	
 	ka = ki
 }
 PARAMETER {
-    ki0 = 110 (mM)
-	Dk = 0.6 (micron2/ms)
-	iextra = 0 (milliamp/cm2)
+    ki0 = 80 (mM)
+    Dk = 1.96 (micron2/ms)
+    iextra = 0 (milliamp/cm2)
 	
 }
 

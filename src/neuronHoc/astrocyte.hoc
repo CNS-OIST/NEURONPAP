@@ -48,6 +48,8 @@ forall {
     insert naleak
     insert clleak
     insert k_acc
+    insert na_acc
+    // insert kdrglia
     // insert GluTrans
     // insert kdifl
     // ki0_kdifl = 110
@@ -70,9 +72,9 @@ proc insrtNMDA(){
 }
 
 //initialize Ko
-proc initK(){local iki,inai
-    iki = 80
-    inai = 13
+proc initIon(){local iki,inai
+    iki = 80 //ek set to -92
+    inai = 15 // Verhratsky A 2019 review
     
     // set global Ki
     ki0_k_ion = iki
@@ -81,16 +83,17 @@ proc initK(){local iki,inai
     
     // set initial Ko Ki
     forall {
+        nao = 140
         ko = 2.5
+        clo = nao + ko
         ki = iki
         nai = inai
-        ek = -90
     }
 }
 
 
-objref FinK
-FinK = new FInitializeHandler(1,"initK()")
+objref FinIon
+FinIon = new FInitializeHandler(1,"initIon()")
 
 // Experimental manipulations
 proc setK(){
