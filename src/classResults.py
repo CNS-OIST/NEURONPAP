@@ -3,25 +3,6 @@ import copy
 class ResultsPAPModel():
     # class to copy data of simulations
     # necessary for MPI copy as NEURON components cannot be copied
-    to_be_copied = [
-        "vPAP",
-        "vSoma",
-        "iNMDA",
-        "iMem",
-        "iKSoma",
-        "iKPAP",
-        "time",
-        "bLen",
-        "somaSize",
-        "PAPWid",
-        "bWid",
-        "initialKo",
-        "KoPAP",
-        "KoSoma",
-        "KiPAP",
-        "KiSoma",
-        "ekPAP"
-    ]
 
     dont_copy = [
         "PAP",
