@@ -6,11 +6,11 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 500 * ms
-    initTstop = 150 * ms
+    tstop = 250 * ms
+    initTstop = 200 * ms
     dt = 0.001 * ms
     celsius = 37
-    v_init = -80 * mV
+    v_init = -90 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -27,7 +27,8 @@ class PAPModel(ResultsPAPModel):
     B2 = float()
     B3 = float()
     DELTA = float()
-    SynWeight = 9.603338159338435e-09
+    # SynWeight = 9.603338159338435e-09
+    SynWeight = 0.57
 
     # K Parms
     defaultKo = 2.5
@@ -137,8 +138,9 @@ class PAPModel(ResultsPAPModel):
         if self.readHoc:
             self.NMDAs.append(h.sNMDA)
             self.NCs.append(h.nc)
-            h.stim.start = (self.initTstop + delay) * ms + h.dt
+            h.stim.start = (self.initTstop + delay) * ms
             h.stim.number = 1
+            h.stim.interval = 10 * ms
             h.nc.weight[0] = self.SynWeight
             if self.Glu:
                 h.sNMDA.multiple = self.multiple
@@ -396,6 +398,10 @@ class PAPModel(ResultsPAPModel):
 
         self.KoPAP = h.Vector()
         self.KoPAP.record(self.PAP(0.5)._ref_ko)
+        self.NaoPAP = h.Vector()
+        self.NaoPAP.record(self.PAP(0.5)._ref_nao)
+        self.CloPAP = h.Vector()
+        self.CloPAP.record(self.PAP(0.5)._ref_clo)
         self.KiPAP = h.Vector()
         self.KiPAP.record(self.PAP(0.5)._ref_ki)
 
@@ -466,7 +472,8 @@ class PAPModel(ResultsPAPModel):
         if self.readHoc:
             if mode == 'pulse':
                 h.continuerun(delay * ms + h.t)
-                h.setK(Ko,restKo,0)
+                papk = self.getPAPK()
+                h.setK(papk + Ko,restKo,0)
             if mode == 'step':
                 h.continuerun(delay * ms + h.t)
                 h.setK(Ko,Ko,1)
