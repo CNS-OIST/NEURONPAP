@@ -105,6 +105,7 @@ CONSTANT {
 ASSIGNED {
 	v		(mV)
 	dt		(ms)
+        maxI (nA)
 	i		(nA)
 	g		(uS)
 	factor
@@ -117,6 +118,10 @@ ASSIGNED {
 	tau3	(ms)
 	wtau3
         prvW (1)
+        prvI (1)
+        prvA (1)
+        prvB (1)
+        prvC (1)
 }
 
 STATE {
@@ -128,6 +133,7 @@ STATE {
     
     INITIAL {
         prvW = 0
+        prvI = 0
 	Mgblock(v)
 	: temperature-sensitivity of the of NMDARs
 	tau1 = tau1 * Q10_tau1^((T0_tau - celsius)/10(degC))
@@ -150,6 +156,7 @@ STATE {
 	gVD = 0
 	wf = 1
         flag = 0
+        maxI = 0
 }
 
 BREAKPOINT {
@@ -158,7 +165,15 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+        if (flag ==3){
+            i = prvI
+            A = prvA
+            B = prvB
+            C = prvC
+
+        } else {
+	    i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+        }
         
         
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
@@ -166,13 +181,24 @@ BREAKPOINT {
         }
         if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
             if (CUTOFF((wtau3*C + wtau2*B - A-prvW),12) == 0){
-                A = 0
-                B = 0
-                C = 0
-                flag = 0 
+                if ( maxI - i > maxI/4){
+                    if (CUTOFF(i - prvI,6) == 0) {
+                        i = prvI
+                        : printf("here")
+                        : printf("%g\n",i)
+                        flag = 3
+                    } 
+                }
             }
         }
-        prvW = CUTOFF((wtau3*C + wtau2*B - A),12)
+        if (i > maxI){
+            maxI = i
+        }
+        prvW =  CUTOFF((wtau3*C + wtau2*B - A),12)
+        prvI = CUTOFF(i,12)
+        prvA = A
+        prvB = B
+        prvC = C
         
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
@@ -187,7 +213,7 @@ DERIVATIVE state {
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
 	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
 	: gVD' = (inf-gVD)/tau Regular HH-type
-}
+ }
 
 NET_RECEIVE(weight, D1, tsyn (ms)) {
 	INITIAL {
@@ -204,8 +230,9 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	A = A + wf
 	B = B + wf
 	C = C + wf
-
+        
 	D1 = D1 * d1
+        flag = 0
     }
     
     FUNCTION CUTOFF(value (1), digit (1)) {
