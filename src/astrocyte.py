@@ -105,6 +105,7 @@ class PAPModel(ResultsPAPModel):
             self.PAP = h.PAP
             self.soma = h.soma
             self.branch = h.branch
+            self.PAParea = h.area(0.5,sec=self.PAP)
 
 
         else:

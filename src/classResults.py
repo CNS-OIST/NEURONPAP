@@ -1,4 +1,5 @@
 import copy
+import numpy as np
 
 class ResultsPAPModel():
     # class to copy data of simulations
@@ -12,6 +13,12 @@ class ResultsPAPModel():
         "NMDAs",
         "NCs"
         ]
+    currents = [
+        "iKPAP",
+        "iClPAP",
+        "iNaPAP",
+        "iKSoma"
+        ]
 
     def copyAttr(self):
         newInstance = ResultsPAPModel()
@@ -21,6 +28,13 @@ class ResultsPAPModel():
             for attr in self.__dict__
             if attr not in self.dont_copy
         }
+        # total current calculate mA/cm2 to nA
+        for attr in newInstance.__dict__:
+            if attr in self.currents:
+                newInstance.__dict__[attr] = np.array(
+                    newInstance.__dict__[attr]
+                ) * self.PAParea * 0.01
+                
         return newInstance
 
     def getRMP(self):

@@ -182,8 +182,11 @@ BREAKPOINT {
         if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
             if (CUTOFF((wtau3*C + wtau2*B - A-prvW),12) == 0){
                 if ( maxI - i > maxI/4){
-                    if (CUTOFF(i - prvI,6) == 0) {
-                        i = prvI
+                    if (CUTOFF(i,6) == 0) {
+                        i = 0
+                        A = 0
+                        B = 0
+                        C = 0
                         : printf("here")
                         : printf("%g\n",i)
                         flag = 3
