@@ -107,6 +107,7 @@ ASSIGNED {
 	dt		(ms)
         maxI (nA)
 	i		(nA)
+        prvI (nA)
 	g		(uS)
 	factor
 	wf
@@ -118,7 +119,6 @@ ASSIGNED {
 	tau3	(ms)
 	wtau3
         prvW (1)
-        prvI (1)
         prvA (1)
         prvB (1)
         prvC (1)
@@ -175,7 +175,7 @@ BREAKPOINT {
 	    i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
         }
         
-        
+        UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
             flag = 1
         }
@@ -202,7 +202,7 @@ BREAKPOINT {
         prvA = A
         prvB = B
         prvC = C
-        
+        UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
         : }
@@ -238,9 +238,6 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
         flag = 0
     }
     
-    FUNCTION CUTOFF(value (1), digit (1)) {
-        CUTOFF = trunc(value * pow(10,digit)) * pow(10,-digit)
-    }
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
@@ -257,5 +254,10 @@ PROCEDURE rates(v (mV)) {
 	}
 	if (tau2/tau3 >= 1) {
 		tau2 = tau3
-	}
-}
+	    }
+        }
+        
+    FUNCTION CUTOFF(value(1) , digit(1)) {
+        CUTOFF = trunc(value * pow(10,digit)) * pow(10,-digit)
+    }
+        
