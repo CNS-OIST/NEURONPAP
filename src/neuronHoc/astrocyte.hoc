@@ -8,31 +8,8 @@ forall {
     delete_section()
 }
 
-// construct morphology
-create branch
-branch {
-    L = 30
-    diam =  3
-    nseg = 10 
-}
-
-create soma
-soma {
-    L = 10
-    diam = 10
-    nseg = 1
-}
-
-soma connect branch(0),1
-
-create PAP
-PAP {
-    L = 8.4e-04
-    diam = 8.4e-04
-    nseg = 1
-}
-
-branch connect PAP(0),1
+// load morphology file
+load_file("./Geometry/threeCompartmentGeom.hoc")
 
 // inserting membrane mechanisms
 forall {
