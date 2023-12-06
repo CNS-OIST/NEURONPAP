@@ -8,8 +8,8 @@ from geneManip import GENExpression
 class PAPModel(ResultsPAPModel):
     tstop = 250 * ms
     initTstop = 200 * ms
-    dt = 0.001 * ms
-    celsius = 37
+    dt = 0.01 * ms
+    celsius = 25
     v_init = -90 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
@@ -46,6 +46,7 @@ class PAPModel(ResultsPAPModel):
             multiple=1,
             mode=0,
             somaCheck=False,
+            ComplexMorph=True,
             Glu=False,
             Ko=2.5,
             NMDAdelay=0,
@@ -93,10 +94,17 @@ class PAPModel(ResultsPAPModel):
             h.load_file("stdgui.hoc")
             h('xopen("./neuronHoc/astrocyte.hoc")')
             # set morphology parameters
-            h.soma.L = self.somaSize
-            h.branch.L = self.bLen
-            h.branch.diam = self.bWid 
-            h.PAP.L = self.PAPWid
+            if not ComplexMorph:
+                h.soma.L = self.somaSize
+                h.branch.L = self.bLen
+                h.branch.diam = self.bWid 
+                h.PAP.L = self.PAPWid
+            else:
+                self.somaSize = None
+                self.bLen = None
+                self.bWid = None
+                self.PAPWid = None
+                
 
             # set K parms
             self.Ko = 2.5
@@ -104,7 +112,8 @@ class PAPModel(ResultsPAPModel):
             # match sections to self
             self.PAP = h.PAP
             self.soma = h.soma
-            self.branch = h.branch
+            if not ComplexMorph:
+                self.branch = h.branch
             self.PAParea = h.area(0.5,sec=self.PAP)
 
 
@@ -247,7 +256,7 @@ class PAPModel(ResultsPAPModel):
         
         if printRes:
             self.printRec()
-        self.cleanMorphology()
+        # self.cleanMorphology()
         # print('ran simulation')
         # sys.stdout.flush()
 

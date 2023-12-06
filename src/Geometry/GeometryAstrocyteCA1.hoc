@@ -9,7 +9,7 @@ OriginalDendrite=145
 NumberDendrites=OriginalDendrite+2*(OriginalDendrite-1)//397 //265 133 397
 print NumberDendrites
 SeedNumber=OriginalDendrite-1//132 // Number of extra seeds equal to the number of the central dendrites 
-create soma[1]
+create soma
 
 // if you need this file as only geometry please modify 
 // as //create dendrite[NumberDendrites-1]
@@ -19,7 +19,7 @@ create dendrite[NumberDendrites]
 
 //create soma[1], dendrite[432], 
 create LargeGlia[10800], SmallGlia[10367] // decrease SmallGlia count for 1 PAP
-create PAP[1] // named last Small Glia PAP
+create PAP // named last Small Glia PAP
 
 proc topol() { local i
   for i = 0, 10 connect dendrite[i](0), soma(0.5)

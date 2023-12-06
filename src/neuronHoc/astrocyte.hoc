@@ -4,9 +4,9 @@ strdef astro_name
 astro_name = "CA1"
 
 // clear morphology
-forall {
-    delete_section()
-}
+// forall {
+//     delete_section()
+// }
 
 // load morphology file
 //load_file("./Geometry/threeCompartmentGeom.hoc")
@@ -17,7 +17,7 @@ forall {
     Ra = 100
     cm = 0.8
     insert pas
-    e_pas = -30 // removal of kir 4.1 brings the membrane potential to about -30 mV
+    e_pas = -80
     g_pas = 1 /  11150
     
     insert kir2

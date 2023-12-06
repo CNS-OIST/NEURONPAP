@@ -28,7 +28,7 @@ class procedure():
         plt.cla()
         plt.clf()
         plt.scatter(range(1, itr + 1), dList)
-        plt.savefig(os.path.join('../results/NMDATests',"patchXDepolar.pdf"))
+        plt.savefig(os.path.join('../results/fullMorph',"patchXDepolar.pdf"))
 
 
     def multiDistance(self,x, read=False):
@@ -232,7 +232,7 @@ class procedure():
     def singleRun(self,readHoc=True):
         koConc = list(range(2,6))
         AllCells = []        
-        for kirCount in range(0,10):
+        for h,kirCount in enumerate(range(0,100,10)):
             AllCells.append(list())
             for i,ko in enumerate(koConc):
                 # single run
@@ -241,6 +241,7 @@ class procedure():
                     {
                         # 'currentClamp':0,
                         # 'voltageClamp':20,
+                        'ComplexMorph':True,
                         'bNum':1,
                         'readHoc':True,
                         'Glu':True,
@@ -248,7 +249,7 @@ class procedure():
                         "somaSize": 7.597,
                         "bLen": 8.237,
                         "PAPWid": 1.21,
-                        "multiple":300,
+                        "multiple":1/50,
                         "NMDAdelay":5*i*ms,
                         "kir2":kirCount,
                         # "readHoc":readHoc
@@ -265,18 +266,18 @@ class procedure():
                 cells = cells.copyAttr()
 
                 if size < 2:
-                    AllCells[kirCount].append(cells)
+                    AllCells[h].append(cells)
                 if size > 1:
                     AllCells = comm.gather(cells, root=0)
                 if rank == 0:
                     fig, ax = plt.subplots()
-                    cell = AllCells[kirCount][i]
+                    cell = AllCells[h][i]
                     ax.plot(list(cell.time)[initStep:], list(cell.KoSoma)[initStep:], label="Soma Ko")
                     # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
                     # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
-                        ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
+                    for j in range(len(AllCells[h])):
+                        cell = AllCells[h][len(AllCells[h])-1-j]
+                        ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[h])-1-j]}")
                     ax.set_xlabel('time (ms)')
                     ax.set_ylabel('[K] (mM)')
                     ax.legend()
@@ -285,32 +286,32 @@ class procedure():
                     ax2.plot(list(cells.time)[initStep:],
                              list(cell.vSoma)[initStep:],
                              label="Soma")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
+                    for j in range(len(AllCells[h])):
+                        cell = AllCells[h][len(AllCells[h])-1-j]
                         ax2.plot(list(cell.time)[initStep:],
                                  list(cell.vPAP)[initStep:],
-                                 label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
+                                 label=f"PAP Ko {koConc[len(AllCells[h])-1-j]}")
                     ax2.set_ylabel('Vm')
                     ax2.set_xlabel('time')
 
-                    plt.savefig(os.path.join('../results/NMDATests',f"KoCon{ko}_{kirCount}.pdf"))
+                    plt.savefig(os.path.join('../results/fullMorph',f"KoCon{ko}_{kirCount}.pdf"))
 
                     fig, ax = plt.subplots()
-                    cell = AllCells[kirCount][i]
+                    cell = AllCells[h][i]
                     # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
                     # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
-                        ax.plot(list(cell.time)[initStep:], list(cell.NaoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
-                        ax.plot(list(cell.time)[initStep:], list(cell.CloPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
+                    for j in range(len(AllCells[h])):
+                        cell = AllCells[h][len(AllCells[h])-1-j]
+                        ax.plot(list(cell.time)[initStep:], list(cell.NaoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[h])-1-j]}")
+                        ax.plot(list(cell.time)[initStep:], list(cell.CloPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[h])-1-j]}")
                     ax.set_xlabel('time (ms)')
                     ax.set_ylabel('Conc. (mM)')
                     ax.legend()
-                    plt.savefig(os.path.join('../results/NMDATests',f"NaCon{ko}_{kirCount}.pdf"))
+                    plt.savefig(os.path.join('../results/fullMorph',f"NaCon{ko}_{kirCount}.pdf"))
 
                     plt.cla()
                     plt.clf()
-                    cell = AllCells[kirCount][i]
+                    cell = AllCells[h][i]
                     fig, ax = plt.subplots()
 
                     ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label="PAP Ko")
@@ -327,11 +328,11 @@ class procedure():
                     ax2.set_ylabel('e_rev')
                     ax2.set_xlabel('time')
 
-                    plt.savefig(os.path.join('../results/NMDATests',f'ekPlot{ko}_{kirCount}.pdf'))
+                    plt.savefig(os.path.join('../results/fullMorph',f'ekPlot{ko}_{kirCount}.pdf'))
 
                     plt.cla()
                     plt.clf()
-                    cell = AllCells[kirCount][i]
+                    cell = AllCells[h][i]
                     fig, ax = plt.subplots()
 
                     ax.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
@@ -367,6 +368,6 @@ class procedure():
 
 
 
-                    plt.savefig(os.path.join('../results/NMDATests',f'ikPlot{ko}_{kirCount}.pdf'))
+                    plt.savefig(os.path.join('../results/fullMorph',f'ikPlot{ko}_{kirCount}.pdf'))
                     plt.close()
 
