@@ -4,47 +4,49 @@ strdef astro_name
 astro_name = "CA1"
 
 // clear morphology
-// forall {
-//     delete_section()
-// }
 
-// load morphology file
-//load_file("./Geometry/threeCompartmentGeom.hoc")
-load_file("./Geometry/GeometryAstrocyteCA1.hoc")
-
-// inserting membrane mechanisms
-forall {
-    Ra = 100
-    cm = 0.8
-    insert pas
-    e_pas = -80
-    g_pas = 1 /  11150
+{
+    forall {
+        delete_section()
+    }
     
-    insert kir2
-    insert twik
-    insert kleak
-    insert naleak
-    insert clleak
-    insert k_acc
-    insert na_acc
-    // insert kdrglia
-    // insert GluTrans
-    // insert kdifl
-    // ki0_kdifl = 110
-}
+    // load morphology file
+    //xopen("./Geometry/threeCompartmentGeom.hoc")
+    {xopen("./Geometry/GeometryAstrocyteCA1.hoc")}
+    
+    // inserting membrane mechanisms
+    forall {
+        Ra = 100
+        cm = 0.8
+        insert pas
+        e_pas = -80
+        g_pas = 1 /  11150
 
+        insert kir2
+        insert twik
+        insert kleak
+        insert naleak
+        insert clleak
+        insert k_acc
+        insert na_acc
+        // insert kdrglia
+        // insert GluTrans
+        // insert kdifl
+        // ki0_kdifl = 110
+    }
+}
 // inserting NMDARs
 objref sNMDA, stim, nc
 
 proc insrtNMDA(){
-    stim = new NetStim(.5)
+    {stim = new NetStim(.5)}
     stim.interval = 1
     stim.number = 0
     stim.start = 0
     stim.noise = 0
     
     PAP {sNMDA = new Exp5NMDA(0.5)}
-    nc = new NetCon(stim,sNMDA)
+    {nc = new NetCon(stim,sNMDA)}
     nc.weight = 0
     nc.delay = 0
 }
@@ -71,7 +73,7 @@ proc initIon(){local iki,inai
 
 
 objref FinIon
-FinIon = new FInitializeHandler(1,"initIon()")
+{FinIon = new FInitializeHandler(1,"initIon()")}
 
 // Experimental manipulations
 proc setK(){
@@ -98,17 +100,15 @@ func getPAPK(){
 }
 
 objref ic,vc,electrodeList
-electrodeList = new List()
+{electrodeList = new List()}
 
 proc clampSwitch() {
     if ($1 > 1) {
         //------------current Clamp---------------------------
         if ($1 > 2){
-            access soma
-            ic = new IClamp(0.5)
+            soma {ic = new IClamp(0.5)}
         } else {
-            access PAP
-            ic = new IClamp(0.5)
+            PAP {ic = new IClamp(0.5)}
         }
         ic.dur = tstop
         ic.del = 0  // ms starts with glutamate
@@ -117,8 +117,7 @@ proc clampSwitch() {
         //---------------------------------------------------
     } else if ($1 > 0) {
         // voltage clamp
-        access PAP
-        vc = new VClamp(0.5)
+        PAP {vc = new VClamp(0.5)}
         vc.dur[0] = tstop
         vc.amp[0] = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
@@ -126,8 +125,7 @@ proc clampSwitch() {
         
     } else {
         // Pulse Current
-        access PAP
-        ic = new IClamp(0.5)
+        PAP {ic = new IClamp(0.5)}
         ic.dur = 0.002
         ic.delay = 10  // ms starts with glutamate
         ic.amp = $2 * 0.001  // nA current injection
