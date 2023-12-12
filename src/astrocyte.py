@@ -16,6 +16,7 @@ class PAPModel(ResultsPAPModel):
     bWid = 3
     PAPWid = 0.02
     branches = []
+    branchAtten = []
 
     # NMDA parms
     multiple = int()
@@ -83,6 +84,7 @@ class PAPModel(ResultsPAPModel):
         self.bWid = bWid
         self.bNum = bNum
         self.PAPWid = PAPWid
+        self.branchAtten = []
 
         if readHoc:
             # subsitute
@@ -265,8 +267,8 @@ class PAPModel(ResultsPAPModel):
         self.branches = []
         self.soma = None
         self.PAP = None
-        if hasattr(self,"GENEDict"):
-            delattr(self, "GENEDict")
+        # if hasattr(self,"GENEDict"):
+        #     delattr(self, "GENEDict")
 
     def astroMem(self, compartment):
         # add astrocyte properties
@@ -459,6 +461,11 @@ class PAPModel(ResultsPAPModel):
                 self.KoFileSoma.wopen("KoFileSoma.dat")
                 self.KiFileSoma = h.File("KiFileSoma.dat")
                 self.KiFileSoma.wopen("KiFileSoma.dat")
+
+        if hasattr(self,"branch"):
+            for i in range(10):
+                self.branchAtten.append(h.Vector())
+                self.branchAtten[-1].record(self.branch(i/10.)._ref_v)
 
         self.time = h.Vector()
         self.time.record(h._ref_t)

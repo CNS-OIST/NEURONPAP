@@ -228,6 +228,56 @@ class procedure():
             PAPpopt[0] - 1050
         )*0.9/1050  # soma input resistance score
 
+    def branchAttenuation(self):
+        funcArgs = []
+        funcArgs.append(
+            {
+                # 'currentClamp':0,
+                # 'voltageClamp':20,
+                'readHoc':True,
+                'Glu':True,
+                "bWid": 0.01,#2.160,
+                "somaSize": 7.597,
+                "bLen": 10,
+                "PAPWid": 1.21,
+                "multiple":300,
+                "kir2":10,
+                # "readHoc":readHoc
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize()
+        cells.setK(Ko=2,delay = 0)
+        # cells.setK(Ko=ko)
+        cells.setK(Ko=2,delay=10*ms)
+        cells.run()
+        initStep = int(cells.initTstop / cells.dt)
+        cells = cells.copyAttr()
+
+        timeVoltageArray = list()
+        for x in cells.branchAtten:
+            coord = list(x)[initStep:]
+            timeVoltageArray.append(coord)
+        timeVoltageArray = np.array(timeVoltageArray).T
+        print(timeVoltageArray)
+        # Plot the array using a heatmap
+        plt.imshow(timeVoltageArray,
+                   cmap='viridis',
+                   interpolation='none',
+                   aspect='auto'
+                   )
+        plt.colorbar()
+
+        # Show the plot
+        plt.savefig("branchAtten.pdf")
+
+        plt.clf()
+        plt.cla()
+        plt.plot(cells.vPAP)
+        plt.show()
+            
+        
+
 
     def singleRun(self,readHoc=True):
         koConc = list(range(2,6))

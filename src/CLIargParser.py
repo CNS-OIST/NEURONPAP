@@ -33,6 +33,14 @@ def argParser(rangeInt=100):
         default=False,
         help="flag for optimization (works with input Resistance Flag"
     )
+    parser.add_argument(
+        "-b",
+        "--attenuation",
+        dest="Branch",
+        action="store_true",
+        default=False,
+        help="flag for branch attenuation"
+    )
 
     parser.add_argument(
         "-s",

@@ -59,7 +59,8 @@ def callExperimentMode(**kwargs):
         # Plot for vatious distnace channel counts
         exp.singleRun(readHoc=False)
         
-
+    if "Branch" in kwargs.keys() and kwargs["Branch"]:
+        exp.branchAttenuation()
     
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD
