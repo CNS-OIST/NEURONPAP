@@ -232,7 +232,7 @@ class procedure():
     def singleRun(self,readHoc=True):
         koConc = list(range(2,6))
         AllCells = []        
-        for h,kirCount in enumerate(range(0,100,10)):
+        for h,kirCount in enumerate(range(0,10,1)):
             AllCells.append(list())
             for i,ko in enumerate(koConc):
                 # single run
@@ -371,18 +371,22 @@ class procedure():
 
     def channelComparison(self):
         # Calculate the number of iterations for all parm sets
-        iterations = comm.bcast(get_iter(10, 1, 50, 10), root=0)
-
+        iterations = comm.bcast(get_iter(11, 1, 51, 10), root=0)
+        imArray = np.zeros((10,5))
         # # Adjust the range for the last process
 
         comm.Barrier()
         funcArgs = []
         funcArgs.append(
             {
-                    'mode':0,
-                    'ComplexMorph':True,
-                    'readHoc':True,
-                    'Glu':True,
+                # "bWid": 2.160,
+                # "somaSize": 7.597,
+                # "bLen": 8.237,
+                # "PAPWid": 1.21,
+                'mode':0,
+                'ComplexMorph':True,
+                'readHoc':True,
+                'Glu':True,
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -407,4 +411,18 @@ class procedure():
                             handle,
                             protocol=pickle.HIGHEST_PROTOCOL)
             self.plotIKSeries(results)
+
+            for i, res in zip(iterations,results):
+                imArray[i[0],int(i[1]/10)] = max(res[0].vPAP) - res[0].RMP
+            plt.imshow(imArray,
+                       cmap='viridis',
+                       origin='lower',
+                       interpolation='nearest'
+                       )
+            plt.ylabel('Kir Channel')
+            plt.xlabel('NMDAR Channel')
+            plt.colorbar(label = 'values')
+            plt.savefig('FullComparison.pdf')
+           
+                
     

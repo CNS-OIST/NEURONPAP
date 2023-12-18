@@ -6,10 +6,10 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 250 * ms
     initTstop = 200 * ms
     # Moved above to __init__
-    celsius = 25
+    tstop = 250 * ms
+    celsius = 34
     v_init = -90 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
@@ -53,7 +53,7 @@ class PAPModel(ResultsPAPModel):
             Ko=2.5,
             NMDAdelay=0,
             initTstop=200,
-            dt = 0.01,
+            dt = 0.001,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -109,12 +109,6 @@ class PAPModel(ResultsPAPModel):
                 h.branch.L = self.bLen
                 h.branch.diam = self.bWid 
                 h.PAP.L = self.PAPWid
-            else:
-                self.somaSize = None
-                self.bLen = None
-                self.bWid = None
-                self.PAPWid = None
-                
 
             # set K parms
             self.Ko = 2.5
