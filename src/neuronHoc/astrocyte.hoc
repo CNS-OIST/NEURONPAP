@@ -9,7 +9,7 @@ forall {
 }
 
 // load morphology file
-xopen("./Geometry/threeCompartmentGeom.hoc")
+{xopen("./Geometry/threeCompartmentGeom.hoc")}
 // load_file("./Geometry/GeometryAstrocyteCA1.hoc")
 
 // inserting membrane mechanisms

@@ -7,8 +7,6 @@ from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
     tstop = 250 * ms
-    initTstop = 200 * ms
-    dt = 0.001 * ms
     celsius = 37
     v_init = -90 * mV
     somaSize = 10  # Soma Size
@@ -50,6 +48,8 @@ class PAPModel(ResultsPAPModel):
             Glu=False,
             Ko=2.5,
             NMDAdelay=0,
+            initTstop = 200,
+            dt =  0.001,
             **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -60,8 +60,10 @@ class PAPModel(ResultsPAPModel):
         # print('loaded files')
 
         # Set simulation parameters
+        self.initTstop = initTstop
         h.tstop = self.tstop
-        h.dt = self.dt
+        h.dt = dt
+        self.dt = dt
         h.celsius = self.celsius
         h.v_init = self.v_init
         # print('set sim parms')

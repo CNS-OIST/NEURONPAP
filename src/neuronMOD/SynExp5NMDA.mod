@@ -18,7 +18,6 @@ For more info read the original paper.
 Keivan Moradi 2012
 
 TODO
-[ ] check delta of astrocytes
 [ ] check maximum VD change
 
 ENDCOMMENT
@@ -88,7 +87,7 @@ PARAMETER {
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.2 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
+	delta = 0.01 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
         multiple = 1 (1)
@@ -122,6 +121,7 @@ ASSIGNED {
         prvA (1)
         prvB (1)
         prvC (1)
+        tPeak (ms)
 }
 
 STATE {
@@ -165,43 +165,25 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-        if (flag ==3){
-            i = prvI
-            A = prvA
-            B = prvB
-            C = prvC
-
-        } else {
-	    i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
-        }
+	i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
         
         UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
             flag = 1
-        }
-        if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
-            if (CUTOFF((wtau3*C + wtau2*B - A-prvW),12) == 0){
-                if ( maxI - i > maxI/4){
-                    if (CUTOFF(i,6) == 0) {
-                        i = 0
-                        A = 0
-                        B = 0
-                        C = 0
-                        : printf("here")
-                        : printf("%g\n",i)
-                        flag = 3
-                    } 
-                }
+            tPeak = t
+            : printf("detected decrease")
+        } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
+            if (CUTOFF((wtau3*C + wtau2*B - A),1) == 0){
+                i = 0
+                A = 0
+                B = 0
+                C = 0
+                : printf("%g\n",i)
+                flag = 0
             }
+            : printf("detected spontaneous increase\n shutting down")
         }
-        if (i > maxI){
-            maxI = i
-        }
-        prvW =  CUTOFF((wtau3*C + wtau2*B - A),12)
-        prvI = CUTOFF(i,12)
-        prvA = A
-        prvB = B
-        prvC = C
+        prvW =  (wtau3*C + wtau2*B - A)
         UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))

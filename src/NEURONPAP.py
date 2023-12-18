@@ -56,11 +56,13 @@ def callExperimentMode(**kwargs):
         exp.multiDistance((10,10,2,1.3,1))
 
     if "nonhoc" in kwargs.keys() and kwargs["nonhoc"]:
-        # Plot for vatious distnace channel counts
+        # Run without hoc
         exp.singleRun(readHoc=False)
         
-    if "Branch" in kwargs.keys() and kwargs["Branch"]:
-        exp.branchAttenuation()
+    if "channel" in kwargs.keys() and kwargs["channel"]:
+        # Plot for various channel counts
+        exp.channelComparison()
+
     
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD
