@@ -15,7 +15,6 @@ class PAPModel(ResultsPAPModel):
     PAPWid = 0.02
     branches = []
     branchAtten = []
-
     # NMDA parms
     multiple = int()
     readParms = False

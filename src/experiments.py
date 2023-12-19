@@ -420,8 +420,8 @@ class procedure():
 
 
     def channelComparison(self):
-        NMDAMax = 500
-        NMDAStep = 50
+        NMDAMax = 1000
+        NMDAStep = 100
         KirMax = 10
         KirStep = 1
         
@@ -469,7 +469,7 @@ class procedure():
             self.plotIKSeries(results)
 
             for res in results:
-                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = max(res[0].vPAP) - res[0].RMP
+                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple*50/NMDAStep)] = max(res[0].vPAP) - res[0].RMP
             plt.imshow(imArray,
                        cmap='viridis',
                        origin='lower',
