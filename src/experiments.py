@@ -292,7 +292,7 @@ class procedure():
                         # 'currentClamp':0,
                         # 'voltageClamp':20,
                         'mode':0,
-                        # 'ComplexMorph':True,
+                        'ComplexMorph':True,
                         'bNum':1,
                         'readHoc':True,
                         'Glu':True,
@@ -300,7 +300,7 @@ class procedure():
                         "somaSize": 7.597,
                         "bLen": 8.237,
                         "PAPWid": 1.21,
-                        "multiple":300,
+                        "multiple":10/50, # Maximum conductance of model is equal to 50 single channels
                         "NMDAdelay":5*i*ms,
                         "kir2":kirCount,
                         # "readHoc":readHoc
@@ -434,10 +434,7 @@ class procedure():
         funcArgs = []
         funcArgs.append(
             {
-                # 'currentClamp':0,
-                # 'voltageClamp':20,
                 'mode':0,
-                # 'ComplexMorph':True,
                 'bNum':1,
                 'readHoc':True,
                 'Glu':True,
@@ -445,6 +442,7 @@ class procedure():
                 "somaSize": 7.597,
                 "bLen": 8.237,
                 "PAPWid": 1.21,
+                'ComplexMorph':True,
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -453,7 +451,7 @@ class procedure():
             iterations,
             [PAPModel],
             funcArgs,
-            ["kir2","multiple"],
+            ["kir2", "multiple"],
             [["initialize", "setK","run"]],
             [[{}, {"Ko":2},{}]]
         )

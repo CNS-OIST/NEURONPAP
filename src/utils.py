@@ -76,10 +76,10 @@ def plot(dir, zoom=False, ext=False):
     return max(v.iloc[:, 0])
 
 
-def get_iter(distance, dist_steps, chan, chan_steps):
+def get_iter(parmA, parmASteps, parmB, parmBSteps):
     iterations = []
-    for i in range(0, distance + 1, dist_steps):
-        for j in range(0, chan + 1, chan_steps):
+    for i in range(0, parmA + 1,parmASteps):
+        for j in range(0, parmB + 1,parmBSteps):
             iterations.append((i, j))
 
     return iterations
