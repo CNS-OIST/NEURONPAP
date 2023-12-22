@@ -60,6 +60,14 @@ def argParser(rangeInt=100):
         help="Used to run simulations for various distances"
     )  
     parser.add_argument(
+        "-c",
+        "--channels",
+        dest="channel",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for various channel counts"
+    )  
+    parser.add_argument(
         "--debug",
         dest="debug",
         action="store_true",

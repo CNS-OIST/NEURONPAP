@@ -18,12 +18,12 @@ soma {
     cm = 0.8       // Membrane capacitance in uf/cm^2
     g_pas = 1/11150  // Specific membrane conductance in S/cm^2
     e_pas = -85   // Reversal potential for passive properties in mV
-    // insert kir2
-    // gkbar_kir2 = gkbar_kir2 * 1e4 //equal to 10K channel on soma
-    // insert kleak
-    // gleak_kleak = gleak_kleak * 1e4
-    // // insert twik
-    // ko = 5
+    insert kir2
+    gkbar_kir2 = gkbar_kir2 * 1e4 //equal to 10K channel on soma
+    insert kleak
+    gleak_kleak = gleak_kleak * 1e4
+    // insert twik
+    ko = 5
 }
 
 

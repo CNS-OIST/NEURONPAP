@@ -76,10 +76,10 @@ def plot(dir, zoom=False, ext=False):
     return max(v.iloc[:, 0])
 
 
-def get_iter(distance, dist_steps, chan, chan_steps):
+def get_iter(parmA, parmASteps, parmB, parmBSteps):
     iterations = []
-    for i in range(1, distance, dist_steps):
-        for j in range(1, chan, chan_steps):
+    for i in range(0, parmA + 1,parmASteps):
+        for j in range(0, parmB + 1,parmBSteps):
             iterations.append((i, j))
 
     return iterations
@@ -91,13 +91,20 @@ def parallizeFor(
     # Calculate the number of iterations each process will handle
     iterations_per_process = len(iterations) // size
 
+
     # Adjust the range for the last process
     if len(iterations) % size == 0:
         remaining_iterations = 0
+        minimum = rank * iterations_per_process
+        maximum = (rank + 1) * iterations_per_process
     elif rank >= size - len(iterations) % size:
         remaining_iterations = 1
+        minimum = rank * (iterations_per_process + remaining_iterations) - (size - len(iterations) % size)
+        maximum = (rank + 1) * (iterations_per_process + remaining_iterations) - (size - len(iterations) % size)
     else:
         remaining_iterations = 0
+        minimum = rank * iterations_per_process
+        maximum = (rank + 1) * iterations_per_process
 
     # # results list for each rank
     # results = [ [] for i in range(len(iterations)) ]
@@ -113,10 +120,11 @@ def parallizeFor(
     )
 
     comm.Barrier()
+    
 
     for index in range(
-        (rank) * iterations_per_process,
-        (rank + 1) * iterations_per_process + remaining_iterations,
+            minimum,
+            maximum
     ):
         parmSet = iterations[index]
         # print(f'Thread {rank} is performing set {parmSet}')

@@ -6,17 +6,15 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 250 * ms
-    initTstop = 200 * ms
-    dt = 0.001 * ms
-    celsius = 37
-    v_init = -90 * mV
+    tstop = 100 * ms
+    celsius = 34
+    v_init = -85 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
     PAPWid = 0.02
     branches = []
-
+    branchAtten = []
     # NMDA parms
     multiple = int()
     readParms = False
@@ -32,6 +30,8 @@ class PAPModel(ResultsPAPModel):
     # K Parms
     defaultKo = 2.5
 
+    GENEDict = None
+
     def __init__(
             self,
             readHoc=True,
@@ -45,10 +45,13 @@ class PAPModel(ResultsPAPModel):
             multiple=1,
             mode=0,
             somaCheck=False,
+            ComplexMorph=True,
             Glu=False,
             Ko=2.5,
             NMDAdelay=0,
-            **kwargs,
+            initTstop=50,
+            dt = 0.001,
+            **kwargs
     ):
         # Load NEURON GUI and parameters
         from neuron import h
@@ -58,10 +61,14 @@ class PAPModel(ResultsPAPModel):
         # print('loaded files')
 
         # Set simulation parameters
-        h.tstop = self.tstop
+        self.initTstop = initTstop
+        self.dt = dt
+
         h.dt = self.dt
+        h.tstop = self.tstop
         h.celsius = self.celsius
         h.v_init = self.v_init
+        
         # print('set sim parms')
 
         # set NMDA
@@ -82,28 +89,35 @@ class PAPModel(ResultsPAPModel):
         self.bWid = bWid
         self.bNum = bNum
         self.PAPWid = PAPWid
+        self.branchAtten = []
+        self.ComplexMorph = ComplexMorph
 
         if readHoc:
             # subsitute
             # [x] morphology
             # [x] NMDA setting up
             # [x] membrane properties
+            # print("read hoc")
             
             h.load_file("stdgui.hoc")
-            h('xopen("./neuronHoc/astrocyte.hoc")')
+            h('{xopen("./neuronHoc/astrocyte.hoc")}')
+            # print("read hoc")
             # set morphology parameters
-            h.soma.L = self.somaSize
-            h.branch.L = self.bLen
-            h.branch.diam = self.bWid 
-            h.PAP.L = self.PAPWid
+            if not self.ComplexMorph:
+                h.soma.L = self.somaSize
+                h.branch.L = self.bLen
+                h.branch.diam = self.bWid 
+                h.PAP.L = self.PAPWid
 
             # set K parms
             self.Ko = 2.5
 
             # match sections to self
+            # print("Match section")
             self.PAP = h.PAP
             self.soma = h.soma
-            self.branch = h.branch
+            if not self.ComplexMorph:
+                self.branch = h.branch
             self.PAParea = h.area(0.5,sec=self.PAP)
 
 
@@ -119,6 +133,8 @@ class PAPModel(ResultsPAPModel):
         # NMDA setup
         self.Glu = Glu
         self.NMDAdelay = NMDAdelay
+
+        # GENE expression setup
         GENExpression(h.allsec(), kwargs)
         self.GENEDict = kwargs
         # print('set GENE manipulation')
@@ -168,7 +184,7 @@ class PAPModel(ResultsPAPModel):
 
     def initialize(self, saveState=False):
         # print('initializing')
-        # sys.stdout.flush()
+        sys.stdout.flush()
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
@@ -187,7 +203,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         h.continuerun(self.initTstop * ms)
-        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP for local or global
+        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP 
         if saveState:
             s = h.SaveState()
             s.save()
@@ -195,6 +211,8 @@ class PAPModel(ResultsPAPModel):
                 s.fwrite(f)
 
     def run(self, printRes=False):
+        # print('running')
+        # sys.stdout.flush()
         # Clamp settings
         if self.readHoc:
             if self.mode > 2:
@@ -233,8 +251,8 @@ class PAPModel(ResultsPAPModel):
                 ic.dur = 0.002
                 ic.delay = 10  # ms starts with glutamate
                 ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
-            # print('clamp experiment setup')
-            # sys.stdout.flush()
+        # print('clamp experiment setup')
+        # sys.stdout.flush()
         try:
             h.continuerun((self.tstop) * ms)
         except RuntimeError as e:
@@ -259,13 +277,16 @@ class PAPModel(ResultsPAPModel):
         return RMP
 
     def cleanMorphology(self):
+        # print('cleaning')
+
         for sec in h.allsec():
             h.delete_section(sec=sec)
+        # print('Remove attr')
         self.branches = []
-        self.soma = None
-        self.PAP = None
-        if hasattr(self,"GENEDict"):
-            delattr(self, "GENEDict")
+        delattr(self,"soma")
+        delattr(self,"PAP")
+        # if hasattr(self,"GENEDict"):
+        #     delattr(self, "GENEDict")
 
     def astroMem(self, compartment):
         # add astrocyte properties
@@ -459,6 +480,11 @@ class PAPModel(ResultsPAPModel):
                 self.KiFileSoma = h.File("KiFileSoma.dat")
                 self.KiFileSoma.wopen("KiFileSoma.dat")
 
+        if hasattr(self,"branch"):
+            for i in range(10):
+                self.branchAtten.append(h.Vector())
+                self.branchAtten[-1].record(self.branch(i/10.)._ref_v)
+
         self.time = h.Vector()
         self.time.record(h._ref_t)
         if toFile:
@@ -471,6 +497,7 @@ class PAPModel(ResultsPAPModel):
 
         if self.readHoc:
             if mode == 'pulse':
+                # print("setting Ko to pulse mode")
                 h.continuerun(delay * ms + h.t)
                 papk = self.getPAPK()
                 h.setK(papk + Ko,restKo,0)

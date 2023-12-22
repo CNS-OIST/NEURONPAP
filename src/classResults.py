@@ -21,6 +21,7 @@ class ResultsPAPModel():
         ]
 
     def copyAttr(self):
+        # print("copying to result class")
         newInstance = ResultsPAPModel()
         newInstance.__dict__ = {
             attr: copy.deepcopy(self.__dict__[attr])
@@ -34,7 +35,6 @@ class ResultsPAPModel():
                 newInstance.__dict__[attr] = np.array(
                     newInstance.__dict__[attr]
                 ) * self.PAParea * 0.01
-                
         return newInstance
 
     def getRMP(self):

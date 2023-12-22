@@ -2,7 +2,7 @@ TITLE inward rectifier potassium (Kir) channel
 
 COMMENT
 
-Mod File by A. Hanuschkin <AH, 2011> for:
+Based on the Mod File by A. Hanuschkin <AH, 2011> for:
 Yim MY, Hanuschkin A, Wolfart J (2015) Hippocampus 25:297-308.
 http://onlinelibrary.wiley.com/doi/10.1002/hipo.22373/abstract
 
@@ -17,8 +17,14 @@ Mod File history:
 - file modified to uses nomoclature of 
   Li X, Ascoli GA (2006) J of Comput Neurosci 21(2):191-209 
   Li X, Ascoli GA (2008) Neural Comput 20:1717-31
-
-A. Hanuschkin(c) 2011,2012
+  
+  A. Hanuschkin(c) 2011,2012
+  
+  - sqrt effect of external potassium added following 
+  - model maximum conductance reduced to single channel resistance measured by Yang et al. 2000
+  
+  R. J. Nakatani(c) 2023
+  - 
 
 ENDCOMMENT
 
@@ -91,6 +97,7 @@ BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
 	gk = (0.0001) * gkbar*(A*sqrt(ko/1 (mM)))/area
 	: use state l to calulate gk
+        : area will be multiplied per section resulting in single channel conductance per segment.
         : calculate gkbar from fitting single channel recording
         ik = gk *l* ( v - ek )		: calculate ik 
 }

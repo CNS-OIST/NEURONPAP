@@ -28,7 +28,7 @@ class procedure():
         plt.cla()
         plt.clf()
         plt.scatter(range(1, itr + 1), dList)
-        plt.savefig(os.path.join('../results/NMDATests',"patchXDepolar.pdf"))
+        plt.savefig(os.path.join('../results/fullMorph',"patchXDepolar.pdf"))
 
 
     def multiDistance(self,x, read=False):
@@ -228,11 +228,61 @@ class procedure():
             PAPpopt[0] - 1050
         )*0.9/1050  # soma input resistance score
 
+    def branchAttenuation(self):
+        funcArgs = []
+        funcArgs.append(
+            {
+                # 'currentClamp':0,
+                # 'voltageClamp':20,
+                'readHoc':True,
+                'Glu':True,
+                "bWid": 0.01,#2.160,
+                "somaSize": 7.597,
+                "bLen": 10,
+                "PAPWid": 1.21,
+                "multiple":300,
+                "kir2":10,
+                # "readHoc":readHoc
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize()
+        cells.setK(Ko=2,delay = 0)
+        # cells.setK(Ko=ko)
+        cells.setK(Ko=2,delay=10*ms)
+        cells.run()
+        initStep = int(cells.initTstop / cells.dt)
+        cells = cells.copyAttr()
+
+        timeVoltageArray = list()
+        for x in cells.branchAtten:
+            coord = list(x)[initStep:]
+            timeVoltageArray.append(coord)
+        timeVoltageArray = np.array(timeVoltageArray).T
+        print(timeVoltageArray)
+        # Plot the array using a heatmap
+        plt.imshow(timeVoltageArray,
+                   cmap='viridis',
+                   interpolation='none',
+                   aspect='auto'
+                   )
+        plt.colorbar()
+
+        # Show the plot
+        plt.savefig("branchAtten.pdf")
+
+        plt.clf()
+        plt.cla()
+        plt.plot(cells.vPAP)
+        plt.show()
+            
+        
+
 
     def singleRun(self,readHoc=True):
         koConc = list(range(2,6))
         AllCells = []        
-        for kirCount in range(0,10):
+        for h,kirCount in enumerate(range(0,10,1)):
             AllCells.append(list())
             for i,ko in enumerate(koConc):
                 # single run
@@ -241,6 +291,8 @@ class procedure():
                     {
                         # 'currentClamp':0,
                         # 'voltageClamp':20,
+                        'mode':0,
+                        'ComplexMorph':True,
                         'bNum':1,
                         'readHoc':True,
                         'Glu':True,
@@ -248,7 +300,7 @@ class procedure():
                         "somaSize": 7.597,
                         "bLen": 8.237,
                         "PAPWid": 1.21,
-                        "multiple":300,
+                        "multiple":10/50, # Maximum conductance of model is equal to 50 single channels
                         "NMDAdelay":5*i*ms,
                         "kir2":kirCount,
                         # "readHoc":readHoc
@@ -265,108 +317,168 @@ class procedure():
                 cells = cells.copyAttr()
 
                 if size < 2:
-                    AllCells[kirCount].append(cells)
+                    AllCells[h].append(cells)
                 if size > 1:
                     AllCells = comm.gather(cells, root=0)
                 if rank == 0:
-                    fig, ax = plt.subplots()
-                    cell = AllCells[kirCount][i]
-                    ax.plot(list(cell.time)[initStep:], list(cell.KoSoma)[initStep:], label="Soma Ko")
-                    # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
-                    # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
-                        ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
-                    ax.set_xlabel('time (ms)')
-                    ax.set_ylabel('[K] (mM)')
-                    ax.legend()
+                    self.plotIKSeries(AllCells)
 
-                    ax2 = ax.inset_axes([0.7, 0.3, 0.3, 0.3])  # Define the position and size of the new subplot
-                    ax2.plot(list(cells.time)[initStep:],
-                             list(cell.vSoma)[initStep:],
-                             label="Soma")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
-                        ax2.plot(list(cell.time)[initStep:],
-                                 list(cell.vPAP)[initStep:],
-                                 label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
+    def plotIKSeries(self,AllCells):
+        for cells in AllCells:
+            for cell in cells:
+                initStep = int(cell.initTstop / cell.dt)
+                fig, ax = plt.subplots()
+                ax.plot(list(cell.time)[initStep:], list(cell.KoSoma)[initStep:], label="Soma Ko")
+                # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
+                ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label=f"PAP Ko")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('[K] (mM)')
+                ax.legend()
+
+                ax2 = ax.inset_axes([0.7, 0.3, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2.plot(list(cell.time)[initStep:],
+                         list(cell.vSoma)[initStep:],
+                         label="Soma")
+                ax2.plot(list(cell.time)[initStep:],
+                         list(cell.vPAP)[initStep:],
+                         label=f"PAP Ko")
+                ax2.set_ylabel('Vm')
+                ax2.set_xlabel('time')
+
+                plt.savefig(os.path.join('../results/fullMorph',f"KoCon{cell.GENEDict['kir2']}_{cell.multiple}.pdf"))
+
+                fig, ax = plt.subplots()
+                # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
+                ax.plot(list(cell.time)[initStep:], list(cell.NaoPAP)[initStep:], label=f"PAP Ko")
+                ax.plot(list(cell.time)[initStep:], list(cell.CloPAP)[initStep:], label=f"PAP Ko")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('Conc. (mM)')
+                ax.legend()
+                plt.savefig(os.path.join('../results/fullMorph',f"NaCon{cell.GENEDict['kir2']}_{cell.multiple}.pdf"))
+
+                plt.cla()
+                plt.clf()
+                fig, ax = plt.subplots()
+
+                ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label="PAP Ko")
+                ax.plot(list(cell.time)[initStep:], list(cell.KoSoma)[initStep:], label="Soma Ko")
+                # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('[K] (mM)')
+                ax.legend()
+
+                ax2 = ax.inset_axes([0.7, 0.4, 0.3, 0.3])  # Define the position and size of the new subplot
+                ax2.plot(list(cell.time)[initStep:], list(cell.ekPAP)[initStep:])
+                # ax2.plot(list(cell.time), list(cell.enaPAP))
+                plt.legend()
+                ax2.set_ylabel('e_rev')
+                ax2.set_xlabel('time')
+
+                plt.savefig(os.path.join('../results/fullMorph',f"ekPlot{cell.GENEDict['kir2']}_{cell.multiple}.pdf"))
+
+                plt.cla()
+                plt.clf()
+                fig, ax = plt.subplots()
+
+                ax.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
+                ax.plot(list(cell.time)[initStep:], list(cell.iKSoma)[initStep:], label="ik Soma")
+                if hasattr(cell,"iNaPAP"):
+                    ax.plot(list(cell.time)[initStep:], list(cell.iNaPAP)[initStep:], label="iNa PAP",color="orange")
+                if hasattr(cell,"iClPAP"):
+                    ax.plot(list(cell.time)[initStep:], list(cell.iClPAP)[initStep:], label="iCl PAP",color="green")
+                if cell.Glu:
+                    ax.plot(list(cell.time)[initStep:], list(cell.iNMDA)[initStep:], label="iNMDA",color='purple')
+                # if hasattr(cell, "iMemPAP"):
+                #     ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
+                # if hasattr(cell, "iMemSoma"):
+                #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
+                ax.set_xlabel('time (ms)')
+                ax.set_ylabel('Currents (nA)')
+                ax.legend(loc="lower center")
+
+                ax2 = ax.inset_axes([0.75,0.2, 0.2, 0.2])  # Define the position and size of the new subplot
+                if cell.Glu:
+                    ax2.plot(list(cell.time), list(cell.iNMDA), label="iNMDA",color='purple')
+                    ax2.set_ylabel('Currents (nA)')
+                else:
+                    ax2.plot(list(cell.time)[initStep:], list(cell.vPAP)[initStep:], label="PAP")
                     ax2.set_ylabel('Vm')
-                    ax2.set_xlabel('time')
-
-                    plt.savefig(os.path.join('../results/NMDATests',f"KoCon{ko}_{kirCount}.pdf"))
-
-                    fig, ax = plt.subplots()
-                    cell = AllCells[kirCount][i]
-                    # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
-                    # ax.plot(list(cell.time), list(cell.KiSoma), label="Soma Ki")
-                    for j in range(len(AllCells[kirCount])):
-                        cell = AllCells[kirCount][len(AllCells[kirCount])-1-j]
-                        ax.plot(list(cell.time)[initStep:], list(cell.NaoPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
-                        ax.plot(list(cell.time)[initStep:], list(cell.CloPAP)[initStep:], label=f"PAP Ko {koConc[len(AllCells[kirCount])-1-j]}")
-                    ax.set_xlabel('time (ms)')
-                    ax.set_ylabel('Conc. (mM)')
-                    ax.legend()
-                    plt.savefig(os.path.join('../results/NMDATests',f"NaCon{ko}_{kirCount}.pdf"))
-
-                    plt.cla()
-                    plt.clf()
-                    cell = AllCells[kirCount][i]
-                    fig, ax = plt.subplots()
-
-                    ax.plot(list(cell.time)[initStep:], list(cell.KoPAP)[initStep:], label="PAP Ko")
-                    ax.plot(list(cell.time)[initStep:], list(cell.KoSoma)[initStep:], label="Soma Ko")
-                    # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
-                    ax.set_xlabel('time (ms)')
-                    ax.set_ylabel('[K] (mM)')
-                    ax.legend()
-
-                    ax2 = ax.inset_axes([0.7, 0.4, 0.3, 0.3])  # Define the position and size of the new subplot
-                    ax2.plot(list(cells.time)[initStep:], list(cell.ekPAP)[initStep:])
-                    # ax2.plot(list(cells.time), list(cell.enaPAP))
-                    plt.legend()
-                    ax2.set_ylabel('e_rev')
-                    ax2.set_xlabel('time')
-
-                    plt.savefig(os.path.join('../results/NMDATests',f'ekPlot{ko}_{kirCount}.pdf'))
-
-                    plt.cla()
-                    plt.clf()
-                    cell = AllCells[kirCount][i]
-                    fig, ax = plt.subplots()
-
-                    ax.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
-                    ax.plot(list(cell.time)[initStep:], list(cell.iKSoma)[initStep:], label="ik Soma")
-                    if hasattr(cell,"iNaPAP"):
-                        ax.plot(list(cell.time)[initStep:], list(cell.iNaPAP)[initStep:], label="iNa PAP",color="orange")
-                    if hasattr(cell,"iClPAP"):
-                        ax.plot(list(cell.time)[initStep:], list(cell.iClPAP)[initStep:], label="iCl PAP",color="green")
-                    if cell.Glu:
-                        ax.plot(list(cell.time)[initStep:], list(cell.iNMDA)[initStep:], label="iNMDA",color='purple')
-                    # if hasattr(cell, "iMemPAP"):
-                    #     ax.plot(list(cell.time), list(cell.iMemPAP), label="iMem PAP")
-                    # if hasattr(cell, "iMemSoma"):
-                    #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
-                    ax.set_xlabel('time (ms)')
-                    ax.set_ylabel('Currents (nA)')
-                    ax.set_xlim(199.99+5*i,200.99+5*i)
-                    ax.legend(loc="lower center")
-
-                    ax2 = ax.inset_axes([0.75,0.2, 0.2, 0.2])  # Define the position and size of the new subplot
-                    if cell.Glu:
-                        ax2.plot(list(cell.time), list(cell.iNMDA), label="iNMDA",color='purple')
-                        ax2.set_xlim(199.99+5*i,200.03+5*i)
-                        ax2.set_ylabel('Currents (nA)')
-                    else:
-                        ax2.plot(list(cell.time)[initStep:], list(cell.vPAP)[initStep:], label="PAP")
-                        ax2.set_ylabel('Vm')
-                    # ax2.set_xlabel('time')
-                    ax3 = ax.inset_axes([0.75, 0.55, 0.2, 0.2])  # Define the position and size of the new subplot
-                    ax3.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
-                    ax3.set_ylabel('Currents (nA)')
-                    ax3.set_xlim(199.99+5*i,200.03+5*i)
+                # ax2.set_xlabel('time')
+                ax3 = ax.inset_axes([0.75, 0.55, 0.2, 0.2])  # Define the position and size of the new subplot
+                ax3.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
+                ax3.set_ylabel('Currents (nA)')
 
 
 
-                    plt.savefig(os.path.join('../results/NMDATests',f'ikPlot{ko}_{kirCount}.pdf'))
-                    plt.close()
+                plt.savefig(os.path.join('../results/fullMorph',f"ikPlot{cell.GENEDict['kir2']}_{cell.multiple}.pdf"))
+                plt.close('all')
 
+
+    def channelComparison(self):
+        NMDAMax = 100
+        NMDAStep = 10
+        KirMax = 10
+        KirStep = 1
+        
+        # Calculate the number of iterations for all parm sets
+        iterations = comm.bcast(get_iter(KirMax, KirStep, NMDAMax, NMDAStep), root=0)
+        imArray = np.zeros((int(KirMax/KirStep) + 1,int(NMDAMax/NMDAStep) + 1))
+        # # Adjust the range for the last process
+
+        comm.Barrier()
+        funcArgs = []
+        funcArgs.append(
+            {
+                'mode':0,
+                'bNum':1,
+                'readHoc':True,
+                'Glu':True,
+                "bWid": 2.160,
+                "somaSize": 7.597,
+                "bLen": 8.237,
+                "PAPWid": 1.21,
+                'ComplexMorph':True,
+            }
+        )
+        # make sure that funcParms is in the correct order of whatever iterations spits out
+        # results are collected only on rank 0
+        results = parallizeFor(
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ["kir2", "multiple"],
+            [["initialize", "setK","run"]],
+            [[{}, {"Ko":2},{}]]
+        )
+        comm.Barrier()
+        
+        if rank == 0:
+            with open(
+                    os.path.join(
+                        'intermediaryData',
+                        "resultsParallel.pickle"
+                    ), "wb") as handle:
+                pickle.dump(results,
+                            handle,
+                            protocol=pickle.HIGHEST_PROTOCOL)
+            self.plotIKSeries(results)
+
+            for res in results:
+                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = max(res[0].vPAP) - res[0].RMP
+            plt.imshow(imArray,
+                       cmap='viridis',
+                       origin='lower',
+                       interpolation='nearest',
+                       aspect='equal'
+                       )
+            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
+            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
+            plt.ylabel('Kir Channel')
+            plt.xlabel('NMDAR Channel')
+            plt.colorbar(label = 'values')
+            plt.savefig('FullComparison.pdf')
+           
+                
+    
