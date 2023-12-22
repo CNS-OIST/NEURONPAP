@@ -26,7 +26,6 @@ NEURON {
 	POINT_PROCESS Exp5NMDA
 	NONSPECIFIC_CURRENT i
 	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple
-	GLOBAL inf, tau2, tau3
 	THREADSAFE
 }
 
@@ -128,6 +127,7 @@ ASSIGNED {
         prvB (1)
         prvC (1)
         tPeak (ms)
+        area (um2)
 }
 
 STATE {
@@ -154,7 +154,7 @@ STATE {
 	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
 	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
 	factor = 1/factor
-	printf("tau:%g,%g\n",tau1,tau1_0)
+	: printf("tau:%g,%g\n",tau1,tau1_0)
 
 	A = 0
 	B = 0
@@ -171,25 +171,25 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-	i = (1e-06)*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+	i = (1e-06)*(wtau3*C + wtau2*B - A)*multiple*(gVI + gVD)*Mgblock(v)*(v - e)
         
         UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
             flag = 1
-            tPeak = t
             : printf("detected decrease")
         } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
-            if (CUTOFF((wtau3*C + wtau2*B - A),12) == 0){
+            if (CUTOFF(prvI,12) == 0) {
                 i = 0
                 A = 0
                 B = 0
                 C = 0
                 : printf("%g\n",i)
                 flag = 0
-            }
-            : printf("detected spontaneous increase\n shutting down")
+                : printf("detected spontaneous increase\n shutting down")
+                }
         }
         prvW =  (wtau3*C + wtau2*B - A)
+        prvI = i
         UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
@@ -218,7 +218,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	tsyn = t
         
 	wf = weight*factor*D1*hillGluc(gluConc)
-        printf("%g,%g,%g\n",weight,factor,D1)
+        : printf("%g,%g,%g\n",weight,factor,D1)
 	A = A + wf
 	B = B + wf
 	C = C + wf

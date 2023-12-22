@@ -400,7 +400,7 @@ class procedure():
 
                 ax2 = ax.inset_axes([0.75,0.2, 0.2, 0.2])  # Define the position and size of the new subplot
                 if cell.Glu:
-                    ax2.plot(list(cell.time), list(cell.iNMDA), label="iNMDA",color='purple')
+                    ax2.plot(list(cell.time)[initStep:], list(cell.iNMDA)[initStep:], label="iNMDA",color='purple')
                     ax2.set_ylabel('Currents (nA)')
                 else:
                     ax2.plot(list(cell.time)[initStep:], list(cell.vPAP)[initStep:], label="PAP")
@@ -417,8 +417,8 @@ class procedure():
 
 
     def channelComparison(self):
-        NMDAMax = 100
-        NMDAStep = 10
+        NMDAMax = 10
+        NMDAStep = 1
         KirMax = 10
         KirStep = 1
         
@@ -440,6 +440,7 @@ class procedure():
                 "bLen": 8.237,
                 "PAPWid": 1.21,
                 'ComplexMorph':True,
+                'NMDAdelay':0,
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -477,7 +478,8 @@ class procedure():
             plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
             plt.ylabel('Kir Channel')
             plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values')
+            plt.colorbar(label = 'values',ticks=np.arange(0,90,10),extend='max')
+            plt.clim((0,90))
             plt.savefig('FullComparison.pdf')
            
                 

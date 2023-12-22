@@ -38,18 +38,19 @@ astro_name = "CA1"
 // inserting NMDARs
 objref sNMDA, stim, nc
 
-proc insrtNMDA(){
-    {stim = new NetStim(.5)}
+{
+    stim = new NetStim(.5)
     stim.interval = 1
-    stim.number = 0
+    stim.number = 1
     stim.start = 0
     stim.noise = 0
     
     PAP {sNMDA = new Exp5NMDA(0.5)}
-    {nc = new NetCon(stim,sNMDA)}
+    nc = new NetCon(stim,sNMDA)
     nc.weight = 0
     nc.delay = 0
 }
+
 
 //initialize Ko
 proc initIon(){local iki,inai
