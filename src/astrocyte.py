@@ -51,7 +51,7 @@ class PAPModel(ResultsPAPModel):
             Ko=2.5,
             NMDAdelay=0,
             initTstop=200,
-            dt = 0.001,
+            dt = 0.005,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -73,7 +73,7 @@ class PAPModel(ResultsPAPModel):
         # print('set sim parms')
 
         # set NMDA
-        self.multiple = multiple / 50 # default current is equal to minimum of 50 channels opening
+        self.multiple = multiple
         
 
         # set clamp parms
