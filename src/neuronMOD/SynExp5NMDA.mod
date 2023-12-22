@@ -80,8 +80,8 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 33e-6			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
-        :additional change to 33 pS
+	gVI = 15.56e-6			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+        :additional change to fit 60 mV 33 pS = gVI + gVD(inf)
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
