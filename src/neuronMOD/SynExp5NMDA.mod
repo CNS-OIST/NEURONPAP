@@ -26,7 +26,6 @@ NEURON {
 	POINT_PROCESS Exp5NMDA
 	NONSPECIFIC_CURRENT i
 	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple
-	GLOBAL inf, tau2, tau3
 	THREADSAFE
 }
 
@@ -81,7 +80,7 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 15.56e-6			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+	gVI = 25			(pS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
         :additional change to fit 60 mV 33 pS = gVI + gVD(inf)
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
@@ -112,12 +111,12 @@ ASSIGNED {
         maxI (nA)
 	i		(nA)
         prvI (nA)
-	g		(uS)
+	g		(pS)
 	factor
 	wf
 	q10_tau2
 	q10_tau3
-	inf		(uS)
+	inf		(pS)
 	tau		(ms)
 	tau2	(ms)
 	tau3	(ms)
@@ -127,13 +126,14 @@ ASSIGNED {
         prvB (1)
         prvC (1)
         tPeak (ms)
+        area (um2)
 }
 
 STATE {
 	A		: Gating in response to release of Glutamate
 	B		: Gating in response to release of Glutamate
 	C		: Gating in response to release of Glutamate
-	gVD (uS): Voltage dependent gating
+	gVD (pS): Voltage dependent gating
     }
     
     INITIAL {
@@ -170,25 +170,25 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+	i = (1e-06)*(wtau3*C + wtau2*B - A)*multiple*(gVI + gVD)*Mgblock(v)*(v - e)
         
         UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
             flag = 1
-            tPeak = t
             : printf("detected decrease")
         } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
-            if (CUTOFF((wtau3*C + wtau2*B - A),1) == 0){
+            if (CUTOFF(prvI,6) == 0) {
                 i = 0
                 A = 0
                 B = 0
                 C = 0
                 : printf("%g\n",i)
                 flag = 0
-            }
-            : printf("detected spontaneous increase\n shutting down")
+                : printf("detected spontaneous increase\n shutting down")
+                }
         }
         prvW =  (wtau3*C + wtau2*B - A)
+        prvI = i
         UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
@@ -223,8 +223,6 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
         
 	D1 = D1 * d1
         flag = 0
-        gVI = multiple * gVI
-
     }
     
 
