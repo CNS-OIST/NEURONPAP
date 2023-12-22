@@ -6,9 +6,9 @@ from utils import *
 from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
-    tstop = 250 * ms
+    tstop = 100 * ms
     celsius = 34
-    v_init = -90 * mV
+    v_init = -85 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -49,8 +49,8 @@ class PAPModel(ResultsPAPModel):
             Glu=False,
             Ko=2.5,
             NMDAdelay=0,
-            initTstop=200,
-            dt = 0.005,
+            initTstop=50,
+            dt = 0.001,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -90,6 +90,7 @@ class PAPModel(ResultsPAPModel):
         self.bNum = bNum
         self.PAPWid = PAPWid
         self.branchAtten = []
+        self.ComplexMorph = ComplexMorph
 
         if readHoc:
             # subsitute
@@ -102,7 +103,7 @@ class PAPModel(ResultsPAPModel):
             h('{xopen("./neuronHoc/astrocyte.hoc")}')
             # print("read hoc")
             # set morphology parameters
-            if not ComplexMorph:
+            if not self.ComplexMorph:
                 h.soma.L = self.somaSize
                 h.branch.L = self.bLen
                 h.branch.diam = self.bWid 
@@ -115,7 +116,7 @@ class PAPModel(ResultsPAPModel):
             # print("Match section")
             self.PAP = h.PAP
             self.soma = h.soma
-            if not ComplexMorph:
+            if not self.ComplexMorph:
                 self.branch = h.branch
             self.PAParea = h.area(0.5,sec=self.PAP)
 
@@ -202,7 +203,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         h.continuerun(self.initTstop * ms)
-        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP for local or global
+        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP 
         if saveState:
             s = h.SaveState()
             s.save()

@@ -396,13 +396,11 @@ class procedure():
                 #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel('time (ms)')
                 ax.set_ylabel('Currents (nA)')
-                ax.set_xlim(199.99,200.99)
                 ax.legend(loc="lower center")
 
                 ax2 = ax.inset_axes([0.75,0.2, 0.2, 0.2])  # Define the position and size of the new subplot
                 if cell.Glu:
                     ax2.plot(list(cell.time), list(cell.iNMDA), label="iNMDA",color='purple')
-                    ax2.set_xlim(199.99,200.03)
                     ax2.set_ylabel('Currents (nA)')
                 else:
                     ax2.plot(list(cell.time)[initStep:], list(cell.vPAP)[initStep:], label="PAP")
@@ -411,7 +409,6 @@ class procedure():
                 ax3 = ax.inset_axes([0.75, 0.55, 0.2, 0.2])  # Define the position and size of the new subplot
                 ax3.plot(list(cell.time)[initStep:], list(cell.iKPAP)[initStep:], label="ik PAP")
                 ax3.set_ylabel('Currents (nA)')
-                ax3.set_xlim(199.99,200.03)
 
 
 

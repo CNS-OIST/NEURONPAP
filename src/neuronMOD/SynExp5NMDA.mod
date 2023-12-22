@@ -35,6 +35,7 @@ UNITS {
 	(mV) = (millivolt)
 	(uS) = (microsiemens)
 	(mM) = (milli/liter)
+	(uM) = (micro/liter)
 	(S)  = (siemens)
 	(pS) = (picosiemens)
 	(um) = (micron)
@@ -93,6 +94,9 @@ PARAMETER {
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
         multiple = 1 (1)
         flag = 0 (1)
+        gluConc = 1 (mM) : From Nahum-Levy et al. 2001 Biophysical Journal
+        gluEC = 4.3 (uM)
+        hilln = 1.2 (1)
 }
 
 CONSTANT {
@@ -212,7 +216,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
 
-	wf = weight*factor*D1
+	wf = weight*factor*D1*hillGluc(gluConc)
 	A = A + wf
 	B = B + wf
 	C = C + wf
@@ -245,4 +249,7 @@ FUNCTION Mgblock(v(mV)) {
     FUNCTION CUTOFF(value(1) , digit(1)) {
         CUTOFF = trunc(value * pow(10,digit)) * pow(10,-digit)
     }
-        
+    
+    FUNCTION hillGluc(gluConc (mM)){
+        hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
+        }
