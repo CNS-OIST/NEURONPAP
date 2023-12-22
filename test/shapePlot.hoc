@@ -1,0 +1,22 @@
+xopen("../src/Geometry/GeometryAstrocyteCA1.hoc")
+// Load the standard run library
+load_file("nrngui.hoc")
+
+// Load the PlotShape tool
+load_file("plotshape.hoc")
+
+// Create a new PlotShape object
+objref g[3]
+for i=0, 2 {
+    g[i] = new PlotShape()
+}
+
+// Plot the morphology
+for i=0, 2 {
+    g[i].variable("v")
+    g[i].activate(g[i].append(0.5, i+1), 0)
+}
+
+// Save the image
+g[0].exec_menu("View = plot")
+g[0].exec_menu("File = plotshapefile")
