@@ -80,7 +80,8 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 1			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+	gVI = 33e-6			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+        :additional change to 33 pS
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
@@ -165,7 +166,7 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-	i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
+	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
         
         UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
@@ -211,22 +212,24 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
 
-	wf = weight*factor*D1*multiple
+	wf = weight*factor*D1
 	A = A + wf
 	B = B + wf
 	C = C + wf
         
 	D1 = D1 * d1
         flag = 0
+        gVI = multiple * gVI
+
     }
     
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
 	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
-}
-
-PROCEDURE rates(v (mV)) { 
+    }
+    
+    PROCEDURE rates(v (mV)) {
 	inf = (v - gVDv0) * gVDst * gVI
 	
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
