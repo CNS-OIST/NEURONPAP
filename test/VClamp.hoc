@@ -1,6 +1,6 @@
 // mode
 double mode[1]
-mode = 0
+mode = 1
 
 // Load NEURON
 load_file("nrngui.hoc")
@@ -12,8 +12,8 @@ create soma
 access soma
 soma {
     insert pas  // Passive membrane properties
-    diam = 20    // Diameter in microns
-    L = 20      // Length in microns
+    diam = 10    // Diameter in microns
+    L = 10      // Length in microns
     Ra = 100     // Axial resistance in ohm-cm
     cm = 0.8       // Membrane capacitance in uf/cm^2
     g_pas = 1/11150  // Specific membrane conductance in S/cm^2
@@ -36,30 +36,31 @@ vclamp.amp1 = 0  // Holding potential in mV
 
 // // Set up NMDA
 objref sNMDA, stim, nc
-// stim = new NetStim(.5)
-// 	stim.interval = 1		//ms (mean) time between spikes
-// 	stim.number = 1			//(average) number of spikes
-// 	stim.start 	= 100	//ms (most likely) start time of first spike
-// 	stim.noise 	= 0			//---- range 0 to 1. Fractional randomness.
+stim = new NetStim(.5)
+	stim.interval = 1		//ms (mean) time between spikes
+	stim.number = 1			//(average) number of spikes
+	stim.start 	= 100	//ms (most likely) start time of first spike
+	stim.noise 	= 0			//---- range 0 to 1. Fractional randomness.
         
-// {sNMDA = new Exp5NMDA(.5)}
-// nc = new NetCon(stim, sNMDA)
+{sNMDA = new Exp5NMDA(.5)}
+nc = new NetCon(stim, sNMDA)
 
-// proc init_NMDA() {
-//     sNMDA.multiple = 5
-//     nc.weinnght = $1
-//     nc.delay = 0
-//     }
-//     objref FinNMDA
+proc init_NMDA() {
+    sNMDA.multiple = 1
+    sNMDA.delta = 0
+    nc.weight = $1
+    nc.delay = 0
+    }
+    objref FinNMDA
     
-// SynWeight = 0.57262
-// FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
+SynWeight = 0.57262
+FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 
 
 // Create a vector for voltage steps
 objref v_steps
 v_steps = new Vector()
-for (v = -144; v <= 0; v = v + 16) {
+for (v = -60; v <= 60; v = v + 30) {
     v_steps.append(v)
 }
 
@@ -123,7 +124,7 @@ for i = 0, v_steps.size - 1 {
 objref g, legend
 strdef label
 g = new Graph()
-g.size(100,tstop,-12,5)
+g.size(100,tstop,-30,30)
 for i = 0, v_steps.size - 1 {
     ivec_list.o[i].plot(g,tvec)
 }

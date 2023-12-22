@@ -4,7 +4,7 @@ We will examine the depolarization after injection of current.
 
 // load_file("nrngui.hoc")
 load_file("stdgui.hoc")
-load_file("params.hoc")
+load_file("../src/neuronHoc/params.hoc")
 
 //fully activates cache efficiency
 cvode.cache_efficient(1)  
@@ -100,7 +100,7 @@ proc clampSwitch () {
         vc = new VClamp(.5)
         vc.dur[0] = tstop   // ms half of tstop
         // vc.amp[0] = -65 // mV depolarization (dV = 20)
-        vc.amp[0] = 40 // mV depolarization (dV = 20)
+        vc.amp[0] = 60 // mV depolarization (dV = 20)
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
@@ -122,14 +122,14 @@ objref wFile
 // wFile.close()
 
 wFile = new File()   
-wFile.ropen("./results/optimize/optT2.dat")
+wFile.ropen("../results/optimize/optT2.dat")
 Tau2_0 = wFile.scanvar()
 A2 = wFile.scanvar()
 B2 = wFile.scanvar()
 wFile.close()
 
 wFile = new File()   
-wFile.ropen("./results/optimize/optT3.dat")
+wFile.ropen("../results/optimize/optT3.dat")
 Tau3_0 = wFile.scanvar()
 A3 = wFile.scanvar()
 B3 = wFile.scanvar()
@@ -147,7 +147,7 @@ wFile.close()
 
 //k0 = 6.9172
 wFile = new File()   
-wFile.ropen("./results/optimize/optDelta.dat")
+wFile.ropen("../results/optimize/optDelta.dat")
 DELTA = wFile.scanvar()
 wFile.close()
 // DELTA = 0.99128
@@ -189,7 +189,7 @@ proc init_NMDA() {
     objref FinNMDA
     
 wFile = new File()   
-wFile.ropen("./results/optimize/optW.dat")
+wFile.ropen("../results/optimize/optW.dat")
 SynWeight = wFile.scanvar()
 wFile.close()
 

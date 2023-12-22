@@ -13,9 +13,10 @@ import sys
 import argparse
 import plotly
 
-from neuron import h
+from neuron import h,load_mechanisms
 import os
 import pandas as pd
+
 
 def setArgParser():
     parser = argparse.ArgumentParser()
@@ -54,14 +55,14 @@ def setArgParser():
 
     return parser
 
-def saveSynWeight(w,file='./results/optimize/optW.dat'):
+def saveSynWeight(w,file='../results/optimize/optW.dat'):
     fName = open(file,'w')
     fName.write(f'{w}\n')
     fName.close()
     fName = open(file,'r')
     return fName.read()
 
-def saveDelta(d,file='./results/optimize/optDelta.dat'):
+def saveDelta(d,file='../results/optimize/optDelta.dat'):
     fName = open(file,'w')
     fName.write(f'{d}\n')
     fName.close()
@@ -69,7 +70,7 @@ def saveDelta(d,file='./results/optimize/optDelta.dat'):
     return fName.read()
 
 
-def saveTau(t,A,B,i,dName='./results/optimize/'):
+def saveTau(t,A,B,i,dName='../results/optimize/'):
     fName = os.path.join(
         dName,
         f'optT{i}.dat'
@@ -87,7 +88,7 @@ def saveTau(t,A,B,i,dName='./results/optimize/'):
     sFile = open(fName,'r')
     return sFile.readlines()
 
-def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=1):
+def relLikelihood(expData='../src/Data/VClamp40.1Stim.dat',scale=1):
     # Read simulated data
     iCurve = pd.read_csv('iFile.dat',header=None,names=['current'])
     tSample = pd.read_csv('tFile.dat',header=None,names=['t'])
@@ -100,14 +101,15 @@ def relLikelihood(expData='./Data/VClamp40.1Stim.dat',scale=1):
     for line in lines[2:]:
         t,v = line.strip().split()
         tList.append(float(t))
-        vList.append(float(v)*scale/50)
+        vList.append(float(v)*scale)
     # Get RSS
-    itResult =[(t,i) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
-    vList = [v for v in vList]
-    rss = 0
-    for i,current in enumerate(itResult):
-        t,c = current
-        rss += (c - vList[i]) ** 2
+    # itResult =[(t,i) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
+    # vList = [v for v in vList]
+    # rss = 0
+    # for i,current in enumerate(itResult):
+    #     t,c = current
+    #     rss += (c - vList[i]) ** 2
+    rss = abs(max(iCurve['current']) * 1000 - 2)
     return rss 
 
 # def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
@@ -152,12 +154,8 @@ def objective(trial):
 
     """
     # Save Synaptic weight
-    SynWeight = trial.suggest_float("SynWeight", 0, 1e-8)
+    SynWeight = trial.suggest_float("SynWeight", 0, 5)
     saveSynWeight(SynWeight)
-
-    # # Suggest DELTA
-    DELTA = trial.suggest_float("DELTA", 0, 1)
-    saveDelta(DELTA)
 
     # # suggest Tau1
     # tau1 = trial.suggest_float("tau1", 0, 10)
@@ -165,18 +163,19 @@ def objective(trial):
     # saveTau(tau1,wTau2,None,1)
     
     # suggest Tau2
-    tau2 = trial.suggest_float("tau2", 0, 100)
-    A2 = trial.suggest_float("A2", 0, 50)
-    B2 = trial.suggest_float("B2", 0, 0.1)
-    saveTau(tau2,A2,B2,2)
+    # tau2 = 3.97
+    # A2 = trial.suggest_float("A2", 0, 1000)
+    # B2 = trial.suggest_float("B2", 0, 1)
+    # saveTau(tau2,A2,B2,2)
     
     # suggest Tau3
-    tau3 = trial.suggest_float("tau3", 0, 100)
-    A3 = trial.suggest_float("A3", 0, 50)
-    B3 = trial.suggest_float("B3", 0, 0.1)
-    saveTau(tau3,A3,B3,3)
+    # tau3 = 41.62
+    # A3 = trial.suggest_float("A3", 0, 1000)
+    # B3 = trial.suggest_float("B3", 0, 1)
+    # saveTau(tau3,A3,B3,3)
+
     
-    h.load_file("Exp08-NaSpike-ExpSyn.hoc")
+    h.xopen("./Exp08-NaSpike-ExpSyn.hoc")
     
     
 
