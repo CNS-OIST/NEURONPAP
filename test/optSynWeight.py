@@ -109,7 +109,7 @@ def relLikelihood(expData='../src/Data/VClamp40.1Stim.dat',scale=1):
     # for i,current in enumerate(itResult):
     #     t,c = current
     #     rss += (c - vList[i]) ** 2
-    rss = abs(max(iCurve['current']) * 1000 - 2)
+    rss = abs(min(iCurve['current']) * 1000 + 2)
     return rss 
 
 # def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
@@ -154,7 +154,7 @@ def objective(trial):
 
     """
     # Save Synaptic weight
-    SynWeight = trial.suggest_float("SynWeight", 0, 5)
+    SynWeight = trial.suggest_float("SynWeight", 0, 2)
     saveSynWeight(SynWeight)
 
     # # suggest Tau1

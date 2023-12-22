@@ -43,21 +43,21 @@ v_init = -65
 // insert GluTrans
 
 
-// ------------------ THE PAP
-create pap
-// connect pap(0), branch(1)
-access pap
+// // ------------------ THE PAP
+// create PAP
+// // connect PAP(0), branch(1)
+// access PAP
+xopen("../src/Geometry/GeometryAstrocyteCA1.hoc")
 
 // ------------------ Astrcyte leaf membrane parms from CellInit.hoc
 
-L = 0.3                 // um from previous Ryo Model
-diam = 0.02             // um from previous Ryo Model
 
 // Ra = 100                // Ohm cm 
 // cm = 0.8                // uF/cm2
-nseg = 10              // seg/5 um
-insert pas
-e_pas = -65             // mV 
+forall {
+    insert pas
+    e_pas = -65             // mV
+}
 // g_pas = 1/11150         // mS/cm2
 
 
@@ -100,7 +100,7 @@ proc clampSwitch () {
         vc = new VClamp(.5)
         vc.dur[0] = tstop   // ms half of tstop
         // vc.amp[0] = -65 // mV depolarization (dV = 20)
-        vc.amp[0] = 60 // mV depolarization (dV = 20)
+        vc.amp[0] = -60
     } else {
         //------------Current Clamp---------------------------	
         ic = new IClamp(.5)
@@ -208,7 +208,7 @@ FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 
 // vSoma = new Graph()
 // vSoma.size(0,tstop,-100,100)
-// vSoma.addvar("pap.v(.5)",3,0)
+// vSoma.addvar("PAP.v(.5)",3,0)
 // vSoma.save_name("graphList[0].")
 // graphList[0].append(vSoma)
 
@@ -220,12 +220,12 @@ iFile = new File("iFile.dat")
 iFile.wopen("iFile.dat")
 
 iMem = new Vector()
-iMem.record(&pap.i_pas(0.5))
+iMem.record(&PAP.i_pas(0.5))
 iFileMem = new File("iFileMem.dat")
 iFileMem.wopen("iFileMem.dat")
 
 vSoma = new Vector()
-vSoma.record(&pap.v(0.5))
+vSoma.record(&PAP.v(0.5))
 vFile = new File("vFile.dat")
 vFile.wopen("vFile.dat")
 

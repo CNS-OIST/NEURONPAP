@@ -12,18 +12,18 @@ create soma
 access soma
 soma {
     insert pas  // Passive membrane properties
-    diam = 10    // Diameter in microns
-    L = 10      // Length in microns
+    diam = 0.001    // Diameter in microns
+    L = 0.001    // Length in microns
     Ra = 100     // Axial resistance in ohm-cm
     cm = 0.8       // Membrane capacitance in uf/cm^2
     g_pas = 1/11150  // Specific membrane conductance in S/cm^2
     e_pas = -85   // Reversal potential for passive properties in mV
-    insert kir2
-    gkbar_kir2 = gkbar_kir2 * 1e4 //equal to 10K channel on soma
-    insert kleak
-    gleak_kleak = gleak_kleak * 1e4
-    // insert twik
-    ko = 5
+    // insert kir2
+    // gkbar_kir2 = gkbar_kir2 * 1e4 //equal to 10K channel on soma
+    // insert kleak
+    // gleak_kleak = gleak_kleak * 1e4
+    // // insert twik
+    // ko = 5
 }
 
 
@@ -47,15 +47,14 @@ nc = new NetCon(stim, sNMDA)
 
 proc init_NMDA() {
     sNMDA.multiple = 1
-    sNMDA.delta = 0
     nc.weight = $1
     nc.delay = 0
     }
     objref FinNMDA
     
 SynWeight = 0.57262
-FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
-
+// FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
+init_NMDA(SynWeight)
 
 // Create a vector for voltage steps
 objref v_steps
@@ -81,7 +80,7 @@ for i = 0, v_steps.size - 1 {
 
     // Set up simulation parameters
     t = 0
-    dt = 0.001
+    dt = 0.1
     v_init = -85
     tstop = 400
     // Record and store the results
@@ -124,7 +123,7 @@ for i = 0, v_steps.size - 1 {
 objref g, legend
 strdef label
 g = new Graph()
-g.size(100,tstop,-30,30)
+g.size(100,tstop,-0.001,0.001)
 for i = 0, v_steps.size - 1 {
     ivec_list.o[i].plot(g,tvec)
 }
