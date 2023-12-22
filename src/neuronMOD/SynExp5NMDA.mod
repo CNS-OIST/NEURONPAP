@@ -18,7 +18,6 @@ For more info read the original paper.
 Keivan Moradi 2012
 
 TODO
-[ ] check delta of astrocytes
 [ ] check maximum VD change
 
 ENDCOMMENT
@@ -81,14 +80,15 @@ PARAMETER {
 							: then tauV at 26 degC should be 7 
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
-	gVI = 1			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+	gVI = 33e-6			(uS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+        :additional change to 33 pS
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.2 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
+	delta = 0.01 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
         multiple = 1 (1)
@@ -122,6 +122,7 @@ ASSIGNED {
         prvA (1)
         prvB (1)
         prvC (1)
+        tPeak (ms)
 }
 
 STATE {
@@ -165,43 +166,25 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-        if (flag ==3){
-            i = prvI
-            A = prvA
-            B = prvB
-            C = prvC
-
-        } else {
-	    i = multiple*(wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
-        }
+	i = (wtau3*C + wtau2*B - A)*(gVI + gVD)*Mgblock(v)*(v - e)
         
         UNITSOFF
         if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
             flag = 1
-        }
-        if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
-            if (CUTOFF((wtau3*C + wtau2*B - A-prvW),12) == 0){
-                if ( maxI - i > maxI/4){
-                    if (CUTOFF(i,6) == 0) {
-                        i = 0
-                        A = 0
-                        B = 0
-                        C = 0
-                        : printf("here")
-                        : printf("%g\n",i)
-                        flag = 3
-                    } 
-                }
+            tPeak = t
+            : printf("detected decrease")
+        } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
+            if (CUTOFF((wtau3*C + wtau2*B - A),1) == 0){
+                i = 0
+                A = 0
+                B = 0
+                C = 0
+                : printf("%g\n",i)
+                flag = 0
             }
+            : printf("detected spontaneous increase\n shutting down")
         }
-        if (i > maxI){
-            maxI = i
-        }
-        prvW =  CUTOFF((wtau3*C + wtau2*B - A),12)
-        prvI = CUTOFF(i,12)
-        prvA = A
-        prvB = B
-        prvC = C
+        prvW =  (wtau3*C + wtau2*B - A)
         UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
@@ -229,22 +212,24 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
 
-	wf = weight*factor*D1*multiple
+	wf = weight*factor*D1
 	A = A + wf
 	B = B + wf
 	C = C + wf
         
 	D1 = D1 * d1
         flag = 0
+        gVI = multiple * gVI
+
     }
     
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
 	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
-}
-
-PROCEDURE rates(v (mV)) { 
+    }
+    
+    PROCEDURE rates(v (mV)) {
 	inf = (v - gVDv0) * gVDst * gVI
 	
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
