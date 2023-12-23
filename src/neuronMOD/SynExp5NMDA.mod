@@ -43,7 +43,9 @@ UNITS {
 
 PARAMETER {
 : Parameters Control Neurotransmitter and Voltage-dependent gating of NMDAR
-	tau1_0 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
+tau1_0 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
+a1 = 0.09 (ms)
+b1 = 0.03 (1/mV)
 : parameters control exponential rise to a maximum of tau2
 	tau2_0 = 3.97	(ms)
 	a2 = 0.70		(ms)
@@ -114,6 +116,7 @@ ASSIGNED {
 	g		(pS)
 	factor (1)
 	wf
+        q10_tau1
 	q10_tau2
 	q10_tau3
 	inf		(pS)
@@ -142,7 +145,7 @@ STATE {
         prvI = 0
 	Mgblock(v)
 	: temperature-sensitivity of the of NMDARs
-	tau1 = tau1_0 * Q10_tau1^((T0_tau - celsius)/10(degC))
+	q10_tau1 = Q10_tau1^((31.5 - celsius)/10(degC))
 	q10_tau2 = Q10_tau2^((T0_tau - celsius)/10(degC))
 	q10_tau3 = Q10_tau3^((T0_tau - celsius)/10(degC))
 	: temperature-sensitivity of the slow unblock of NMDARs
@@ -153,8 +156,9 @@ STATE {
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
 	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
 	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
-	factor = 1/factor
-	: printf("tau:%g,%g\n",tau1,tau1_0)
+	factor = 1/factor * 1e10
+	: printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
+	: printf("factor:%g\n",factor)
 
 	A = 0
 	B = 0
@@ -218,7 +222,8 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	tsyn = t
         
 	wf = weight*factor*D1*hillGluc(gluConc)
-        : printf("%g,%g,%g\n",weight,factor,D1)
+        : printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
+        
 	A = A + wf
 	B = B + wf
 	C = C + wf
@@ -235,7 +240,8 @@ FUNCTION Mgblock(v(mV)) {
     
     PROCEDURE rates(v (mV)) {
 	inf = (v - gVDv0) * gVDst * gVI
-	
+        
+	tau1 = tau1_0 + a1*exp(-b1*v)*q10_tau1
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
 	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3
 	if (tau1/tau2 >= 1) {
