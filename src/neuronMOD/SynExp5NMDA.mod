@@ -156,9 +156,10 @@ STATE {
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
 	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
 	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
-	factor = 1/factor * 1e10
-	: printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
-	: printf("factor:%g\n",factor)
+	factor = 1/factor
+	printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
+	printf("factor:%g\n",factor)
+	printf("T0:%g\n",T0_tau)
 
 	A = 0
 	B = 0
@@ -222,7 +223,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	tsyn = t
         
 	wf = weight*factor*D1*hillGluc(gluConc)
-        : printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
+        printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
         
 	A = A + wf
 	B = B + wf
