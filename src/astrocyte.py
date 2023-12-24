@@ -7,8 +7,7 @@ from geneManip import GENExpression
 
 class PAPModel(ResultsPAPModel):
     tstop = 100 * ms
-    celsius = 34
-    v_init = -85 * mV
+    v_init = -80 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -50,7 +49,7 @@ class PAPModel(ResultsPAPModel):
             Ko=2.5,
             NMDAdelay=0,
             initTstop=50,
-            dt = 0.001,
+            dt = 0.01,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -66,7 +65,6 @@ class PAPModel(ResultsPAPModel):
 
         h.dt = self.dt
         h.tstop = self.tstop
-        h.celsius = self.celsius
         h.v_init = self.v_init
         
         # print('set sim parms')
@@ -146,8 +144,6 @@ class PAPModel(ResultsPAPModel):
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
             self.NCs = []
-        # if self.readHoc:
-        #     h.insrtNMDA()
             
     def setNMDAs(self,delay=50):
         self.initNMDAs()
@@ -155,9 +151,10 @@ class PAPModel(ResultsPAPModel):
             self.NMDAs.append(h.sNMDA)
             self.NCs.append(h.nc)
             h.stim.start = (self.initTstop + delay) * ms
-            h.stim.number = 1
-            h.stim.interval = 10 * ms
+            # h.stim.number = 1
+            # h.stim.interval = 10 * ms
             h.nc.weight[0] = self.SynWeight
+            # print(h.nc.weight[0])
             if self.Glu:
                 h.sNMDA.multiple = self.multiple
             else:
@@ -203,7 +200,8 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         h.continuerun(self.initTstop * ms)
-        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP 
+        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP
+        # print(self.RMP)
         if saveState:
             s = h.SaveState()
             s.save()
@@ -273,7 +271,7 @@ class PAPModel(ResultsPAPModel):
         self.initialize()
         self.run()
         RMP = sum(list(self.vSoma)) / len(list(self.vSoma))
-        self.RMP = RMP
+        self.RMP= RMP
         return RMP
 
     def cleanMorphology(self):

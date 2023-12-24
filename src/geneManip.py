@@ -43,6 +43,11 @@ class GENEManipulation:
             for seg in sec:
                 seg.naleak.gleak = seg.naleak.gleak * multiple
 
+    def clleakChange(self, multiple):
+        for sec in self.compartments:
+            for seg in sec:
+                seg.clleak.gleak = seg.clleak.gleak * multiple
+
     def kpumpChange(self, multiple):
         for sec in self.compartments:
             for seg in sec:

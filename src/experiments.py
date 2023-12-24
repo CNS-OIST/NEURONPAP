@@ -322,6 +322,8 @@ class procedure():
                     AllCells = comm.gather(cells, root=0)
                 if rank == 0:
                     self.plotIKSeries(AllCells)
+                break
+            break
 
     def plotIKSeries(self,AllCells):
         for cells in AllCells:
@@ -417,9 +419,9 @@ class procedure():
 
 
     def channelComparison(self):
-        NMDAMax = 10
+        NMDAMax = 100
         NMDAStep = 1
-        KirMax = 10
+        KirMax = 100
         KirStep = 1
         
         # Calculate the number of iterations for all parm sets
@@ -440,7 +442,9 @@ class procedure():
                 "bLen": 8.237,
                 "PAPWid": 1.21,
                 'ComplexMorph':True,
-                'NMDAdelay':0,
+                'NMDAdelay':0.1,
+                'naleak':2e5,
+                'clleak':2e5
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -479,7 +483,7 @@ class procedure():
             plt.ylabel('Kir Channel')
             plt.xlabel('NMDAR Channel')
             plt.colorbar(label = 'values',ticks=np.arange(0,90,10),extend='max')
-            plt.clim((0,90))
+            plt.clim((0,40))
             plt.savefig('FullComparison.pdf')
            
                 

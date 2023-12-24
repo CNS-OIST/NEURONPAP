@@ -56,7 +56,7 @@ ASSIGNED {
 
 BREAKPOINT {
     calcECL()
-    icl = (100) * gleak * (v - ecl) / (4e5 (um2))
+    icl = (100) * gleak * (v - ecl) / (4e5 (um2)) 
         : divided by estimated surface area Radulescu A. et al (2022)
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
 	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
