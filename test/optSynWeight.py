@@ -103,6 +103,7 @@ def relLikelihood(expData='../src/Data/VClamp40.1Stim.dat',scale=1):
         tList.append(float(t))
         vList.append(float(v)*scale)
     # Get RSS
+
     # itResult =[(t,i) for i,t in zip(iCurve['current'],tSample['t']) if t in tList]
     # vList = [v for v in vList]
     # rss = 0
@@ -111,6 +112,12 @@ def relLikelihood(expData='../src/Data/VClamp40.1Stim.dat',scale=1):
     #     rss += (c - vList[i]) ** 2
     rss = abs(min(iCurve['current']) * 1000 + 2)
     return rss 
+
+def memPotential():
+    # Read simulated data
+    vSoma = pd.read_csv('vFile.dat',header=None,names=['memPot'])
+    print(vSoma)
+    return abs(list(vSoma['memPot'])[-1] + 80)
 
 # def resLikelihood(expData='./Data/VClamp40.1Stim.dat'):
 #     scale = 1 # Surface area of patch membrane 2um to PAP area
@@ -154,8 +161,11 @@ def objective(trial):
 
     """
     # Save Synaptic weight
-    SynWeight = trial.suggest_float("SynWeight", 0, 2)
-    saveSynWeight(SynWeight)
+    # SynWeight = trial.suggest_float("SynWeight", 0, 10) 
+    # savesynweight(SynWeight)
+    
+    delta = trial.suggest_int("Delta", 1000, 10000)
+    saveDelta(delta)
 
     # # suggest Tau1
     # tau1 = trial.suggest_float("tau1", 0, 10)
@@ -179,7 +189,8 @@ def objective(trial):
     
     
 
-    score = relLikelihood() #Score based on shape also
+    # score = relLikelihood() #Score based on shape also
+    score = memPotential()
     return score
 
 

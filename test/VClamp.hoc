@@ -1,6 +1,7 @@
 // mode
 double mode[1]
 mode = 1
+celsius = 34
 
 // Load NEURON
 load_file("nrngui.hoc")
@@ -12,8 +13,8 @@ create soma
 access soma
 soma {
     insert pas  // Passive membrane properties
-    diam = 0.001    // Diameter in microns
-    L = 0.001    // Length in microns
+    diam = 1    // Diameter in microns
+    L = 1    // Length in microns
     Ra = 100     // Axial resistance in ohm-cm
     cm = 0.8       // Membrane capacitance in uf/cm^2
     g_pas = 1/11150  // Specific membrane conductance in S/cm^2
@@ -52,7 +53,7 @@ proc init_NMDA() {
     }
     objref FinNMDA
     
-SynWeight = 0.57262
+SynWeight = 1.2
 // FinNMDA = new FInitializeHandler(3,"init_NMDA(SynWeight)")
 init_NMDA(SynWeight)
 
@@ -75,8 +76,8 @@ imax_list = new Vector()
 objref tmpList
 
 for i = 0, v_steps.size - 1 {
-    vclamp.dur2 = 200  // Duration of the voltage step in ms
-    vclamp.amp2 = v_steps.x[i]  // Command voltage in mV during the step
+    // vclamp.dur2 = 200  // Duration of the voltage step in ms
+    // vclamp.amp2 = v_steps.x[i]  // Command voltage in mV during the step
 
     // Set up simulation parameters
     t = 0

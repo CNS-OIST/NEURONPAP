@@ -1,7 +1,7 @@
 Niter=10000
 Dir=../results/optimize
 
-optFile=newSingleConductance
+optFile=newMembraneLeak
 saveDir=../results/optimize/
 for i in `seq $Niter`; do
    python optSynWeight.py -o $optFile --saveDir $saveDir
