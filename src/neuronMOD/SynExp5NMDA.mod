@@ -157,9 +157,9 @@ STATE {
 	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
 	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
 	factor = 1/factor
-	printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
-	printf("factor:%g\n",factor)
-	printf("T0:%g\n",T0_tau)
+	: printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
+	: printf("factor:%g\n",factor)
+	: printf("T0:%g\n",T0_tau)
 
 	A = 0
 	B = 0
@@ -222,8 +222,9 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
         
-	wf = weight*factor*D1*hillGluc(gluConc)
-        printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
+	wf = weight*factor*D1*hillGluc(gluConc)*multiple
+        : printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
+        : printf("%g\n",weight)
         
 	A = A + wf
 	B = B + wf

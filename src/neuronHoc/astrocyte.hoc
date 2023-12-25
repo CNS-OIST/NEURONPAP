@@ -2,6 +2,7 @@ objref nil
 
 strdef astro_name
 astro_name = "CA1"
+celsius = 34
 
 // clear morphology
 
@@ -27,6 +28,8 @@ astro_name = "CA1"
         insert kleak
         insert naleak
         insert clleak
+        //optimized for -80 mV
+        
         insert k_acc
         insert na_acc
         // insert kdrglia
@@ -38,18 +41,24 @@ astro_name = "CA1"
 // inserting NMDARs
 objref sNMDA, stim, nc
 
-{
-    stim = new NetStim(.5)
-    stim.interval = 1
-    stim.number = 1
-    stim.start = 0
-    stim.noise = 0
-    
-    PAP {sNMDA = new Exp5NMDA(0.5)}
-    nc = new NetCon(stim,sNMDA)
-    nc.weight = 0
+stim = new NetStim(.5)
+stim.interval = 1
+stim.number = 1
+stim.start = 50
+stim.noise = 0
+
+PAP {sNMDA = new Exp5NMDA(0.5)}
+nc = new NetCon(stim,sNMDA)
+
+
+proc fINITNMDA(){
+    nc.weight = 1.26
     nc.delay = 0
+    // print(nc.weight)
 }
+objref FinNMDA
+FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
+
 
 
 //initialize Ko
