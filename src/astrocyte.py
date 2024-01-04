@@ -24,7 +24,7 @@ class PAPModel(ResultsPAPModel):
     B2 = float()
     B3 = float()
     DELTA = float()
-    SynWeight = 1.26
+    SynWeight = 1.26e-3
 
     # K Parms
     defaultKo = 2.5
@@ -49,7 +49,7 @@ class PAPModel(ResultsPAPModel):
             Ko=2.5,
             NMDAdelay=0,
             initTstop=50,
-            dt = 0.01,
+            dt = 0.001,
             **kwargs
     ):
         # Load NEURON GUI and parameters

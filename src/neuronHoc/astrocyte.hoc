@@ -52,7 +52,7 @@ nc = new NetCon(stim,sNMDA)
 
 
 proc fINITNMDA(){
-    nc.weight = 1.26
+    nc.weight = 1.26e-3
     nc.delay = 0
     // print(nc.weight)
 }

@@ -443,8 +443,9 @@ class procedure():
                 "PAPWid": 1.21,
                 'ComplexMorph':True,
                 'NMDAdelay':0.1,
-                'naleak':2e5,
-                'clleak':2e5
+                'naleak':1e5,
+                'clleak':1e5,
+                'dt':0.01
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -455,7 +456,7 @@ class procedure():
             funcArgs,
             ["kir2", "multiple"],
             [["initialize", "setK","run"]],
-            [[{}, {"Ko":2},{}]]
+            [[{}, {"Ko":1},{}]]
         )
         comm.Barrier()
         
@@ -482,8 +483,8 @@ class procedure():
             plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
             plt.ylabel('Kir Channel')
             plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values',ticks=np.arange(0,90,10),extend='max')
-            plt.clim((0,40))
+            plt.colorbar(label = 'values',ticks=np.arange(-100,-40,10),extend='max')
+            plt.clim((-100,-40))
             plt.savefig('FullComparison.pdf')
            
                 

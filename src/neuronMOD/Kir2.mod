@@ -78,7 +78,7 @@ STATE {
 
 ASSIGNED {
         ik                              (mA/cm2)
-        gk                              (S/cm2)
+        gk                              (pS/cm2)
         ek                              (mV)
         linf      (1)
         taul (ms)
@@ -95,11 +95,12 @@ INITIAL {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = (0.0001) * gkbar*(A*sqrt(ko/1 (mM)))/area
+	gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM)))/area
+        : printf("%g\n",gk*area*(1e-8))
 	: use state l to calulate gk
         : area will be multiplied per section resulting in single channel conductance per segment.
         : calculate gkbar from fitting single channel recording
-        ik = gk *l* ( v - ek )		: calculate ik 
+        ik = (1e-12)*gk *l* ( v - ek )		: calculate ik 
 }
 
 
