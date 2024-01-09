@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+from neuron import h
 
 class ResultsPAPModel():
     # class to copy data of simulations
@@ -7,6 +8,7 @@ class ResultsPAPModel():
 
     dont_copy = [
         "PAP",
+        "PAPs",
         "soma",
         "branches",
         "branch",
@@ -23,9 +25,9 @@ class ResultsPAPModel():
     def copyAttr(self):
         # print("copying to result class")
         newInstance = ResultsPAPModel()
+        # print(self.__dict__)
         newInstance.__dict__ = {
             attr: copy.deepcopy(self.__dict__[attr])
-            # print(attr)
             for attr in self.__dict__
             if attr not in self.dont_copy
         }
@@ -35,6 +37,11 @@ class ResultsPAPModel():
                 newInstance.__dict__[attr] = np.array(
                     newInstance.__dict__[attr]
                 ) * self.PAParea * 0.01
+
+        # Convert Vector to list
+        # for attr in newInstance.__dict__:
+        #     if isinstance(newInstance.__dict__[attr],h.Vector):
+        #         newInstance.__dict__[attr] = list(newInstance.__dict__[attr])
         return newInstance
 
     def getRMP(self):

@@ -24,7 +24,7 @@ class PAPModel(ResultsPAPModel):
     B2 = float()
     B3 = float()
     DELTA = float()
-    SynWeight = 1.26e-3
+    SynWeight = 1.26e1
 
     # K Parms
     defaultKo = 2.5
@@ -112,7 +112,9 @@ class PAPModel(ResultsPAPModel):
 
             # match sections to self
             # print("Match section")
-            self.PAP = h.PAP
+            self.PAPs = h.slPAP
+            self.PAP = list(self.PAPs)[0]
+            # print(self.PAP)
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
@@ -148,17 +150,25 @@ class PAPModel(ResultsPAPModel):
     def setNMDAs(self,delay=50):
         self.initNMDAs()
         if self.readHoc:
-            self.NMDAs.append(h.sNMDA)
-            self.NCs.append(h.nc)
+            self.NMDAs = list(h.NMDAs)
+            # print(self.NMDAs)
+            self.NCs = list(h.ncList)
             h.stim.start = (self.initTstop + delay) * ms
             # h.stim.number = 1
             # h.stim.interval = 10 * ms
-            h.nc.weight[0] = self.SynWeight
+            for nc in self.NCs:
+                nc.weight[0] = self.SynWeight
             # print(h.nc.weight[0])
-            if self.Glu:
-                h.sNMDA.multiple = self.multiple
-            else:
-                h.sNMDA.multiple = 0
+            for i,sNMDA in enumerate(self.NMDAs):
+                if self.Glu:
+                    # distribute the total num of NMDA equally among all patches
+                    totNMDA = len(self.NMDAs)
+                    if i < self.multiple % totNMDA:
+                        sNMDA.multiple = 1 + self.multiple // totNMDA
+                    else:
+                        sNMDA.multiple = self.multiple // totNMDA
+                else:
+                    sNMDA.multiple = 0
         else:            
             # Create the synaptic NMDA conductance
             stim = h.NetStim(self.PAP(0.5))
@@ -498,6 +508,7 @@ class PAPModel(ResultsPAPModel):
                 # print("setting Ko to pulse mode")
                 h.continuerun(delay * ms + h.t)
                 papk = self.getPAPK()
+                # print(papk)
                 h.setK(papk + Ko,restKo,0)
             if mode == 'step':
                 h.continuerun(delay * ms + h.t)

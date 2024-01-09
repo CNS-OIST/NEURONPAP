@@ -303,6 +303,7 @@ class procedure():
                         "multiple":10/50, # Maximum conductance of model is equal to 50 single channels
                         "NMDAdelay":5*i*ms,
                         "kir2":kirCount,
+                        'dt':0.1
                         # "readHoc":readHoc
                     }
                 )
@@ -419,9 +420,9 @@ class procedure():
 
 
     def channelComparison(self):
-        NMDAMax = 100
+        NMDAMax = 10
         NMDAStep = 1
-        KirMax = 100
+        KirMax = 10
         KirStep = 1
         
         # Calculate the number of iterations for all parm sets
@@ -434,17 +435,12 @@ class procedure():
         funcArgs.append(
             {
                 'mode':0,
-                'bNum':1,
                 'readHoc':True,
                 'Glu':True,
-                "bWid": 2.160,
-                "somaSize": 7.597,
-                "bLen": 8.237,
-                "PAPWid": 1.21,
                 'ComplexMorph':True,
-                'NMDAdelay':0.1,
-                'naleak':1e5,
-                'clleak':1e5,
+                'NMDAdelay':0.01,
+                'naleak':2e5,
+                'clleak':2e5,
                 'dt':0.01
             }
         )
@@ -456,7 +452,7 @@ class procedure():
             funcArgs,
             ["kir2", "multiple"],
             [["initialize", "setK","run"]],
-            [[{}, {"Ko":1},{}]]
+            [[{}, {"Ko":0.5},{}]]
         )
         comm.Barrier()
         
@@ -483,9 +479,25 @@ class procedure():
             plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
             plt.ylabel('Kir Channel')
             plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values',ticks=np.arange(-100,-40,10),extend='max')
-            plt.clim((-100,-40))
+            plt.colorbar(label = 'values',ticks=np.arange(0,80,10),extend='max')
+            plt.clim((0,80))
             plt.savefig('FullComparison.pdf')
-           
+
+            for res in results:
+                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = res[0].RMP
+            plt.imshow(imArray,
+                       cmap='viridis',
+                       origin='lower',
+                       interpolation='nearest',
+                       aspect='equal'
+                       )
+            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
+            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
+            plt.ylabel('Kir Channel')
+            plt.xlabel('NMDAR Channel')
+            plt.colorbar(label = 'values',ticks=np.arange(-100,-60,10),extend='max')
+            plt.clim((-100,-60))
+            plt.savefig('FullRMP.pdf')
+
                 
     
