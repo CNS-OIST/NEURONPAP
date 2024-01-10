@@ -439,8 +439,8 @@ class procedure():
                 'Glu':True,
                 'ComplexMorph':True,
                 'NMDAdelay':0.01,
-                'naleak':2e5,
-                'clleak':2e5,
+                'naleak':4e5,
+                'clleak':4e5,
                 'dt':0.01
             }
         )

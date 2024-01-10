@@ -142,7 +142,7 @@ for i = 0, lenPAP - 1 {
 
 proc fINITNMDA(){
     for i = 0, ncList.count - 1 {
-        ncList.o(i).weight = 1.26e01
+        ncList.o(i).weight = 1.26
         ncList.o(i).delay = 0
         // print(nc.weight)
     }
@@ -230,5 +230,29 @@ proc clampSwitch() {
     }
 }
 
-
+// Function to plot neuron topology with highlighted sections
+proc plot_topology() {localobj rando, sref,slPAP,ps
+    sref = new SectionList()
+    soma { sref.wholetree() }
+    // Plot the astrocyte's topology
+    ps = new PlotShape(sref)
+    ps.color_all(1)
+    
+    for i=0,2 {
+        rando = new Random(i)
+        
+        soma sref = new SectionRef()
+        get_randomfinalSection(sref).sec {
+            sref = new SectionRef()
+            slPAP = get_parent_sections(sref)
+        }
+        slPAP.printnames()
+        
+        // Highlight specified sections
+        ps.color_list(slPAP,2+i)
+    }
+    ps.flush()
+    // Save the plot as a PostScript file
+    ps.printfile("astrocyte_topology.psf")
+}
 
