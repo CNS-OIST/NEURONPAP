@@ -38,8 +38,86 @@ celsius = 34
         // ki0_kdifl = 110
     }
 }
+objref r
+r = new Random(0)
+
+// Function to get end section
+obfunc get_randomfinalSection() {local rint localobj child_sections, current_section
+    child_sections = new SectionList()
+    
+    // Start from the currently accessed section
+    $o1 current_section = new SectionRef()
+    current_section.root() current_section = new SectionRef()
+    // Iterate through parent sections
+    while (current_section.nchild > 0) {
+        current_section.sec {
+            // psection()
+            child_sections.append()
+        }
+        rint = r.uniform(0,current_section.nchild)
+        current_section.child[rint] current_section = new SectionRef()
+    }
+
+    return current_section
+}
+
+// Function to get parent sections
+obfunc get_parent_sections() {local totalLen, lenThr localobj parent_sections, current_section 
+    parent_sections = new SectionList()
+    
+    // Start from the currently accessed section
+    // $o1 {psection()}
+    $o1 current_section = new SectionRef()
+    totalLen = 0
+    lenThr = 0.3 // micron
+    // Iterate through parent sections
+    current_section.sec {
+        // psection()
+        parent_sections.append()
+    }
+    while (current_section.has_parent && totalLen < lenThr) {
+        totalLen = totalLen + current_section.sec.L
+        // current_section.sec {
+        //     psection()
+        // }
+        
+        current_section.parent {
+            parent_sections.append()
+            current_section = new SectionRef()
+        }
+    }
+    parent_sections.unique()
+    return parent_sections
+}
+
+// Actually getting things
+
+objref sref,slPAP
+
+soma sref = new SectionRef()
+get_randomfinalSection(sref).sec {
+    // psection()
+    sref = new SectionRef()
+    slPAP = get_parent_sections(sref)
+}
+// slPAP.printnames()
+
+obfunc getLeaf() {localobj sec,leaf
+    forsec $o1 {
+        sec = new SectionRef()
+        // psection()
+        if (sec.nchild == 0) {
+            leaf = new SectionRef()
+        }
+    }
+    return leaf
+}
+
 // inserting NMDARs
-objref sNMDA, stim, nc
+objref sNMDA, NMDAs, stim, nc, ncList
+
+NMDAs = new List()
+ncList = new List()
 
 stim = new NetStim(.5)
 stim.interval = 1
@@ -47,14 +125,27 @@ stim.number = 1
 stim.start = 50
 stim.noise = 0
 
-PAP {sNMDA = new Exp5NMDA(0.5)}
-nc = new NetCon(stim,sNMDA)
+double lenPAP[1]
+lenPAP = 0
+forsec slPAP {
+    lenPAP = lenPAP + 1
+}
+// print(lenPAP)
+
+for i = 0, lenPAP - 1 {
+    sNMDA = new Exp5NMDA(0.5)
+    NMDAs.append(sNMDA)
+    nc = new NetCon(stim,NMDAs.o(i))
+    ncList.append(nc)
+}
 
 
 proc fINITNMDA(){
-    nc.weight = 1.26
-    nc.delay = 0
-    // print(nc.weight)
+    for i = 0, ncList.count - 1 {
+        ncList.o(i).weight = 1.26
+        ncList.o(i).delay = 0
+        // print(nc.weight)
+    }
 }
 objref FinNMDA
 FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
@@ -87,7 +178,7 @@ objref FinIon
 
 // Experimental manipulations
 proc setK(){
-    forsec "PAP" {
+    forsec slPAP {
         if ($3 == 1){ //instantaneous switch of bath
             flag_k_acc = 1
         } else {
@@ -97,16 +188,11 @@ proc setK(){
         ko0_k_acc = $2
         // psection()
     }
-    forsec "soma" "branch"{
-        flag_k_acc = 0
-        ko0_k_acc = 2.5
-    }
 }
 
-func getPAPK(){
-    forsec "PAP"{
-        return ko
-    }
+func getPAPK(){local papko
+    getLeaf(slPAP){ papko = ko } //warning message if return in between sectionList
+    return papko
 }
 
 objref ic,vc,electrodeList
@@ -118,7 +204,7 @@ proc clampSwitch() {
         if ($1 > 2){
             soma {ic = new IClamp(0.5)}
         } else {
-            PAP {ic = new IClamp(0.5)}
+            getLeaf(slPAP) {ic = new IClamp(0.5)}
         }
         ic.dur = tstop
         ic.del = 0  // ms starts with glutamate
@@ -127,7 +213,7 @@ proc clampSwitch() {
         //---------------------------------------------------
     } else if ($1 > 0) {
         // voltage clamp
-        PAP {vc = new VClamp(0.5)}
+        getLeaf(slPAP) {vc = new VClamp(0.5)}
         vc.dur[0] = tstop
         vc.amp[0] = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
@@ -135,7 +221,7 @@ proc clampSwitch() {
         
     } else {
         // Pulse Current
-        PAP {ic = new IClamp(0.5)}
+        getLeaf(slPAP) {ic = new IClamp(0.5)}
         ic.dur = 0.002
         ic.delay = 10  // ms starts with glutamate
         ic.amp = $2 * 0.001  // nA current injection
@@ -144,5 +230,29 @@ proc clampSwitch() {
     }
 }
 
-
+// Function to plot neuron topology with highlighted sections
+proc plot_topology() {localobj rando, sref,slPAP,ps
+    sref = new SectionList()
+    soma { sref.wholetree() }
+    // Plot the astrocyte's topology
+    ps = new PlotShape(sref)
+    ps.color_all(1)
+    
+    for i=0,2 {
+        rando = new Random(i)
+        
+        soma sref = new SectionRef()
+        get_randomfinalSection(sref).sec {
+            sref = new SectionRef()
+            slPAP = get_parent_sections(sref)
+        }
+        slPAP.printnames()
+        
+        // Highlight specified sections
+        ps.color_list(slPAP,2+i)
+    }
+    ps.flush()
+    // Save the plot as a PostScript file
+    ps.printfile("astrocyte_topology.psf")
+}
 

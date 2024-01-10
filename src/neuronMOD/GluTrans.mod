@@ -26,11 +26,12 @@ ENDCOMMENT
 NEURON {
     SUFFIX  GluTrans
     USEION k READ ki,ko
+    USEION na READ nao,nai
     RANGE part, C1, C2, C3, C4, C5, C6
     GLOBAL k12, k21, k23, k32, k34, k43, k45, k54, k56, k65, k16, k61
     GLOBAL Nain, Naout, Gluin, charge, Kin, Kout
-    RANGE  itrans, Gluout, density, itransLog
-    NONSPECIFIC_CURRENT itrans
+    RANGE  iGluT, Gluout, density, itransLog
+    NONSPECIFIC_CURRENT iGluT
 }
 
 UNITS {
@@ -43,7 +44,7 @@ UNITS {
     (mM) = (milli/liter)
     (uM) = (micro/liter)
     F = (faraday) (coulombs)
-        PI      = (pi)       (1)
+    PI      = (pi)       (1)
 }
 
 PARAMETER {	
@@ -61,10 +62,8 @@ PARAMETER {
     k65 = 0.1          (l /mM /ms) 
     k16 = 0.0016          (l /mM /ms)
     k61 =  2e-4        (l /mM /ms)
-
-    Nain = 15        (mM/l)
-    Naout = 150   (mM/l)
-     Gluin = 0.3      (mM/l)
+    
+    Gluin = 0.3      (mM/l)
     Gluout = 20e-6	(mM/l)
 
     density =1e12  : (/cm2) : 10000 per um2
@@ -73,15 +72,19 @@ PARAMETER {
 
 ASSIGNED {
     v	   (mV)		:  voltage
-    itrans (mA/cm2)            : 
+    iGluT (mA/cm2)            : 
     surf   (cm2)
     volin  (liter)
     volout (liter)
     itransLog
     ki (mM)
     ko (mM)
+    nai (mM)
+    nao (mM)
     Kout (mM/liter)
     Kin (mM/liter)
+    Naout (mM/liter)
+    Nain (mM/liter)
 }
 
 STATE {
@@ -106,16 +109,18 @@ INITIAL {
     volout = 1
     surf = 1
     koi(ki,ko)
+    naoi(nai,nao)
 }
 
 BREAKPOINT {
     koi(ki,ko)
+    naoi(nai,nao)
     SOLVE kstates METHOD sparse
     
-    itrans=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
-    : itransLog=log(-itrans*(1e+006))
+    iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
+    : itransLog=log(-iGluT*(1e+006))
 
-    :itrans=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) +0.4*( C3*k34-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )	  
+    :iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) +0.4*( C3*k34-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )	  
 }
 
 KINETIC kstates {
@@ -137,7 +142,13 @@ FUNCTION u(x(mV), th) {
     u = exp(th*x/(2*(26.7 (mV))))
 }
 
+
 PROCEDURE koi(ki(mM),ko(mM)){
     Kin = ki/1 (liter)
     Kout = ko/1(liter)
+}
+
+PROCEDURE naoi(nai(mM),nao(mM)){
+    Nain = nai/1 (liter)
+    Naout = nao/1(liter)
     }
