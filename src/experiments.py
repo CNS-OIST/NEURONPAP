@@ -277,12 +277,32 @@ class procedure():
         plt.show()
             
         
-
+    def plotPAPs(self):
+        funcArgs = []
+        funcArgs.append(
+            {
+                'mode':0,
+                'ComplexMorph':True,
+                'readHoc':True,
+                'Glu':False,
+                'dt':0.1,
+                # 'NMDAdelay':0.01,
+                # 'naleak':2e5,
+                # 'clleak':2e5,
+                'kir2':6,
+                'initTstop':30
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize(video=True)
+        # cells.setK(Ko=0.5)
+        # cells.run(video=True)
+        
 
     def singleRun(self,readHoc=True):
         koConc = list(range(2,6))
         AllCells = []        
-        for h,kirCount in enumerate(range(0,10,1)):
+        for g,kirCount in enumerate(range(0,10,1)):
             AllCells.append(list())
             for i,ko in enumerate(koConc):
                 # single run
@@ -318,7 +338,7 @@ class procedure():
                 cells = cells.copyAttr()
 
                 if size < 2:
-                    AllCells[h].append(cells)
+                    AllCells[g].append(cells)
                 if size > 1:
                     AllCells = comm.gather(cells, root=0)
                 if rank == 0:
@@ -420,8 +440,8 @@ class procedure():
 
 
     def channelComparison(self):
-        NMDAMax = 10
-        NMDAStep = 1
+        NMDAMax = 100
+        NMDAStep = 10
         KirMax = 10
         KirStep = 1
         
@@ -457,6 +477,8 @@ class procedure():
         comm.Barrier()
         
         if rank == 0:
+            cell = PAPModel(**funcArgs[-1])
+            cell.plot_topology()
             with open(
                     os.path.join(
                         'intermediaryData',
@@ -498,6 +520,22 @@ class procedure():
             plt.colorbar(label = 'values',ticks=np.arange(-100,-60,10),extend='max')
             plt.clim((-100,-60))
             plt.savefig('FullRMP.pdf')
+
+            for res in results:
+                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = max(res[0].vSoma) - res[0].RMP
+            plt.imshow(imArray,
+                       cmap='viridis',
+                       origin='lower',
+                       interpolation='nearest',
+                       aspect='equal'
+                       )
+            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
+            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
+            plt.ylabel('Kir Channel')
+            plt.xlabel('NMDAR Channel')
+            plt.colorbar(label = 'values',ticks=np.arange(0,80,10),extend='max')
+            plt.clim((0,80))
+            plt.savefig('FullSoma.pdf')
 
                 
     

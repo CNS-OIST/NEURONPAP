@@ -1,9 +1,11 @@
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
-import sys
+import sys,subprocess,os
 from classResults import ResultsPAPModel
 from utils import *
 from geneManip import GENExpression
+import matplotlib.pyplot as plt
+import plotly
 
 class PAPModel(ResultsPAPModel):
     tstop = 100 * ms
@@ -31,6 +33,9 @@ class PAPModel(ResultsPAPModel):
 
     GENEDict = None
 
+    # video option
+    varMorph=['v','ko']
+    
     def __init__(
             self,
             readHoc=True,
@@ -90,7 +95,7 @@ class PAPModel(ResultsPAPModel):
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
 
-        if readHoc:
+        if self.readHoc:
             # subsitute
             # [x] morphology
             # [x] NMDA setting up
@@ -113,12 +118,11 @@ class PAPModel(ResultsPAPModel):
             # match sections to self
             # print("Match section")
             self.PAPs = h.slPAP
-            self.PAP = list(self.PAPs)[0]
-            # print(self.PAP)
+            self.PAP = h.getLeaf(self.PAPs).sec
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
-            self.PAParea = h.area(0.5,sec=self.PAP)
+            self.PAParea = h.area(0.5,sec=self.PAP) # should be updated
 
 
         else:
@@ -189,16 +193,16 @@ class PAPModel(ResultsPAPModel):
                 
 
 
-    def initialize(self, saveState=False):
+    def initialize(self, saveState=False,video=False):
         # print('initializing')
         sys.stdout.flush()
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
+        # print('placed NMDAR')
+        # sys.stdout.flush()        
+        self.setNMDAs(delay=self.NMDAdelay)
         if self.Glu:
-            self.setNMDAs(delay=self.NMDAdelay)
-            # print('placed NMDAR')
-            # sys.stdout.flush()        
             self.record(sNMDA=self.NMDAs[-1])
         else:
             self.record()
@@ -208,8 +212,10 @@ class PAPModel(ResultsPAPModel):
         h.fcurrent()
         # print('initialized')
         # sys.stdout.flush()
-
-        h.continuerun(self.initTstop * ms)
+        if video:
+            self.makeVideo(self.varMorph,stop=self.initTstop)
+        else:
+            h.continuerun(self.initTstop * ms)
         self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP
         # print(self.RMP)
         if saveState:
@@ -218,7 +224,7 @@ class PAPModel(ResultsPAPModel):
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
 
-    def run(self, printRes=False):
+    def run(self, printRes=False,video=False):
         # print('running')
         # sys.stdout.flush()
         # Clamp settings
@@ -261,13 +267,16 @@ class PAPModel(ResultsPAPModel):
                 ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
         # print('clamp experiment setup')
         # sys.stdout.flush()
-        try:
-            h.continuerun((self.tstop) * ms)
-        except RuntimeError as e:
-            if "hocobj_call" in str(e):
-                print("skip run")
-                vPAP = ['nan']
-                vSoma = ['nan']
+        if video:
+            self.makeVideo(self.varMorph)
+        else:
+            try:
+                h.continuerun((self.tstop) * ms)
+            except RuntimeError as e:
+                if "hocobj_call" in str(e):
+                    print("skip run")
+                    vPAP = ['nan']
+                    vSoma = ['nan']
                 
         
         if printRes:
@@ -283,6 +292,40 @@ class PAPModel(ResultsPAPModel):
         RMP = sum(list(self.vSoma)) / len(list(self.vSoma))
         self.RMP= RMP
         return RMP
+
+    def makeVideo(self,var,interval=2,stop=None):
+        if not hasattr(self,'frames'):
+            self.frames = []
+        if stop == None:
+            stop = self.tstop
+        while h.t < stop:
+            if int(h.t/self.dt) % interval == 0:
+                for v in var:
+                    fname = f'astro{v}_{int(h.t/self.dt)}.psf'
+                    self.plotWholecellVariable(
+                        v,
+                        os.path.join('video',fname)
+                    )
+                    self.frames.append(fname)
+            h.fadvance()
+        for v in var:
+            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph.gif',shell=True)
+        return
+
+    def plotWholecellVariable(self,var,frameName):
+        if self.readHoc:
+            h.plot_varMorph(var,frameName)
+            
+    def plot_topology(self,fname='astroTop'):
+        if rank == 0:
+            if self.readHoc:
+                ps = h.plot_topology(self.PAPs)
+            else:
+                ps = h.PlotShape()
+                ps.color_all(1)
+                ps.color_list(self.PAPs,2)
+                ps.printfile(f'{fname}.psf')
+        
 
     def cleanMorphology(self):
         # print('cleaning')
@@ -502,21 +545,21 @@ class PAPModel(ResultsPAPModel):
     def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500,delay=0):
         if Ko == None:
             Ko = self.Ko
-
+        # print(list(self.PAPs))
         if self.readHoc:
             if mode == 'pulse':
                 # print("setting Ko to pulse mode")
                 h.continuerun(delay * ms + h.t)
                 papk = self.getPAPK()
                 # print(papk)
-                h.setK(papk + Ko,restKo,0)
+                h.setK(self.PAPs,papk + Ko,restKo,0)
             if mode == 'step':
                 h.continuerun(delay * ms + h.t)
                 h.setK(Ko,Ko,1)
                 h.fcurrent()
                 h.continuerun(dur * ms + h.t)
                 papk = self.getPAPK()
-                h.setK(papk,restKo,0)
+                h.setK(self.PAPs,papk,restKo,0)
 
         else:
             if mode == 'pulse':

@@ -63,6 +63,10 @@ def callExperimentMode(**kwargs):
         # Plot for various channel counts
         exp.channelComparison()
 
+    if "video" in kwargs.keys() and kwargs["video"]:
+        # Plot for various channel counts
+        exp.plotPAPs()
+
     
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD
