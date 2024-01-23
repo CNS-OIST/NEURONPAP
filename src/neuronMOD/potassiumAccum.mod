@@ -27,8 +27,8 @@ UNITS {
 
 PARAMETER {    
     ko0 = 2.5 (mM)
-    fhspace = 300 (angstrom) : effective thickness 
-    tauk = 50 (ms) : Halnes chapter 9 the NEURON book  of Halnes
+    fhspace = 100 (angstrom) : effective thickness 
+    tauk = 3 (ms) : Halnes chapter 9 the NEURON book  of Halnes
     flag  = 0 (1)
 }
 
