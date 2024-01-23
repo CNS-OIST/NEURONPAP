@@ -536,12 +536,29 @@ class PAPModel(ResultsPAPModel):
                 self.branchAtten.append(h.Vector())
                 self.branchAtten[-1].record(self.branch(i/10.)._ref_v)
 
+        else:
+            path = self.getPath(self.PAP)
+            for i in range(10):
+                self.branchAtten.append(h.Vector())
+                self.branchAtten[-1].record(
+                    list(path)[int(i*len(list(path))/10)](0.5)._ref_v
+                )
+
+
         self.time = h.Vector()
         self.time.record(h._ref_t)
         if toFile:
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
+    def getPath(self,section):
+        currentSection = h.SectionRef(sec=section)
+        sl = h.SectionList()
+        while currentSection.has_parent():
+            sl.append(currentSection.sec)
+            currentSection = h.SectionRef(sec=currentSection.parent)
+        return sl
+            
     def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500,delay=0):
         if Ko == None:
             Ko = self.Ko

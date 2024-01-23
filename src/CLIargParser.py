@@ -76,6 +76,14 @@ def argParser(rangeInt=100):
         help="Used to run simulations for video"
     )  
     parser.add_argument(
+        "-b",
+        "--branch",
+        dest="branch",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for branch attenuation"
+    )  
+    parser.add_argument(
         "--debug",
         dest="debug",
         action="store_true",

@@ -16,6 +16,9 @@ rank = comm.Get_rank()
 
 
 class procedure():
+    leak = 2e5
+    optKir = 5
+    optNMDAR = 20
 
     def multiChannel(self,itr=100):
         dList = []
@@ -232,24 +235,22 @@ class procedure():
         funcArgs = []
         funcArgs.append(
             {
-                # 'currentClamp':0,
-                # 'voltageClamp':20,
+                'mode':0,
+                'ComplexMorph':True,
                 'readHoc':True,
                 'Glu':True,
-                "bWid": 0.01,#2.160,
-                "somaSize": 7.597,
-                "bLen": 10,
-                "PAPWid": 1.21,
-                "multiple":300,
-                "kir2":10,
-                # "readHoc":readHoc
+                'dt':0.1,
+                'NMDAdelay':0.01,
+                'naleak':self.leak,
+                'clleak':self.leak,
+                'kir2':self.optKir,
+                'multiple':self.optNMDAR,
             }
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
-        cells.setK(Ko=2,delay = 0)
+        cells.setK(Ko=0.5,delay = 0)
         # cells.setK(Ko=ko)
-        cells.setK(Ko=2,delay=10*ms)
         cells.run()
         initStep = int(cells.initTstop / cells.dt)
         cells = cells.copyAttr()
@@ -271,10 +272,10 @@ class procedure():
         # Show the plot
         plt.savefig("branchAtten.pdf")
 
-        plt.clf()
-        plt.cla()
-        plt.plot(cells.vPAP)
-        plt.show()
+        # plt.clf()
+        # plt.cla()
+        # plt.plot(cells.vPAP)
+        # plt.show()
             
         
     def plotPAPs(self):
@@ -284,19 +285,19 @@ class procedure():
                 'mode':0,
                 'ComplexMorph':True,
                 'readHoc':True,
-                'Glu':False,
+                'Glu':True,
                 'dt':0.1,
-                # 'NMDAdelay':0.01,
-                # 'naleak':2e5,
-                # 'clleak':2e5,
-                'kir2':6,
-                'initTstop':30
+                'NMDAdelay':0.01,
+                'naleak':self.leak,
+                'clleak':self.leak,
+                'kir2':self.optKir,
+                'multiple':self.optNMDAR,
             }
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize(video=True)
-        # cells.setK(Ko=0.5)
-        # cells.run(video=True)
+        cells.setK(Ko=0.5)
+        cells.run(video=True)
         
 
     def singleRun(self,readHoc=True):
@@ -320,7 +321,7 @@ class procedure():
                         "somaSize": 7.597,
                         "bLen": 8.237,
                         "PAPWid": 1.21,
-                        "multiple":10/50, # Maximum conductance of model is equal to 50 single channels
+                        "multiple":self.optNMDAR, # Maximum conductance of model is equal to 50 single channels
                         "NMDAdelay":5*i*ms,
                         "kir2":kirCount,
                         'dt':0.1
@@ -459,8 +460,8 @@ class procedure():
                 'Glu':True,
                 'ComplexMorph':True,
                 'NMDAdelay':0.01,
-                'naleak':4e5,
-                'clleak':4e5,
+                'naleak':self.leak,
+                'clleak':self.leak,
                 'dt':0.01
             }
         )
@@ -477,8 +478,6 @@ class procedure():
         comm.Barrier()
         
         if rank == 0:
-            cell = PAPModel(**funcArgs[-1])
-            cell.plot_topology()
             with open(
                     os.path.join(
                         'intermediaryData',

@@ -67,6 +67,10 @@ def callExperimentMode(**kwargs):
         # Plot for various channel counts
         exp.plotPAPs()
 
+    if "branch" in kwargs.keys() and kwargs["branch"]:
+        # Plot for various channel counts
+        exp.branchAttenuation()
+        
     
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD

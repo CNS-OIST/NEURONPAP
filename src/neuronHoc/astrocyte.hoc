@@ -42,12 +42,15 @@ objref r
 r = new Random(0)
 
 // Function to get end section
-obfunc getBifurc() {localobj current_section
+obfunc getPath() {localobj current_section,sl
     $o1 current_section = new SectionRef()
-    while (current_section.nchild < 2) {
+    sl = new SectionList()
+    while (current_section.has_parent()) {
+        current_section.sec sl.append()
         current_section.parent current_section = new SectionRef()
     }
-    return current_section
+    // sl.printnames()
+    return sl
 }
 
 obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count localobj child_sections, current_section, blacklist,secref
@@ -159,16 +162,14 @@ stim.noise = 0
 
 double lenPAP[1]
 lenPAP = 0
-forsec slPAP {
-    lenPAP = lenPAP + 1
-}
+// slPAP.printnames()
 // print(lenPAP)
-
-for i = 0, lenPAP - 1 {
+forsec slPAP {
     sNMDA = new Exp5NMDA(0.5)
     NMDAs.append(sNMDA)
-    nc = new NetCon(stim,NMDAs.o(i))
+    nc = new NetCon(stim,NMDAs.o(lenPAP))
     ncList.append(nc)
+    lenPAP = lenPAP + 1
 }
 
 
