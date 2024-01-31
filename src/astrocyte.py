@@ -140,10 +140,16 @@ class PAPModel(ResultsPAPModel):
         self.NMDAdelay = NMDAdelay
 
         # GENE expression setup
-        GENExpression(h.allsec(), kwargs)
+        self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
         self.GENEDict = kwargs
         # print('set GENE manipulation')
 
+    def channelDist(self,**channelDict):
+        # change the density of a certain channel by xfold
+        for channel,xfold in channelDict.items():
+            # print(channel,xfold)
+            self.GENEobj.alterDistribution(channel,ratioToPAP=xfold)
+        
     def initNMDAs(self):
         if self.readParms:
             self.readParameters()  # readfile in parallel causes errors

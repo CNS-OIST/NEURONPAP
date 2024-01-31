@@ -13,7 +13,8 @@ class ResultsPAPModel():
         "branches",
         "branch",
         "NMDAs",
-        "NCs"
+        "NCs",
+        "GENEobj"
         ]
     currents = [
         "iKPAP",

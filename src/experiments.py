@@ -236,7 +236,7 @@ class procedure():
             PAPpopt[0] - 1050
         )*0.9/1050  # soma input resistance score
 
-    def branchAttenuation(self):
+    def branchAttenuation(self,alterDist=True):
         funcArgs = []
         funcArgs.append(
             {
@@ -253,6 +253,11 @@ class procedure():
             }
         )
         cells = PAPModel(**funcArgs[-1])
+        if alterDist:
+            cells.channelDist(
+                kir2=10
+            )
+            
         cells.initialize()
         cells.setK(Ko=0.5,delay = 0)
         # cells.setK(Ko=ko)
@@ -265,6 +270,7 @@ class procedure():
             coord = list(x)[initStep:]
             timeVoltageArray.append(coord)
         timeVoltageArray = np.array(timeVoltageArray).T
+        timeVoltageArray -= timeVoltageArray[-1][-1]
         print(timeVoltageArray)
         # Plot the array using a heatmap
         plt.imshow(timeVoltageArray,
@@ -272,10 +278,14 @@ class procedure():
                    interpolation='none',
                    aspect='auto'
                    )
-        plt.colorbar()
+        plt.colorbar(label='Vm',ticks=np.arange(0,2,0.2),extend='max')
+        plt.clim((0,2))
 
         # Show the plot
-        plt.savefig("branchAtten.pdf")
+        if not alterDist:
+            plt.savefig(f"branchAtten_{cells.seed}_{self.optKir}_{self.optNMDAR}Original.pdf")
+        else:
+            plt.savefig(f"branchAtten_{cells.seed}_{self.optKir}_{self.optNMDAR}.pdf")
 
         # plt.clf()
         # plt.cla()
@@ -303,6 +313,43 @@ class procedure():
         cells.initialize(video=True)
         cells.setK(Ko=0.5)
         cells.run(video=True)
+
+    def alteredDist(self):
+        funcArgs = []
+        funcArgs.append(
+            {
+                'mode':0,
+                'ComplexMorph':True,
+                'readHoc':True,
+                'Glu':True,
+                'dt':0.1,
+                'NMDAdelay':0.01,
+                'naleak':self.leak,
+                'clleak':self.leak,
+                'kir2':self.optKir,
+                'multiple':self.optNMDAR,
+            }
+        )
+        cellComparison = []
+        ratioList = [0] + list(np.logspace(-3,1))
+        for ratio in ratioList:
+            cells = PAPModel(**funcArgs[-1])
+            cells.channelDist(
+                kir2=ratio
+            )
+            cells.initialize()
+            cells.setK(Ko=0.5)
+            cells.run()
+            cellComparison.append(cells.copyAttr())
+            print(f'complete{ratio}')
+        for i,cell in enumerate(cellComparison):
+            plt.plot(cell.time,
+                     cell.vSoma,
+                     label=f'ratio to PAP:{ratioList[i]}'
+                     )
+            # plt.legend()
+            plt.savefig(f'RatioComp{self.optKir}_{self.optNMDAR}.pdf')
+            
         
 
     def singleRun(self,readHoc=True):

@@ -89,13 +89,18 @@ class GENExpression(GENEManipulation):
             self.changeExpression(gName, xfoldXpression=xfold)
 
     def changeExpression(self, gName, xfoldXpression=None):
-        if gName in self.GENE.keys():
+        if hasattr(self, f"{gName}Change"):  # check if method is implemented
             if xfoldXpression == None:
                 xfoldXpression = self.GENE[gName]
-            if hasattr(self, f"{gName}Change"):  # check if method is implemented
-                exec(f"self.{gName}Change({xfoldXpression})")
-            else:
-                wMessage(f"No {gName} skipped")
+            exec(f"self.{gName}Change({xfoldXpression})")
+        else:
+            wMessage(f"No {gName} skipped")
+
+    def alterDistribution(self,gName,ratioToPAP=1):
+        # print(gName)
+        # print(self.GENE.keys())
+        if gName in self.GENE.keys():
+            self.changeExpression(f'{gName}Dist',xfoldXpression=ratioToPAP)
 
     def checkExpressionStatement(self):
         for gName, multiple in self.GENE.items():
