@@ -20,7 +20,7 @@ celsius = 34
         Ra = 100
         cm = 0.8
         insert pas
-        e_pas = -80
+        e_pas = -85
         g_pas = 1 /  11150
 
         insert kir2
@@ -39,7 +39,9 @@ celsius = 34
     }
 }
 objref r
-r = new Random(0)
+double seed[1]
+seed = 1 // 0,1,4 are sufficient
+r = new Random(seed)
 
 // Function to get end section
 obfunc getPath() {localobj current_section,sl
@@ -135,6 +137,7 @@ objref sref,slPAP
 soma sref = new SectionRef()
 get_randomfinalSection(sref).sec sref = new SectionRef()
 sref.sec slPAP = get_parent_sections(sref)
+// forsec slPAP{psection()}
 // slPAP.printnames()
 
 obfunc getLeaf() {localobj sec,leaf
@@ -166,6 +169,7 @@ lenPAP = 0
 // print(lenPAP)
 forsec slPAP {
     sNMDA = new Exp5NMDA(0.5)
+    // sNMDA = new SimpleNMDA(0.5)
     NMDAs.append(sNMDA)
     nc = new NetCon(stim,NMDAs.o(lenPAP))
     ncList.append(nc)
@@ -175,7 +179,7 @@ forsec slPAP {
 
 proc fINITNMDA(){
     for i = 0, ncList.count - 1 {
-        ncList.o(i).weight = 1.26
+        ncList.o(i).weight = 1.26e-2 //1.26
         ncList.o(i).delay = 0
         // print(nc.weight)
     }
@@ -288,7 +292,7 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     ps = new PlotShape(sref)
     ps.variable($s1) // plot variable 2
     if (strcmp($s1,"v")==0){
-        ps.scale(-100,40)
+        ps.scale(-90,-50)
     } else if (strcmp($s1,"ko")==0) {
         ps.scale(0,10)
     }

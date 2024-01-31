@@ -26,7 +26,7 @@ class PAPModel(ResultsPAPModel):
     B2 = float()
     B3 = float()
     DELTA = float()
-    SynWeight = 1.26
+    SynWeight = 1.26e-2 #1.26
 
     # K Parms
     defaultKo = 2.5

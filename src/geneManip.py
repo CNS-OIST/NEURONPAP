@@ -3,6 +3,7 @@ from textSDIO import *
 class GENEManipulation:
     compartment = object()
     GENE = dict()
+    PAPs = object()
 
     # specific functions to manipulate the expression of a GENE
     # i.e. manipulate Kir by increasing conductance

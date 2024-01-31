@@ -96,6 +96,7 @@ INITIAL {
 BREAKPOINT {
 	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
 	gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM)))/area
+        : printf("%g\n",area)
         : printf("%g\n",gk*area*(1e-8))
 	: use state l to calulate gk
         : area will be multiplied per section resulting in single channel conductance per segment.
@@ -111,8 +112,8 @@ DERIVATIVE states {
 }
 
 PROCEDURE rate(v (mV)) { :callable from hoc
-        LOCAL qt
-	: qt=q10^((celsius-33)/10)
+    LOCAL qt
+    : qt=q10^((celsius-33)/10)
         qt = 1
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))

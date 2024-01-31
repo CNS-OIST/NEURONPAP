@@ -16,9 +16,13 @@ rank = comm.Get_rank()
 
 
 class procedure():
-    leak = 2e5
-    optKir = 5
-    optNMDAR = 20
+    leak =3e5
+    optKir = 30
+    optNMDAR = 30
+    NMDAMax = 30
+    NMDAStep = 1
+    KirMax = 30
+    KirStep = 1
 
     def multiChannel(self,itr=100):
         dList = []
@@ -440,15 +444,15 @@ class procedure():
                 plt.close('all')
 
 
-    def channelComparison(self):
-        NMDAMax = 100
-        NMDAStep = 10
-        KirMax = 10
-        KirStep = 1
-        
+    def channelComparison(self):        
         # Calculate the number of iterations for all parm sets
-        iterations = comm.bcast(get_iter(KirMax, KirStep, NMDAMax, NMDAStep), root=0)
-        imArray = np.zeros((int(KirMax/KirStep) + 1,int(NMDAMax/NMDAStep) + 1))
+        iterations = comm.bcast(get_iter(self.KirMax,
+                                         self.KirStep,
+                                         self.NMDAMax,
+                                         self.NMDAStep
+                                         ),
+                                root=0
+                                )
         # # Adjust the range for the last process
 
         comm.Barrier()
@@ -462,7 +466,7 @@ class procedure():
                 'NMDAdelay':0.01,
                 'naleak':self.leak,
                 'clleak':self.leak,
-                'dt':0.01
+                'dt':0.1
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -478,63 +482,100 @@ class procedure():
         comm.Barrier()
         
         if rank == 0:
+            seedtag = results[0][0].seed
             with open(
                     os.path.join(
                         'intermediaryData',
-                        "resultsParallel.pickle"
+                        f"resultsParallel{seedtag}.pickle"
                     ), "wb") as handle:
                 pickle.dump(results,
                             handle,
                             protocol=pickle.HIGHEST_PROTOCOL)
+            self.plotHeatmap(results,tag=seedtag)
+            totResults = []
+            path = os.path.join(
+                os.path.abspath('intermediaryData'),
+                "resultsParallel"
+                )
+            resFiles = glob.glob(path+"*.pickle")
+            for res in resFiles:
+                with open(
+                        os.path.join(
+                            'intermediaryData',
+                            res
+                        ), "rb") as handle:
+                    results = pickle.load(handle)
+                totResults += results
             self.plotIKSeries(results)
+            self.plotHeatmap(totResults,divedend=len(resFiles))
 
-            for res in results:
-                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = max(res[0].vPAP) - res[0].RMP
-            plt.imshow(imArray,
-                       cmap='viridis',
-                       origin='lower',
-                       interpolation='nearest',
-                       aspect='equal'
-                       )
-            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
-            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
-            plt.ylabel('Kir Channel')
-            plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values',ticks=np.arange(0,80,10),extend='max')
-            plt.clim((0,80))
-            plt.savefig('FullComparison.pdf')
+    def plotHeatmap(self,results,tag="",divedend=1):
+        imArray = np.zeros((int(self.KirMax/self.KirStep) + 1,
+                            int(self.NMDAMax/self.NMDAStep) + 1))
 
-            for res in results:
-                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = res[0].RMP
-            plt.imshow(imArray,
-                       cmap='viridis',
-                       origin='lower',
-                       interpolation='nearest',
-                       aspect='equal'
-                       )
-            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
-            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
-            plt.ylabel('Kir Channel')
-            plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values',ticks=np.arange(-100,-60,10),extend='max')
-            plt.clim((-100,-60))
-            plt.savefig('FullRMP.pdf')
+        for res in results:
+            imArray[int(res[0].GENEDict['kir2']/self.KirStep),
+                    int(res[0].multiple/self.NMDAStep)] += max(res[0].vPAP) - res[0].RMP
+        imArray /= divedend
+        plt.imshow(imArray,
+                   cmap='viridis',
+                   origin='lower',
+                   interpolation='nearest',
+                   aspect='equal'
+                   )
+        plt.xticks(range(int(self.NMDAMax/self.NMDAStep) + 1),
+                   np.arange(0,int(self.NMDAMax/self.NMDAStep) + 1,1)*self.NMDAStep)
+        plt.yticks(range(int(self.KirMax/
+                             self.KirStep) + 1),np.arange(0,int(self.KirMax/self.KirStep) + 1,1)*self.KirStep)
+        plt.ylabel('Kir Channel')
+        plt.xlabel('NMDAR Channel')
+        plt.colorbar(label = 'values',ticks=np.arange(0,50,10),extend='max')
+        plt.clim((0,50))
+        plt.savefig(f'FullComparison{tag}.pdf')
+        plt.cla()
+        plt.clf()
 
-            for res in results:
-                imArray[int(res[0].GENEDict['kir2']/KirStep),int(res[0].multiple/NMDAStep)] = max(res[0].vSoma) - res[0].RMP
-            plt.imshow(imArray,
-                       cmap='viridis',
-                       origin='lower',
-                       interpolation='nearest',
-                       aspect='equal'
-                       )
-            plt.xticks(range(int(NMDAMax/NMDAStep) + 1),np.arange(0,int(NMDAMax/NMDAStep) + 1,1)*NMDAStep)
-            plt.yticks(range(int(KirMax/KirStep) + 1),np.arange(0,int(KirMax/KirStep) + 1,1)*KirStep)
-            plt.ylabel('Kir Channel')
-            plt.xlabel('NMDAR Channel')
-            plt.colorbar(label = 'values',ticks=np.arange(0,80,10),extend='max')
-            plt.clim((0,80))
-            plt.savefig('FullSoma.pdf')
+        imArray = np.zeros((int(self.KirMax/self.KirStep) + 1,
+                            int(self.NMDAMax/self.NMDAStep) + 1))        
 
-                
-    
+        for res in results:
+            imArray[int(res[0].GENEDict['kir2']/self.KirStep),int(res[0].multiple/self.NMDAStep)] += res[0].RMP
+        imArray /= divedend
+        plt.imshow(imArray,
+                   cmap='viridis',
+                   origin='lower',
+                   interpolation='nearest',
+                   aspect='equal'
+                   )
+        plt.xticks(range(int(self.NMDAMax/self.NMDAStep) + 1),np.arange(0,int(self.NMDAMax/self.NMDAStep) + 1,1)*self.NMDAStep)
+        plt.yticks(range(int(self.KirMax/self.KirStep) + 1),np.arange(0,int(self.KirMax/self.KirStep) + 1,1)*self.KirStep)
+        plt.ylabel('Kir Channel')
+        plt.xlabel('NMDAR Channel')
+        plt.colorbar(label = 'values',ticks=np.arange(-90,-20,10),extend='max')
+        plt.clim((-90,-20))
+        plt.savefig(f'FullRMP{tag}.pdf')
+        plt.cla()
+        plt.clf()
+
+        imArray = np.zeros((int(self.KirMax/self.KirStep) + 1,
+                            int(self.NMDAMax/self.NMDAStep) + 1))
+
+        for res in results:
+            imArray[int(res[0].GENEDict['kir2']/self.KirStep),int(res[0].multiple/self.NMDAStep)] += max(res[0].vSoma) - res[0].RMP
+        imArray /= divedend
+        plt.imshow(imArray,
+                   cmap='viridis',
+                   origin='lower',
+                   interpolation='nearest',
+                   aspect='equal'
+                   )
+        plt.xticks(range(int(self.NMDAMax/self.NMDAStep) + 1),np.arange(0,int(self.NMDAMax/self.NMDAStep) + 1,1)*self.NMDAStep)
+        plt.yticks(range(int(self.KirMax/self.KirStep) + 1),np.arange(0,int(self.KirMax/self.KirStep) + 1,1)*self.KirStep)
+        plt.ylabel('Kir Channel')
+        plt.xlabel('NMDAR Channel')
+        plt.colorbar(label = 'values',ticks=np.arange(0,10,1),extend='max')
+        plt.clim((0,10))
+        plt.savefig(f'FullSoma{tag}.pdf')
+
+
+

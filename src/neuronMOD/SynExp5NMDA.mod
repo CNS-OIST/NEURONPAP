@@ -50,7 +50,7 @@ b1 = 0.03 (1/mV)
 	tau2_0 = 3.97	(ms)
 	a2 = 0.70		(ms)
 	b2 = 0.0243		(1/mV)
-	wtau2= 0.65		<1e-9,1> : Hestrin90
+	wtau2= 1.0		<1e-9,1> : Hestrin90 0.65
 	
 : parameters control exponential rise to a maximum of tau3
 	tau3_0 = 41.62	(ms)
@@ -151,7 +151,8 @@ STATE {
 	: temperature-sensitivity of the slow unblock of NMDARs
 	tau  = tauV * Q10^((T0 - celsius)/10(degC))
         
-        rates(-60)
+        rates(fabs(v))
+        
 	wtau3 = 1 - wtau2
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
 	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
@@ -160,7 +161,6 @@ STATE {
 	: printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
 	: printf("factor:%g\n",factor)
 	: printf("T0:%g\n",T0_tau)
-        rates(v)
 	A = 0
 	B = 0
 	C = 0
@@ -176,35 +176,31 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
-        g = gVI + gVD
-	i = (1e-6) *(wtau3*C + wtau2*B - A) * g * Mgblock(v) * (v - e)
+        g = (gVI + gVD) * (wtau3*C + wtau2*B - A)
+	i = (1e-6) * g * Mgblock(v) * (v - e)
         : Check later but seems like bug
         
-        UNITSOFF
-        if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
-            flag = 1
-            : printf("detected decrease")
-        } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
-            if (CUTOFF(prvI,18) == 0) {
-                i = 0
-                A = 0
-                B = 0
-                C = 0
-                : printf("%g\n",i)
-                flag = 0
-                : printf("detected spontaneous increase\n shutting down")
-                }
-        }
-        prvW =  (wtau3*C + wtau2*B - A)
-        prvI = i
-        UNITSON
+        : UNITSOFF
+        : if (flag == 0 && (wtau3*C + wtau2*B - A) - prvW < 0){
+        :     flag = 1
+        :     : printf("detected decrease")
+        : } else if (flag == 1 && (wtau3*C + wtau2*B - A) - prvW > 0){
+        :     A = CUTOFF(A,20)
+        :     B = CUTOFF(B,20)
+        :     C = CUTOFF(C,20)
+        :     : printf("%g\n",i)
+        :     : printf("detected spontaneous increase\n shutting down")
+        : }
+        : prvW =  (wtau3*C + wtau2*B - A)
+        : prvI = i
+        : UNITSON
         : if (prvW > 0){
         :     printf("%g\n",(wtau3*C + wtau2*B - A))
         : }
 }
 
 DERIVATIVE state {
-	rates(v)
+	rates(fabs(v))
 	A' = -A/tau1
 	B' = -B/tau2
 	C' = -C/tau3
@@ -228,16 +224,18 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
         if (weight == 0 || multiple == 0){
             wf = 0
         }
-        : printf("%g,%g,%g,%g\n",weight,factor,D1,wf)
+        : printf("%g,%g,%g,%g,%g\n",weight,factor,D1,wf,hillGluc(glu))
         : printf("%g\n",weight)
+        : printf("%g,%g,%g\n",A,B,C)
         
 	A = A + wf
 	B = B + wf
 	C = C + wf
         
 	D1 = D1 * d1
-        flag = 0
-    }
+        flag = 0 
+        : printf("%g,%g,%g\n",A,B,C)
+   }
     
 
 FUNCTION Mgblock(v(mV)) {
@@ -246,17 +244,17 @@ FUNCTION Mgblock(v(mV)) {
     }
     
     PROCEDURE rates(v (mV)) {
-        
-	inf = (v - gVDv0) * gVDst * gVI
+        : Follows mirroing aspect before and after 0 mV of Astrocyte NMDAR
+	inf = (v - gVDv0) * gVDst * gVI 
         
 	tau1 = tau1_0 + a1*exp(-b1*v)*q10_tau1
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
 	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3
-	if (tau1/tau2 >= 1) {
-		tau1 = tau2
+	if (tau1/tau2 > .9999) {
+		tau1 = tau2 * .9999
 	}
-	if (tau2/tau3 >= 1) {
-		tau2 = tau3
+	if (tau2/tau3 > .9999) {
+		tau2 = tau3*.9999
 	    }
         }
         
