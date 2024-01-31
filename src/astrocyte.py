@@ -123,6 +123,7 @@ class PAPModel(ResultsPAPModel):
             if not self.ComplexMorph:
                 self.branch = h.branch
             self.PAParea = h.area(0.5,sec=self.PAP) # should be updated
+            self.seed = int(h.seed[0])
 
 
         else:
@@ -309,7 +310,7 @@ class PAPModel(ResultsPAPModel):
                     self.frames.append(fname)
             h.fadvance()
         for v in var:
-            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph.gif',shell=True)
+            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph_{self.seed}.gif',shell=True)
         return
 
     def plotWholecellVariable(self,var,frameName):

@@ -9,6 +9,7 @@ import numpy as np
 from utils import *
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
+import glob
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()

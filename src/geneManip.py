@@ -17,11 +17,12 @@ class GENEManipulation:
 
     def kir2Change(self, multiple):
         # get PAP
-        PAP = [sec for sec in self.compartments if str(sec) == "PAP"][0]
+        PAP = self.PAPs
         # get PAP area
         PAParea = 0
-        for seg in PAP:
-            PAParea += seg.area()
+        for sec in PAP:
+            for seg in sec:
+                PAParea += seg.area()
         # set channel count to uniform density
         for sec in self.compartments:
             for seg in sec:
@@ -54,18 +55,30 @@ class GENEManipulation:
             for seg in sec:
                 seg.kpump.Kp = seg.kpump.Kp * multiple
 
+    def kir2DistChange(self, multiple):
+        # print('Checking Compartments')
+        for sec in self.compartments:
+            if sec not in list(self.PAPs):
+                for seg in sec:
+                    # print(f'changing to {multiple}')
+                    seg.kir2.gkbar = seg.kir2.gkbar * multiple
+            # else:
+            #     print('found PAP')
+                
 
 class GENExpression(GENEManipulation):
     compartments = object()
     GENE = dict()
+    PAPs = object()
 
     # class that actually calls and manipulates the
     # necessary functions to alter expressions and what not
 
-    def __init__(self, compartments, GENE):
+    def __init__(self, compartments, PAPs,GENE):
         if GENE == None:
             return
         self.compartments = compartments
+        self.PAPs = PAPs
 
         if type(GENE) == dict:
             self.GENE = GENE
