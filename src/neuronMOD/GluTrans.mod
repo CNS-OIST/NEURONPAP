@@ -24,14 +24,14 @@ we corrected the numerical values of the kinetic constants corresponding to the 
 ENDCOMMENT
 
 NEURON {
-    SUFFIX  GluTrans
+    POINT_PROCESS  GluTrans
     USEION k READ ki,ko
     USEION na READ nao,nai
     RANGE part, C1, C2, C3, C4, C5, C6
-    GLOBAL k12, k21, k23, k32, k34, k43, k45, k54, k56, k65, k16, k61
-    GLOBAL Nain, Naout, Gluin, charge, Kin, Kout
-    RANGE  iGluT, Gluout, density, itransLog
+    RANGE  iGluT, Gluout, density, itransLog,multiple
     NONSPECIFIC_CURRENT iGluT
+
+
 }
 
 UNITS {
@@ -45,6 +45,7 @@ UNITS {
     (uM) = (micro/liter)
     F = (faraday) (coulombs)
     PI      = (pi)       (1)
+    (um) = (micrometer)
 }
 
 PARAMETER {	
@@ -64,15 +65,20 @@ PARAMETER {
     k61 =  2e-4        (l /mM /ms)
     
     Gluin = 0.3      (mM/l)
-    Gluout = 20e-6	(mM/l)
+    Gluout_0 = 20e-6	(mM/l)
 
     density =1e12  : (/cm2) : 10000 per um2
     charge = 1.6e-19 (coulombs)
+    synCleftSpace = 1.41e-15 (liter)
+    : PSD 200 nm Cleft Height 20 nm
+    tau1 = 0.61 (ms) : Rise of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
+    tau2 = 5.8 (ms) : Fall of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
+    multiple = 1 : Count of GluT
 }
 
 ASSIGNED {
     v	   (mV)		:  voltage
-    iGluT (mA/cm2)            : 
+    iGluT (nA)            : 
     surf   (cm2)
     volin  (liter)
     volout (liter)
@@ -85,6 +91,11 @@ ASSIGNED {
     Kin (mM/liter)
     Naout (mM/liter)
     Nain (mM/liter)
+    area (um2)
+    Gluout (mM/liter)
+    tSyn (ms)
+    flag
+    maxGlu (mM/liter)
 }
 
 STATE {
@@ -110,17 +121,33 @@ INITIAL {
     surf = 1
     koi(ki,ko)
     naoi(nai,nao)
+    Gluout = Gluout_0
+    tSyn = 0
+    maxGlu = 0 
 }
+NET_RECEIVE(weight) {
+    tSyn = t
+    maxGlu = weight * 1 (mM) / 1 (liter)
+    : printf("Glu:%g\n",Gluout)
+}
+
 
 BREAKPOINT {
     koi(ki,ko)
     naoi(nai,nao)
     SOLVE kstates METHOD sparse
-    
-    iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
+    : printf("%g,%g\n",C1,C2)
+    gluDiff(maxGlu,tSyn)
+        
+    iGluT=-charge*(1e+004)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area
+    : if (Gluout > Gluout_0){
+    :     printf("%g:%g\n",Gluout,iGluT)
+        
+        
+    : }
     : itransLog=log(-iGluT*(1e+006))
-
-    :iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) +0.4*( C3*k34-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )	  
+    
+    :iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) +0.4*( C3*k34-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
 }
 
 KINETIC kstates {
@@ -138,6 +165,14 @@ KINETIC kstates {
     CONSERVE C1+C2+C3+C4+C5+C6= 1
 }
 
+
+PROCEDURE gluDiff(maxGlu (mM/liter),tSyn(ms)){
+    Gluout = Gluout_0 + maxGlu*(tau2/(tau2-tau1)*(-exp(-(t-tSyn)/tau1) + exp(-(t- tSyn)/tau2)))
+    : if (maxGlu > 0){
+    :     printf("%g,%g\n",maxGlu,Gluout)
+    : }
+}
+
 FUNCTION u(x(mV), th) {
     u = exp(th*x/(2*(26.7 (mV))))
 }
@@ -151,4 +186,4 @@ PROCEDURE koi(ki(mM),ko(mM)){
 PROCEDURE naoi(nai(mM),nao(mM)){
     Nain = nai/1 (liter)
     Naout = nao/1(liter)
-    }
+}

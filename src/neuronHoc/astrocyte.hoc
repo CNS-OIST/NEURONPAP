@@ -179,7 +179,7 @@ forsec slPAP {
 
 proc fINITNMDA(){
     for i = 0, ncList.count - 1 {
-        ncList.o(i).weight = 1.26e-2 //1.26
+        ncList.o(i).weight = 1
         ncList.o(i).delay = 0
         // print(nc.weight)
     }

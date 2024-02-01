@@ -53,7 +53,7 @@ class PAPModel(ResultsPAPModel):
             Glu=False,
             Ko=2.5,
             NMDAdelay=0,
-            initTstop=50,
+            initTstop=100,
             dt = 0.001,
             **kwargs
     ):
@@ -223,7 +223,7 @@ class PAPModel(ResultsPAPModel):
             self.makeVideo(self.varMorph,stop=self.initTstop)
         else:
             h.continuerun(self.initTstop * ms)
-        self.RMP = sum(list(self.vPAP))/len(list(self.vPAP)) # consider RMP
+        self.RMP = list(self.vPAP)[-1] # consider last timepoint in initialization as RMP
         # print(self.RMP)
         if saveState:
             s = h.SaveState()

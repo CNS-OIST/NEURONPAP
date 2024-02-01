@@ -24,7 +24,7 @@ ENDCOMMENT
 
 NEURON {
 	POINT_PROCESS Exp5NMDA
-	NONSPECIFIC_CURRENT i
+	NONSPECIFIC_CURRENT iNMDA
 	RANGE tau1, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple
 	THREADSAFE
 }
@@ -98,6 +98,7 @@ b1 = 0.03 (1/mV)
         glu = 1 (mM) : From Nahum-Levy et al. 2001 Biophysical Journal
         gluEC = 4.3 (uM)
         hilln = 1.2 (1)
+        synWeight = 1.26e-2
 }
 
 CONSTANT {
@@ -111,7 +112,7 @@ ASSIGNED {
 	v		(mV)
 	dt		(ms)
         maxI (nA)
-	i		(nA)
+	iNMDA		(nA)
         prvI (nA)
 	g		(pS)
 	factor (1)
@@ -151,7 +152,7 @@ STATE {
 	: temperature-sensitivity of the slow unblock of NMDARs
 	tau  = tauV * Q10^((T0 - celsius)/10(degC))
         
-        rates(fabs(v))
+        rates(fabs(v/1 (mV)) * 1 (mV))
         
 	wtau3 = 1 - wtau2
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
@@ -177,7 +178,7 @@ BREAKPOINT {
 	: to avoid probable unstability problems
         : numerical error accumalation compensation
         g = (gVI + gVD) * (wtau3*C + wtau2*B - A)
-	i = (1e-6) * g * Mgblock(v) * (v - e)
+	iNMDA = (1e-6) * g * Mgblock(v) * (v - e)
         : Check later but seems like bug
         
         : UNITSOFF
@@ -200,7 +201,7 @@ BREAKPOINT {
 }
 
 DERIVATIVE state {
-	rates(fabs(v))
+	rates(fabs(v/ 1 (mV))* 1 (mV))
 	A' = -A/tau1
 	B' = -B/tau2
 	C' = -C/tau3
@@ -220,8 +221,8 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
         
-	wf = weight*factor*D1*hillGluc(glu)*multiple
-        if (weight == 0 || multiple == 0){
+	wf = synWeight*factor*D1*hillGluc(weight*1 (mM))*multiple
+        if (synWeight == 0 || multiple == 0){
             wf = 0
         }
         : printf("%g,%g,%g,%g,%g\n",weight,factor,D1,wf,hillGluc(glu))
