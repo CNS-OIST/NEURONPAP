@@ -8,20 +8,17 @@ proc celldef() {
 OriginalDendrite=145
 NumberDendrites=OriginalDendrite+2*(OriginalDendrite-1)//397 //265 133 397
 // print NumberDendrites
-SeedNumber=OriginalDendrite-1//132 // Number of extra seeds equal to the number of the central dendrites
-{
-    create soma
-    
-    // if you need this file as only geometry please modify 
-    // as //create dendrite[NumberDendrites-1]
-    create dendrite[NumberDendrites]
-    
-    //***********************************************************************************************************
-    
-    //create soma[1], dendrite[432], 
-    create LargeGlia[10800], SmallGlia[10367] // decrease SmallGlia count for 1 PAP (10368 - 1)
-    create PAP // named last Small Glia PAP
-}
+SeedNumber=OriginalDendrite-1//132 // Number of extra seeds equal to the number of the central dendrites 
+create soma
+
+// if you need this file as only geometry please modify 
+// as //create dendrite[NumberDendrites-1]
+create dendrite[NumberDendrites]
+
+//***********************************************************************************************************
+
+//create soma[1], dendrite[432], 
+create LargeGlia[10800], SmallGlia[10368]
 
 proc topol() { local i
   for i = 0, 10 connect dendrite[i](0), soma(0.5)
@@ -474,12 +471,10 @@ proc topol_2() {
   connect LargeGlia[1347](0), dendrite[430](1)
   connect LargeGlia[1348](0), SmallGlia[917](1)
   connect LargeGlia[1349](0), dendrite[431](1)
-  connect LargeGlia[1350](0), SmallGlia[918](1) //Altered to fit last SmallGlia[10367] to PAP
-  connect LargeGlia[10799](0), PAP(1) //Altered to fit last SmallGlia[10367] to PAP
+  for i = 1350, 10799 connect LargeGlia[i](0), SmallGlia[i-432](1)
   for i = 0, 9557 connect SmallGlia[i](0), LargeGlia[i](1)
   connect SmallGlia[9558](0), LargeGlia[9559](1)
   for i = 9559, 9561 connect SmallGlia[i](0), LargeGlia[i+2](1)
-  
   for i = 9562, 9590 connect SmallGlia[i](0), LargeGlia[i+3](1)
   for i = 9591, 9619 connect SmallGlia[i](0), LargeGlia[i+4](1)
   for i = 9620, 9634 connect SmallGlia[i](0), LargeGlia[i+5](1)
@@ -621,7 +616,7 @@ proc topol_2() {
   connect SmallGlia[10364](0), LargeGlia[10764](1)
   connect SmallGlia[10365](0), LargeGlia[10769](1)
   connect SmallGlia[10366](0), LargeGlia[10772](1)
-  connect PAP(0), LargeGlia[10774](1) // Changed last small Glia to PAP
+  connect SmallGlia[10367](0), LargeGlia[10774](1)
   basic_shape()
 }
 proc shape3d_1() {
@@ -112466,7 +112461,7 @@ proc shape3d_339() {
 	pt3dadd(-13.1018, 50.7158, 33.3389, 1.30427)
 	pt3dadd(-13.1438, 50.7549, 33.3389, 1.30427)
   }
-  PAP {pt3dclear()
+  SmallGlia[10367] {pt3dclear()
 	pt3dadd(-15.5068, 42.6002, 33.3389, 0.1)
 	pt3dadd(-15.6904, 42.591, 33.3389, 0.1)
 	pt3dadd(-15.8739, 42.5819, 33.3389, 0.1)
@@ -112862,4 +112857,6 @@ proc basic_shape_3() {
   shape3d_338()
   shape3d_339()
 }
-{ celldef() }
+access soma
+
+celldef()
