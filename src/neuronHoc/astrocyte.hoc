@@ -38,10 +38,13 @@ celsius = 34
         // ki0_kdifl = 110
     }
 }
+
 objref r
-double seed[1]
-seed = 1 // 0,1,4 are sufficient
-r = new Random(seed)
+
+proc setSeed() {local seed
+    seed = $1 // 0,1,4 are sufficient
+    r = new Random(seed)
+}
 
 // Function to get end section
 obfunc getPath() {localobj current_section,sl
@@ -132,11 +135,12 @@ obfunc get_parent_sections() {local totalLen, lenThr localobj parent_sections, c
 
 // Actually getting things
 
-objref sref,slPAP
+// objref sref,slPAP
+objref slPAP,PAP
 
-soma sref = new SectionRef()
-get_randomfinalSection(sref).sec sref = new SectionRef()
-sref.sec slPAP = get_parent_sections(sref)
+// soma sref = new SectionRef()
+// get_randomfinalSection(sref).sec sref = new SectionRef()
+// sref.sec slPAP = get_parent_sections(sref)
 // forsec slPAP{psection()}
 // slPAP.printnames()
 
@@ -152,10 +156,10 @@ obfunc getLeaf() {localobj sec,leaf
 }
 
 // inserting NMDARs
-objref sNMDA, NMDAs, stim, nc, ncList
+objref sNMDA, NMDAs, stim, nc, ncNMDAList
 
 NMDAs = new List()
-ncList = new List()
+ncNMDAList = new List()
 
 stim = new NetStim(.5)
 stim.interval = 1
@@ -167,25 +171,56 @@ double lenPAP[1]
 lenPAP = 0
 // slPAP.printnames()
 // print(lenPAP)
-forsec slPAP {
-    sNMDA = new Exp5NMDA(0.5)
-    // sNMDA = new SimpleNMDA(0.5)
-    NMDAs.append(sNMDA)
-    nc = new NetCon(stim,NMDAs.o(lenPAP))
-    ncList.append(nc)
-    lenPAP = lenPAP + 1
+proc setNMDAs(){
+    // $o1.printnames()
+    forsec $o1 {
+        sNMDA = new Exp5NMDA(0.5)
+        // sNMDA = new SimpleNMDA(0.5)
+        NMDAs.append(sNMDA)
+        nc = new NetCon(stim,NMDAs.o(lenPAP))
+        ncNMDAList.append(nc)
+        lenPAP = lenPAP + 1
+    }
 }
 
-
 proc fINITNMDA(){
-    for i = 0, ncList.count - 1 {
-        ncList.o(i).weight = 1
-        ncList.o(i).delay = 0
+    for i = 0, ncNMDAList.count - 1 {
+        ncNMDAList.o(i).weight = 1
+        ncNMDAList.o(i).delay = 0
         // print(nc.weight)
     }
 }
 objref FinNMDA
 FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
+
+// objref sGluT, GluTs,
+
+// GluTs = new List()
+// ncGluList = new List()
+
+// lenPAP = 0
+// slPAP.printnames()
+// print(lenPAP)
+// proc setGluTs(){
+//     // $o1.printnames()
+//     forsec $o1 {
+//         sGluT = new GluTrans(0.5)
+//         GluTs.append(sGluT)
+//         nc = new NetCon(stim,GluTs.o(lenPAP))
+//         ncGluList.append(nc)
+//         lenPAP = lenPAP + 1
+//     }
+// }
+
+// proc fINITGLUT(){
+//     for i = 0, ncList.count - 1 {
+//         ncList.o(i).weight = 1
+//         ncList.o(i).delay = 0
+//         // print(nc.weight)
+//     }
+// }
+// objref FinGluT
+// FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 
 
 
@@ -229,7 +264,7 @@ proc setK(){
 }
 
 func getPAPK(){local papko
-    getLeaf(slPAP){ papko = ko } //warning message if return in between sectionList
+    $o1 { papko = ko } //warning message if return in between sectionList
     return papko
 }
 

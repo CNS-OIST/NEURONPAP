@@ -18,12 +18,14 @@ rank = comm.Get_rank()
 
 class procedure():
     leak =3e5
-    optKir = 30
+    optKir = 40
     optNMDAR = 30
-    NMDAMax = 30
-    NMDAStep = 1
-    KirMax = 30
-    KirStep = 1
+    NMDAMax = 50
+    NMDAStep = 5
+    KirMax = 50
+    KirStep = 5
+    seed = int()
+    ko = float()
 
     def multiChannel(self,itr=100):
         dList = []
@@ -71,8 +73,9 @@ class procedure():
                         "mode": 0,
                         "bNum": int(bNum),
                         "PAPWid": PAPWid,
-                        "Ko": 5,
+                        "Ko": self.ko,
                         "kir2": 0,
+                        "seed":self.seed
                     }
                 )
                 # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -125,7 +128,7 @@ class procedure():
                             mode=0,
                             bNum=int(bNum),
                             PAPWid=PAPWid,
-                            Ko=8.5,
+                            Ko=self.ko,
                             Glu=True,
                         )
                         sim.run()
@@ -139,7 +142,7 @@ class procedure():
                             mode=0,
                             bNum=int(bNum),
                             PAPWid=PAPWid,
-                            Ko=8.5,
+                            Ko=self.ko,
                             Glu=True,
                         )
                         sim.run()
@@ -250,6 +253,7 @@ class procedure():
                 'clleak':self.leak,
                 'kir2':self.optKir,
                 'multiple':self.optNMDAR,
+                'seed':self.seed,
             }
         )
         cells = PAPModel(**funcArgs[-1])
@@ -259,7 +263,7 @@ class procedure():
             )
             
         cells.initialize()
-        cells.setK(Ko=0.5,delay = 0)
+        cells.setK(Ko=self.ko,delay = 0)
         # cells.setK(Ko=ko)
         cells.run()
         initStep = int(cells.initTstop / cells.dt)
@@ -271,7 +275,7 @@ class procedure():
             timeVoltageArray.append(coord)
         timeVoltageArray = np.array(timeVoltageArray).T
         timeVoltageArray -= timeVoltageArray[-1][-1]
-        print(timeVoltageArray)
+        # print(timeVoltageArray)
         # Plot the array using a heatmap
         plt.imshow(timeVoltageArray,
                    cmap='viridis',
@@ -307,11 +311,12 @@ class procedure():
                 'clleak':self.leak,
                 'kir2':self.optKir,
                 'multiple':self.optNMDAR,
+                'seed':self.seed
             }
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize(video=True)
-        cells.setK(Ko=0.5)
+        cells.setK(Ko=self.ko)
         cells.run(video=True)
 
     def alteredDist(self):
@@ -338,7 +343,7 @@ class procedure():
                 kir2=ratio
             )
             cells.initialize()
-            cells.setK(Ko=0.5)
+            cells.setK(Ko=self.ko)
             cells.run()
             cellComparison.append(cells.copyAttr())
             print(f'complete{ratio}')
@@ -514,7 +519,8 @@ class procedure():
                 'NMDAdelay':0.01,
                 'naleak':self.leak,
                 'clleak':self.leak,
-                'dt':0.1
+                'dt':0.1,
+                'seed':self.seed
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -525,12 +531,12 @@ class procedure():
             funcArgs,
             ["kir2", "multiple"],
             [["initialize", "setK","run"]],
-            [[{}, {"Ko":0.5},{}]]
+            [[{}, {"Ko":self.ko},{}]]
         )
         comm.Barrier()
         
         if rank == 0:
-            seedtag = results[0][0].seed
+            seedtag = str(results[0][0].seed) + "_" + str(results[0][0].Ko)
             with open(
                     os.path.join(
                         'intermediaryData',

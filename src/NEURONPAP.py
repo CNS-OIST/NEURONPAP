@@ -1,6 +1,6 @@
 """
 To Do:
-[ ] FInitializeHandler for setK
+[x] FInitializeHandler for setK
 
 """
 
@@ -15,6 +15,8 @@ def callExperimentMode(**kwargs):
     exp = procedure()
     
     exp.parallel = kwargs['parallel']
+    exp.seed = kwargs['seed']
+    exp.ko = kwargs['ko']
     
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun

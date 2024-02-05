@@ -82,7 +82,7 @@ def argParser(rangeInt=100):
         action="store_true",
         default=False,
         help="Used to run simulations for branch attenuation"
-    )  
+    )
     parser.add_argument(
         "--debug",
         dest="debug",
@@ -90,6 +90,23 @@ def argParser(rangeInt=100):
         default=False,
         help="Used to employ debug mode. You can use to run with verbose comments. Mainly used to test if the simulation will construct -> run -> save properly",
     )
+    parser.add_argument(
+        "--ko",
+        type=float,
+        dest="ko",
+        default=0.5,
+        help="Used to set extracellular potassium of simulation. Default: 0.5 mM.",
+    )  # end time arg
+    
+    parser.add_argument(
+        "seed",
+        metavar="seed",
+        type=int,
+        nargs="?",
+        default=randomGen(rangeInt),
+        help=f"The seed for the simulation. Will use a randomly generated seed from 0-{rangeInt} if none are provided.",
+    )  # positional argument that defaults to nothing
+    
     return parser
 
 

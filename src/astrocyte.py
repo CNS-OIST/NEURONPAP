@@ -55,6 +55,7 @@ class PAPModel(ResultsPAPModel):
             NMDAdelay=0,
             initTstop=100,
             dt = 0.001,
+            seed = 0,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -117,13 +118,21 @@ class PAPModel(ResultsPAPModel):
 
             # match sections to self
             # print("Match section")
+            self.seed = seed
+            h.setSeed(seed)
+            h.PAP = h.get_randomfinalSection(h.soma)
+            self.PAP = h.PAP.sec
+            h('objref sref')
+            h('soma sref = new SectionRef()')
+            h('PAP.sec slPAP = get_parent_sections(PAP)')
+
             self.PAPs = h.slPAP
-            self.PAP = h.getLeaf(self.PAPs).sec
+            # self.PAPs = h.slPAP
+            # self.PAP = h.getLeaf(self.PAPs).sec
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
             self.PAParea = h.area(0.5,sec=self.PAP) # should be updated
-            self.seed = int(h.seed[0])
 
 
         else:
@@ -149,6 +158,7 @@ class PAPModel(ResultsPAPModel):
         for channel,xfold in channelDict.items():
             # print(channel,xfold)
             self.GENEobj.alterDistribution(channel,ratioToPAP=xfold)
+
         
     def initNMDAs(self):
         if self.readParms:
@@ -157,13 +167,15 @@ class PAPModel(ResultsPAPModel):
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
             self.NCs = []
+            h.slPAP = self.PAPs
+            h('slPAP {setNMDAs(slPAP)}')
             
     def setNMDAs(self,delay=50):
         self.initNMDAs()
         if self.readHoc:
             self.NMDAs = list(h.NMDAs)
             # print(self.NMDAs)
-            self.NCs = list(h.ncList)
+            self.NCs = list(h.ncNMDAList)
             h.stim.start = (self.initTstop + delay) * ms
             # h.stim.number = 1
             # h.stim.interval = 10 * ms
@@ -584,7 +596,7 @@ class PAPModel(ResultsPAPModel):
                 h.continuerun(dur * ms + h.t)
                 papk = self.getPAPK()
                 h.setK(self.PAPs,papk,restKo,0)
-
+            self.Ko = Ko
         else:
             if mode == 'pulse':
                 h.init()  # quite important
@@ -603,7 +615,8 @@ class PAPModel(ResultsPAPModel):
 
     def getPAPK(self):
         if self.readHoc:
-            return h.getPAPK()
+            return h('PAP getPAPK(PAP)')
+            
         
 
     def printRec(self):
