@@ -98,7 +98,7 @@ b1 = 0.03 (1/mV)
         glu = 1 (mM) : From Nahum-Levy et al. 2001 Biophysical Journal
         gluEC = 4.3 (uM)
         hilln = 1.2 (1)
-        synWeight = 1.26e-2
+        synWeight = 1.26e-3
 }
 
 CONSTANT {
@@ -234,7 +234,8 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	C = C + wf
         
 	D1 = D1 * d1
-        flag = 0 
+        flag = 0
+        wf = 1
         : printf("%g,%g,%g\n",A,B,C)
    }
     
