@@ -12,11 +12,17 @@ from experiments import procedure
 from utils import *
 
 def callExperimentMode(**kwargs):
-    exp = procedure()
+    for k,v in kwargs.items():
+        if type(v) == list:
+            kwargs[k] = v[0]
+    exp = procedure(kwargs['seed'],kwargs['ko'])
     
     exp.parallel = kwargs['parallel']
-    exp.seed = kwargs['seed']
-    exp.ko = kwargs['ko']
+    exp.NMDAR = bool(kwargs['nmdar'])
+    exp.GluT = bool(kwargs['glut'])
+    exp.PAPCount = kwargs['papcount']
+    exp.stimCount = kwargs['stimcount']
+    exp.ek = kwargs['ek']
     
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
@@ -65,13 +71,39 @@ def callExperimentMode(**kwargs):
         # Plot for various channel counts
         exp.channelComparison()
 
-    if "video" in kwargs.keys() and kwargs["video"]:
+    if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
+        exp.potassiumComparison()
+
+    if "video" in kwargs.keys() and kwargs["video"]:
+        # Make video
         exp.plotPAPs()
 
     if "branch" in kwargs.keys() and kwargs["branch"]:
-        # Plot for various channel counts
+        # Plot branch atten
         exp.branchAttenuation()
+
+    if 'stim' in  kwargs.keys() and kwargs["stim"]:
+        exp.GluStim = kwargs['glustim']
+        exp.KStim = kwargs['kstim']
+        if 'delay' in kwargs.keys()  and exp.KStim:
+            if kwargs['delay'] > 0:
+                exp.stimdelay = kwargs['delay']
+        exp.channelComparison()
+
+    if 'phase' in kwargs.keys() and kwargs['phase']:
+        # plot phase plot
+        exp.kvPhasePlane()
+
+    if 'vclamp' in kwargs.keys() and kwargs['vclamp']:
+        # plot phase plot
+        exp.SomaVC()
+
+    if 'kocomp' in kwargs.keys() and kwargs['kocomp']:
+        exp.KOComp()
+
+    if 'ekcomp' in kwargs.keys() and kwargs['ekcomp']:
+        exp.ekComp()
         
     
 if __name__ == "__main__" or parallel:

@@ -77,6 +77,7 @@ def plot(dir, zoom=False, ext=False):
 
 
 def get_iter(parmA, parmASteps, parmB, parmBSteps):
+    # Update to get dynamic loops
     iterations = []
     for i in range(0, parmA + 1,parmASteps):
         for j in range(0, parmB + 1,parmBSteps):

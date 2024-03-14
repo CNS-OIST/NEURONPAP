@@ -56,8 +56,8 @@ PARAMETER {
 
 	: Temperature dependence
         : celsius          (degC)  		: unused if q10 == 1.
-        : q10 = 1.                              	: temperature scaling
-        A = 0.09534626                          : fit to sqrt rule
+        q10 = 1.                              	: temperature scaling
+        A = 0.09534626                          : fit to sqrt rule and match single channel conductance 50 pS at Yang condition
 }
 
 
@@ -84,6 +84,7 @@ ASSIGNED {
         taul (ms)
         ko                              (mM)
         area (um2)
+        celsius (degC)
 }
 
 
@@ -113,8 +114,7 @@ DERIVATIVE states {
 
 PROCEDURE rate(v (mV)) { :callable from hoc
     LOCAL qt
-    : qt=q10^((celsius-33)/10)
-        qt = 1
+    qt=q10^((celsius-33)/10)
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }

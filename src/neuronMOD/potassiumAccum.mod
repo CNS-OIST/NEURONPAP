@@ -45,10 +45,10 @@ STATE {
 INITIAL {
     ko = ko0
     kbathRate()
-
-    }
     
-    BREAKPOINT {
+}
+
+BREAKPOINT {
         kbathRate()
         SOLVE state METHOD derivimplicit
     }
@@ -58,15 +58,20 @@ INITIAL {
         :     printf("%g\n",ko0)
     : }
     ko' = (1e8)*ik /(fhspace*F) + kbath
-    }
-    PROCEDURE kbathRate(){
-        if (flag > 0){
-            kbath = (ko0-ko) : instantaneous free bath mode for one step
+}
+PROCEDURE kbathRate(){
+    UNITSOFF
+    if (flag > 1){
+        kbath = - (1e8)*ik / (fhspace*F)
+        ko = ko0
+        } else if (flag > 0){
+            kbath = (ko0-ko) 
+            : instantaneous free bath mode for one step
             flag = 0
             : printf("%g\n",kbath)
         } else {
             kbath =  (ko0 - ko)/tauk
         }
-
+        UNITSON
         }
     

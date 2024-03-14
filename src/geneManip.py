@@ -35,6 +35,9 @@ class GENEManipulation:
             for seg in sec:
                 seg.twik.PBkp = seg.twik.PBkp * multiple
 
+    def GluTransChange(self, multiple):
+        pass
+
     def kleakChange(self, multiple):
         for sec in self.compartments:
             for seg in sec:

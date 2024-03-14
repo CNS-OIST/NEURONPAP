@@ -41,6 +41,16 @@ celsius = 34
 
 objref r
 
+proc koclamp() { 
+    // print $1
+    forall {
+        ko = $1
+        flag_k_acc = 2
+        ko0_k_acc = $1
+        // psection()
+    }
+}
+
 proc setSeed() {local seed
     seed = $1 // 0,1,4 are sufficient
     r = new Random(seed)
@@ -167,11 +177,10 @@ stim.number = 1
 stim.start = 50
 stim.noise = 0
 
-double lenPAP[1]
-lenPAP = 0
 // slPAP.printnames()
 // print(lenPAP)
-proc setNMDAs(){
+proc setNMDAs(){local lenPAP
+    lenPAP = 0
     // $o1.printnames()
     forsec $o1 {
         sNMDA = new Exp5NMDA(0.5)
@@ -193,34 +202,38 @@ proc fINITNMDA(){
 objref FinNMDA
 FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
 
-// objref sGluT, GluTs,
+objref sGluT, GluTs,ncGluList
 
-// GluTs = new List()
-// ncGluList = new List()
+GluTs = new List()
+ncGluList = new List()
 
-// lenPAP = 0
-// slPAP.printnames()
-// print(lenPAP)
-// proc setGluTs(){
-//     // $o1.printnames()
-//     forsec $o1 {
-//         sGluT = new GluTrans(0.5)
-//         GluTs.append(sGluT)
-//         nc = new NetCon(stim,GluTs.o(lenPAP))
-//         ncGluList.append(nc)
-//         lenPAP = lenPAP + 1
-//     }
-// }
+proc setGluTs(){local lenPAP localobj sref
+    // $o1.printnames()
+    lenGluTs = 0
+    forall {
+        sGluT = new GluTrans(0.5)
+        GluTs.append(sGluT)
+        ifsec $o1 {
+            // psection()
+            
+            // print(lenPAP)
+            ncGluList.append(nc)
+            nc = new NetCon(stim,sGluT)
+        }
+        lenGluTs = lenGluTs + 1
+    }
 
-// proc fINITGLUT(){
-//     for i = 0, ncList.count - 1 {
-//         ncList.o(i).weight = 1
-//         ncList.o(i).delay = 0
-//         // print(nc.weight)
-//     }
-// }
-// objref FinGluT
-// FinGluT = new FInitializeHandler(3,"fINITGLUT()")
+}
+
+proc fINITGLUT(){
+    for i = 0, ncGluList.count - 1 {
+        ncGluList.o(i).weight = 1
+        ncGluList.o(i).delay = 0
+        // print(nc.weight)
+    }
+}
+objref FinGluT
+FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 
 
 
@@ -249,22 +262,45 @@ objref FinIon
 {FinIon = new FInitializeHandler(1,"initIon()")}
 
 // Experimental manipulations
-proc setK(){
+proc setK(){local tmp localobj sref
     // $o1.printnames()
     forsec $o1 {
+        sref = new SectionRef()
+        flag_k_acc = 1
+        // print(getPAPK(sref))
+        ko = $2 + getPAPK(sref)
+        // print(getPAPK(sref))
         if ($4 == 1){ //instantaneous switch of bath
             flag_k_acc = 1
+            ko0_k_acc = $2 + getPAPK(sref)
         } else {
             flag_k_acc = 0
+            ko0_k_acc = $3
         }
-        ko = $2
-        ko0_k_acc = $3
         // psection()
+        // printf("%g\n",getPAPK(sref))
+    }
+    soma sref = new SectionRef()
+    // printf("%g\n",getPAPK(sref))
+}
+
+proc setkin(){
+    forall {
+        ki = $1
+    }
+}
+
+func getkin(){
+    forsec "soma" {
+        return ki
     }
 }
 
 func getPAPK(){local papko
-    $o1 { papko = ko } //warning message if return in between sectionList
+    $o1 {
+        papko = ko
+         // printf("%g\n",ko)
+    } //warning message if return in between sectionList
     return papko
 }
 
@@ -279,15 +315,15 @@ proc clampSwitch() {
         } else {
             getLeaf(slPAP) {ic = new IClamp(0.5)}
         }
-        ic.dur = tstop
+        ic.dur = tstop - 20
         ic.del = 0  // ms starts with glutamate
-        ic.amp = $2 * 0.001  // nA current injection (1 pA)
+        ic.amp = $2   // nA current injection (1 pA)
         electrodeList.append(ic)
         //---------------------------------------------------
     } else if ($1 > 0) {
         // voltage clamp
-        getLeaf(slPAP) {vc = new VClamp(0.5)}
-        vc.dur[0] = tstop
+        soma {vc = new VClamp(0.5)}
+        vc.dur[0] = tstop - 20
         vc.amp[0] = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
         //---------------------------------------------------
@@ -309,17 +345,22 @@ proc plot_topology() {localobj rando, sref,slPAP,ps
     soma { sref.wholetree() }
     // Plot the astrocyte's topology
     ps = new PlotShape(sref)
-    ps.color_all(1)
     
     soma sref = new SectionRef()
     // $o1.printnames()
     
-    // Highlight specified sections
-    ps.color_list($o1,2)
+    // Settings
+    // ps.exec_menu("Shape Plot")
+    ps.exec_menu("Show Diam")
     // Save the plot as a PostScript file
-    ps.printfile("astrocyte_topology.psf")
+    ps.color_all(1)
+    ps.beginline()
+    ps.line(30,-30)
+    ps.line(50,-30)
+    ps.flush()
+    
+    ps.printfile($s1)
 }
-
 proc plot_varMorph() {localobj rando, sref,slPAP,ps
     sref = new SectionList()
     soma { sref.wholetree() }
@@ -327,11 +368,84 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     ps = new PlotShape(sref)
     ps.variable($s1) // plot variable 2
     if (strcmp($s1,"v")==0){
-        ps.scale(-90,-50)
+        ps.scale(-80,-60)
     } else if (strcmp($s1,"ko")==0) {
         ps.scale(0,10)
     }
     ps.exec_menu("Shape Plot")
     ps.exec_menu("Show Diam")
+    ps.flush()
     ps.printfile($s2)//print as arg 2 file name
 }
+
+proc plotPAP_topology() {local x,y,count,size localobj rando, sref,slPAP,ps
+    size = 10
+    sref = new SectionList()
+    soma { sref.wholetree() }// Think of a way to zoom
+    // Plot the astrocyte's topology
+    ps = new PlotShape(sref)
+    ps.color_all(1)
+    
+    soma sref = new SectionRef()
+    // $o2.printnames()
+    
+    // Highlight specified sections
+    ps.color_list($o2,2)
+    x = 0
+    y = 0
+    count = 0
+    forsec $o2 {
+        x = x + x3d(0.5)
+        y = y + y3d(0.5)
+        count = count + 1
+        ps.len_scale(10)
+    }
+    x = x / count
+    y = y / count
+    // Settings
+    ps.exec_menu("Shape Plot")
+    ps.exec_menu("Show Diam")
+    ps.size(x-size,x+size,y+size,y-size)
+    // ps.view(x-size,y-size,2*size,2*size,0,0,size*20,size*20)
+    ps.flush()
+    ps.printfile($s1)
+}
+
+proc plotPAP_varMorph() {local size localobj rando, sref,slPAP,ps
+    size = 10
+    sref = new SectionList()
+    soma { sref.wholetree() }
+    // Plot the astrocyte's topology
+    ps = new PlotShape(sref)
+    ps.variable($s1) // plot variable 2
+    if (strcmp($s1,"v")==0){
+        ps.scale(-80,-60)
+    } else if (strcmp($s1,"ko")==0) {
+        ps.scale(0,10)
+    }
+    soma sref = new SectionRef()
+    // $o3.printnames()
+    
+    // Highlight specified sections
+    ps.color_list($o3,2)
+    x = 0
+    y = 0
+    count = 0
+    forsec $o3 {
+        x = x + x3d(0.5)
+        y = y + y3d(0.5)
+        count = count + 1
+        ps.len_scale(10)
+    }
+    x = x / count
+    y = y / count
+    // Settings
+    ps.exec_menu("Shape Plot")
+    ps.exec_menu("Show Diam")
+    ps.size(x-size,x+size,y+size,y-size)
+    // ps.view(x-size,y-size,2*size,2*size,0,0,size*20,size*20)
+    ps.flush()
+    ps.printfile($s2)//print as arg 2 file name
+}
+
+

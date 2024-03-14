@@ -66,13 +66,13 @@ stim.start = 100
 stim.noise = 0
 
 PAP sGlut = new GluTrans(0.5)
-sGlut.multiple = 1e7
+sGlut.multiple = 1
 
 nc = new NetCon(stim,sGlut)
 
 
 g = new Graph()
-g.size(0,tstop/dt,-0.1,0.1)
+g.size(4000,5000,-10,10)
 iGluT = new Vector()
 iGluT.record(&sGlut.iGluT)
 
@@ -82,7 +82,7 @@ proc init_GluT(){
 }
 objref FinNMDA
 
-SynWeight = 1e3
+SynWeight = 100
 FinNMDA = new FInitializeHandler(3,"init_GluT(SynWeight)")
 
 init()

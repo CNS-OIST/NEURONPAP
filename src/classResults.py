@@ -13,6 +13,7 @@ class ResultsPAPModel():
         "branches",
         "branch",
         "NMDAs",
+        "GluTs",
         "NCs",
         "GENEobj"
         ]

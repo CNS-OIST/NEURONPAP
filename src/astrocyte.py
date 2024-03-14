@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import plotly
 
 class PAPModel(ResultsPAPModel):
-    tstop = 100 * ms
-    v_init = -80 * mV
+    tstop = 260 * ms
+    v_init = -85 * mV
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -26,7 +26,6 @@ class PAPModel(ResultsPAPModel):
     B2 = float()
     B3 = float()
     DELTA = float()
-    SynWeight = 1.26e-2 #1.26
 
     # K Parms
     defaultKo = 2.5
@@ -52,10 +51,11 @@ class PAPModel(ResultsPAPModel):
             ComplexMorph=True,
             Glu=False,
             Ko=2.5,
-            NMDAdelay=0,
-            initTstop=100,
+            stimdelay=0,
+            initTstop=150,
             dt = 0.001,
             seed = 0,
+            PAPCount=1,
             **kwargs
     ):
         # Load NEURON GUI and parameters
@@ -113,26 +113,38 @@ class PAPModel(ResultsPAPModel):
                 h.branch.diam = self.bWid 
                 h.PAP.L = self.PAPWid
 
-            # set K parms
-            self.Ko = 2.5
+            # # set K parms
+            # self.Ko = 2.5
+            self.Ko = Ko
 
             # match sections to self
             # print("Match section")
             self.seed = seed
             h.setSeed(seed)
-            h.PAP = h.get_randomfinalSection(h.soma)
-            self.PAP = h.PAP.sec
-            h('objref sref')
-            h('soma sref = new SectionRef()')
-            h('PAP.sec slPAP = get_parent_sections(PAP)')
+            for i in range(PAPCount):
+                h.PAP = h.get_randomfinalSection(h.soma)
+                self.PAP = h.PAP.sec
+                # can change to sec = later
+                h.slPAP = h.get_parent_sections(self.PAP,sec=self.PAP)
+                if i == 0:
+                    self.PAPs = h.slPAP
+                else:
+                    for sec in h.slPAP:
+                        self.PAPs.append(sec)
+            # self.PAPs.printnames()
+            # h('objref sref')
+            # h('soma sref = new SectionRef()')
+            # h('PAP.sec slPAP = get_parent_sections(PAP)')
 
-            self.PAPs = h.slPAP
             # self.PAPs = h.slPAP
             # self.PAP = h.getLeaf(self.PAPs).sec
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
-            self.PAParea = h.area(0.5,sec=self.PAP) # should be updated
+
+            self.PAParea = 0
+            for sec in self.PAPs:
+                self.PAParea += h.area(0.5,sec=self.PAP)*sec.nseg # should be updated
 
 
         else:
@@ -145,20 +157,53 @@ class PAPModel(ResultsPAPModel):
             # sys.stdout.flush()
 
         # NMDA setup
-        self.Glu = Glu
-        self.NMDAdelay = NMDAdelay
+        self.Glu = Glu        
+        self.stimdelay = stimdelay
 
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
         self.GENEDict = kwargs
         # print('set GENE manipulation')
 
+        # print(self.GENEDict)
+        if self.multiple == 0 and 'GluTrans' in self.GENEDict.keys():
+            self.comparecount = self.GENEDict['GluTrans']
+        else:
+            # print('NMDAR selected')
+            self.comparecount = self.multiple
+            # print(self.multiple)
+            
     def channelDist(self,**channelDict):
         # change the density of a certain channel by xfold
         for channel,xfold in channelDict.items():
             # print(channel,xfold)
             self.GENEobj.alterDistribution(channel,ratioToPAP=xfold)
 
+    def koClamp(self,ko=None):
+        h.koclamp(ko)
+
+    def multiSpike(self,number=None,freq=None,Ko=None,koclamp=False):
+        ISI = 1/freq * 1e3 # change to ms
+        if Ko == None:
+            Ko = self.Ko
+        if hasattr(h,"stim"):
+            h.stim.number = number
+            h.stim.interval = ISI * ms
+        if koclamp:
+            while h.t < ISI * number:
+                self.koClamp(Ko)
+                h.fadvance()
+        else:
+            for i in range(number):
+                self.setK(Ko=Ko)
+                h.continuerun(ISI * ms + h.t)
+
+    def setkin(self,kin):
+        if self.readHoc:
+            h.setkin(kin)
+
+    def getkin(self):
+        self.kin = h.getkin()
         
     def initNMDAs(self):
         if self.readParms:
@@ -166,21 +211,21 @@ class PAPModel(ResultsPAPModel):
             
         if not hasattr(self, "NMDAs"):
             self.NMDAs = []
-            self.NCs = []
-            h.slPAP = self.PAPs
+            if not hasattr(self,'NCs'):
+                self.NCs = []
+            if not hasattr(h,'slPAP'):
+                h.slPAP = self.PAPs
+            # can change to sec = later
             h('slPAP {setNMDAs(slPAP)}')
             
-    def setNMDAs(self,delay=50):
+    def setNMDAs(self):
         self.initNMDAs()
         if self.readHoc:
             self.NMDAs = list(h.NMDAs)
             # print(self.NMDAs)
-            self.NCs = list(h.ncNMDAList)
-            h.stim.start = (self.initTstop + delay) * ms
+            self.NCs += list(h.ncNMDAList)
             # h.stim.number = 1
             # h.stim.interval = 10 * ms
-            for nc in self.NCs:
-                nc.weight[0] = self.SynWeight
             # print(h.nc.weight[0])
             for i,sNMDA in enumerate(self.NMDAs):
                 if self.Glu:
@@ -192,49 +237,89 @@ class PAPModel(ResultsPAPModel):
                         sNMDA.multiple = self.multiple // totNMDA
                 else:
                     sNMDA.multiple = 0
-        else:            
-            # Create the synaptic NMDA conductance
-            stim = h.NetStim(self.PAP(0.5))
-            stim.interval = 1
-            stim.number = 1
-            stim.start = (self.initTstop + 1) * ms
-            stim.noise = 0
-
-            # print(range(self.multiple - len(self.NMDAs)))
-            self.NMDAs.append(self.nmda())
-            if self.Glu:
-                self.NCs.append(
-                    h.NetCon(stim, self.NMDAs[-1])
-                )  # Must be in outer later with python address allocated
-                self.NCs[-1].weight[0] = self.SynWeight
-                self.NCs[-1].delay = 0
+                    for nc in list(h.ncNMDAList):
+                        nc.active(False)
         
-                
+    def initGluTs(self):
+        if not hasattr(self, "GluTs"):
+            self.GluTs = []
+            if not hasattr(self,'NCs'):
+                self.NCs = []
+            if not hasattr(h,'slPAP'):
+                h.slPAP = self.PAPs
+            h('slPAP {setGluTs(slPAP)}')
+            
+    def setGluTs(self):
+        self.initGluTs()
+        if self.readHoc:
+            self.GluTs = list(h.GluTs)
+            # print(self.NMDAs)
+            self.NCs += list(h.ncGluList)
+            # h.stim.number = 1
+            if 'GluTrans' in self.GENEDict.keys():
+                # print(self.GENEDict)
+                # print(len(self.GluTs))
+                for sGluT in self.GluTs:
+                    if self.GENEDict['GluTrans'] > 0:
+                        sGluT.multiple = self.GENEDict['GluTrans'] # Manipulation at this stage not in geneManip.py
+                    else:
+                        sGluT.multiple = 0
+                        # print(sGluT.multiple)
+                        # print(sGluT.has_loc())
+                        for nc in list(h.ncGluList):
+                            nc.active(False)
+                        
+            if not self.Glu:
+                for nc in list(h.ncGluList):
+                    nc.active(False)
+            
 
+    def setStimStart(self):
+        h.stim.number = 1
+        h.stim.interval = 10 * ms
+        h.stim.start = (self.initTstop + self.stimdelay) * ms # Mutual Setup
+
+    def checkNetCons(self):
+        print(self.NCs)
+        for nc in self.NCs:
+            print(f'{nc}:{nc.active()}')
+            print(nc.weight[0])
+            print(nc.syn())
 
     def initialize(self, saveState=False,video=False):
         # print('initializing')
-        sys.stdout.flush()
+        # sys.stdout.flush()
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
+        
         # print('placed NMDAR')
         # sys.stdout.flush()        
-        self.setNMDAs(delay=self.NMDAdelay)
+        self.setNMDAs()
+        self.setGluTs()
+        self.setStimStart()
+        # self.checkNetCons()
         if self.Glu:
-            self.record(sNMDA=self.NMDAs[-1])
+            PAPGluT = [ s.syn() for s in list(h.ncGluList) if s.postseg().sec == self.PAP ]
+            # print(PAPGluT)
+            if len(PAPGluT) == 1:
+                self.record(sNMDA=self.NMDAs[-1],sGluT=PAPGluT[0])
+            else:
+                self.record(sNMDA=self.NMDAs[-1])
         else:
             self.record()
         # print('setup Record')
         # sys.stdout.flush()
         h.finitialize(self.v_init)
         h.fcurrent()
+        self.getkin()
         # print('initialized')
         # sys.stdout.flush()
         if video:
             self.makeVideo(self.varMorph,stop=self.initTstop)
         else:
             h.continuerun(self.initTstop * ms)
+        # print(list(self.KoPAP)[-1])
         self.RMP = list(self.vPAP)[-1] # consider last timepoint in initialization as RMP
         # print(self.RMP)
         if saveState:
@@ -243,7 +328,7 @@ class PAPModel(ResultsPAPModel):
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
 
-    def run(self, printRes=False,video=False):
+    def run(self, printRes=False,video=False,koclamp=None):
         # print('running')
         # sys.stdout.flush()
         # Clamp settings
@@ -285,9 +370,17 @@ class PAPModel(ResultsPAPModel):
                 ic.delay = 10  # ms starts with glutamate
                 ic.amp = self.currentClamp * 0.001  # nA current injection (1 pA)
         # print('clamp experiment setup')
+        # print('about to run')
         # sys.stdout.flush()
         if video:
-            self.makeVideo(self.varMorph)
+            self.plot_topology()
+            self.plot_topology(zoom=True)
+            self.makeVideo(self.varMorph,zoom=True)
+        elif koclamp != None:
+            while h.t < h.tstop:
+                self.koClamp(koclamp)
+                h.fadvance()
+            # self.setK(Ko=initKO,mode='step',dur=self.tstop)
         else:
             try:
                 h.continuerun((self.tstop) * ms)
@@ -297,7 +390,7 @@ class PAPModel(ResultsPAPModel):
                     vPAP = ['nan']
                     vSoma = ['nan']
                 
-        
+        # print('finish run')
         if printRes:
             self.printRec()
         self.cleanMorphology()
@@ -312,7 +405,7 @@ class PAPModel(ResultsPAPModel):
         self.RMP= RMP
         return RMP
 
-    def makeVideo(self,var,interval=2,stop=None):
+    def makeVideo(self,var,interval=10,stop=None,zoom=False):
         if not hasattr(self,'frames'):
             self.frames = []
         if stop == None:
@@ -325,20 +418,34 @@ class PAPModel(ResultsPAPModel):
                         v,
                         os.path.join('video',fname)
                     )
-                    self.frames.append(fname)
+                    if zoom:
+                        fname = f'pap{v}_{int(h.t/self.dt)}.psf'
+                        self.plotWholecellVariable(
+                            v,
+                            os.path.join('video',fname),
+                            zoom=zoom
+                        )
             h.fadvance()
         for v in var:
-            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph_{self.seed}.gif',shell=True)
+            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph_{self.seed}_{self.Ko}.gif',shell=True)
+            if zoom:
+                subprocess.call(f'convert -delay 2 -loop 0 video/pap{v}*.psf video/{v}PAPMorph_{self.seed}_{self.Ko}.gif',shell=True)
         return
 
-    def plotWholecellVariable(self,var,frameName):
+    def plotWholecellVariable(self,var,frameName,zoom=False):
         if self.readHoc:
-            h.plot_varMorph(var,frameName)
+            if zoom:
+                ps = h.plotPAP_varMorph(var,frameName,self.PAPs)
+            else:
+                ps = h.plot_varMorph(var,frameName)
             
-    def plot_topology(self,fname='astroTop'):
+    def plot_topology(self,zoom=False):
         if rank == 0:
             if self.readHoc:
-                ps = h.plot_topology(self.PAPs)
+                if zoom:
+                    ps = h.plotPAP_topology(f"astrocyte_PAPtopology_{self.seed}.psf",self.PAPs)
+                else:
+                    ps = h.plot_topology(f"astrocyte_topology_{self.seed}.psf")
             else:
                 ps = h.PlotShape()
                 ps.color_all(1)
@@ -429,8 +536,6 @@ class PAPModel(ResultsPAPModel):
 
         self.DELTA = 0  # Lalo 2006 J. Neuroscience
 
-        lines = MPIReadlines(f"{fDir}/optW.dat")
-        self.SynWeight = lines[0]
 
     def nmda(self):
         sNMDA = h.Exp5NMDA(self.PAP(0.5))
@@ -448,12 +553,19 @@ class PAPModel(ResultsPAPModel):
 
         return sNMDA
 
-    def record(self, sNMDA=None, toFile=False):
+    def record(self, sNMDA=None, sGluT=None, toFile=False):
         h.frecord_init()
         # Save Stuff
         if sNMDA != None:
             self.iNMDA = h.Vector()
-            self.iNMDA.record(sNMDA._ref_i)
+            self.iNMDA.record(sNMDA._ref_iNMDA)
+            if toFile:
+                self.iFile = h.File("iFile.dat")
+                self.iFile.wopen("iFile.dat")
+
+        if sGluT != None:
+            self.iGluT = h.Vector()
+            self.iGluT.record(sGluT._ref_iGluT)
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
@@ -530,6 +642,19 @@ class PAPModel(ResultsPAPModel):
             self.iKSoma = h.Vector()
             self.iKSoma.record(self.soma(0.5)._ref_ik)
 
+            self.iNaSoma = h.Vector()
+            self.iNaSoma.record(self.soma(0.5)._ref_ina)
+            
+            self.iClSoma = h.Vector()
+            self.iClSoma.record(self.soma(0.5)._ref_icl)
+            
+            self.iGluTSoma = h.Vector()
+            somaGluT = [ s for s in self.GluTs if s.get_segment().sec == self.soma][0]
+            self.iGluTSoma.record(somaGluT._ref_iGluT)
+
+            self.ekSoma = h.Vector()
+            self.ekSoma.record(self.soma(0.5)._ref_ek)
+            
             if toFile:
                 self.iKFileSoma = h.File("iKFileSoma.dat")
                 self.iKFileSoma.wopen("iKFileSoma.dat")
@@ -556,13 +681,39 @@ class PAPModel(ResultsPAPModel):
                 self.branchAtten[-1].record(self.branch(i/10.)._ref_v)
 
         else:
-            path = self.getPath(self.PAP)
-            for i in range(10):
+            path = list(self.getPath(self.PAP))
+            totLen = h.distance(self.PAP(1),sec=self.soma)
+            cutLen = 10
+            pathLenList = [totLen * i / cutLen for i in range(1,cutLen)]
+            j = 0
+            i = 0
+            path.reverse() # Flip from soma to PAP
+            # print(pathLenList)
+            equiDistSec = [self.soma(0.5)]
+            secRight = 0
+            while secRight < totLen:
+                currSec = path[i]
+                secLeft = h.distance(currSec(0),sec=self.soma)
+                secRight = h.distance(currSec(1),sec=self.soma)
+                # print(secLeft,secRight)
+                # print(j)
+                # print(pathLenList[j])
+                if secLeft < pathLenList[j] and secRight > pathLenList[j]:
+                    x = (pathLenList[j] - secLeft) / (secRight-secLeft)
+                    equiDistSec.append(currSec(x))
+                    j += 1
+                if j < cutLen - 1:
+                    if secRight < pathLenList[j]:
+                        i += 1
+                else:
+                    break
+            equiDistSec.append(self.PAP(0.5))
+            # print(equiDistSec)
+            for sec in equiDistSec:
                 self.branchAtten.append(h.Vector())
                 self.branchAtten[-1].record(
-                    list(path)[int(i*len(list(path))/10)](0.5)._ref_v
+                    sec._ref_v
                 )
-
 
         self.time = h.Vector()
         self.time.record(h._ref_t)
@@ -581,21 +732,28 @@ class PAPModel(ResultsPAPModel):
     def setK(self, Ko=None,restKo=2.5,mode='pulse',dur=500,delay=0):
         if Ko == None:
             Ko = self.Ko
+            # print(f'set Ko to {Ko}\n')
+        else:
+            self.Ko = Ko
         # print(list(self.PAPs))
         if self.readHoc:
             if mode == 'pulse':
-                # print("setting Ko to pulse mode")
                 h.continuerun(delay * ms + h.t)
+                # print("setting Ko to pulse mode")
                 papk = self.getPAPK()
-                # print(papk)
-                h.setK(self.PAPs,papk + Ko,restKo,0)
+                h.setK(self.PAPs,Ko,papk+Ko,1)
+                self.KoPAP[-1] = papk+Ko
+                h.fcurrent()
+                h.fadvance()
+                h.setK(self.PAPs,0,restKo,0)
             if mode == 'step':
                 h.continuerun(delay * ms + h.t)
-                h.setK(Ko,Ko,1)
+                papk = self.getPAPK()
+                h.setK(self.PAPs,Ko,Ko+papk,2)
                 h.fcurrent()
                 h.continuerun(dur * ms + h.t)
-                papk = self.getPAPK()
-                h.setK(self.PAPs,papk,restKo,0)
+                # papk = self.getPAPK()
+                h.setK(self.PAPs,0,restKo,0)
             self.Ko = Ko
         else:
             if mode == 'pulse':
@@ -615,7 +773,7 @@ class PAPModel(ResultsPAPModel):
 
     def getPAPK(self):
         if self.readHoc:
-            return h('PAP getPAPK(PAP)')
+            return h.getPAPK(self.PAP,sec=self.PAP)
             
         
 

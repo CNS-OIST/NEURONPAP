@@ -128,22 +128,27 @@ INITIAL {
 NET_RECEIVE(weight) {
     tSyn = t
     maxGlu = weight * 1 (mM) / 1 (liter)
-    : printf("Glu:%g\n",Gluout)
+    : printf("Glu:%g\n",maxGlu)
 }
 
 
 BREAKPOINT {
+    : printf("%g\n",ko)
     koi(ki,ko)
     naoi(nai,nao)
     SOLVE kstates METHOD sparse
-    : printf("%g,%g\n",C1,C2)
+ 
     gluDiff(maxGlu,tSyn)
-        
-    iGluT=-charge*(1e+004)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area
+    
+    iGluT=-charge*(1e+004)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * density
+    : printf("tSyn:%g\n",tSyn)
+    : printf("%g,%g\n",Nain,Naout)
+    : printf("%g,%g\n",Kin,Kout)
+    : printf("%g,%g,%g,%g,%g\n",C1,C2,C3,C4,C5)
+    : printf("%g,%g\n",v,u(v,-0.1))
+    
     : if (Gluout > Gluout_0){
     :     printf("%g:%g\n",Gluout,iGluT)
-        
-        
     : }
     : itransLog=log(-iGluT*(1e+006))
     
@@ -151,17 +156,17 @@ BREAKPOINT {
 }
 
 KINETIC kstates {
-            COMPARTMENT volin { Nain Kin Gluin}
-            COMPARTMENT volout { Naout Kout Gluout}
-            : COMPARTMENT surf { C1 C2 C3 C4 C5 C6}
-        : surf=1 : !!!!!!!
-        ~ C1   <-> C2      (Gluout*k12*u(v,-0.1), k21)
-        ~ C2  <-> C3       (Naout*k23*u(v,0.5),k32)
-        ~ C3 <-> C4	       (k34*u(v,0.4),k43)
-        ~ C4 <-> C5 	   (k45,k54*Gluin)
-        ~ C5 <-> C6	       (k56*u(v,0.6),k65*Nain)
-        ~ C6  <-> C1       (Kin*k61, k16*u(v,0.6)*Kout)
-        
+    COMPARTMENT volin { Nain Kin Gluin}
+    COMPARTMENT volout { Naout Kout Gluout}
+    : COMPARTMENT surf { C1 C2 C3 C4 C5 C6}
+    : surf=1 : !!!!!!!
+    ~ C1   <-> C2      (Gluout*k12*u(v,-0.1), k21)
+    ~ C2  <-> C3       (Naout*k23*u(v,0.5),k32)
+    ~ C3 <-> C4	       (k34*u(v,0.4),k43)
+    ~ C4 <-> C5 	   (k45,k54*Gluin)
+    ~ C5 <-> C6	       (k56*u(v,0.6),k65*Nain)
+    ~ C6  <-> C1       (Kin*k61, k16*u(v,0.6)*Kout)
+    
     CONSERVE C1+C2+C3+C4+C5+C6= 1
 }
 
@@ -174,6 +179,7 @@ PROCEDURE gluDiff(maxGlu (mM/liter),tSyn(ms)){
 }
 
 FUNCTION u(x(mV), th) {
+    : printf("%g,%g\n",x,exp(th*x/(2*(26.7 (mV)))))
     u = exp(th*x/(2*(26.7 (mV))))
 }
 
