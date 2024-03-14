@@ -428,6 +428,7 @@ class procedure():
                 'clleak':self.leak,
                 'kir2':self.optKir,
                 'multiple':self.optNMDAR,
+                'seed':self.seed
             }
         )
         cellComparison = []
@@ -467,6 +468,7 @@ class procedure():
                         'dt':0.01,
                         'naleak':self.leak,
                         'clleak':self.leak,
+                        'seed':self.seed
                     }
                 )
                 if self.GluT:
@@ -634,11 +636,11 @@ class procedure():
         plt.savefig(os.path.join('../results/paperRes','ekDepolarcomp.pdf'))
                 
 
-    def KOComp(self,papCount=5):
+    def KOComp(self,papCount=10):
         AllCells = []        
         # single run
-        funcArgs = []
         for i in range(3):
+            funcArgs = []
             if i == 0:
                 self.NMDAR = True
                 self.GluT = True
@@ -648,47 +650,64 @@ class procedure():
             else:
                 self.NMDAR = False
                 self.GluT = True
-            for j in range(papCount):
-                funcArgs.append(
-                    {
-                        # 'currentClamp':0,
-                        # 'voltageClamp':20,
-                        'mode':0,
-                        'ComplexMorph':True,
-                        'bNum':1,
-                        'readHoc':True,
-                        'Glu':True,
-                        "kir2":self.optKir,
-                        'clleak':self.leak,
-                        'naleak':self.leak,
-                        'dt':self.dt,
-                        'seed':j
-                        # "readHoc":readHoc
-                    }
-                )
-                if self.NMDAR:
-                    funcArgs[-1]["multiple"] = self.optNMDAR # Maximum conductance of model is equal to 50 single channels
-                else:
-                    funcArgs[-1]["multiple"] = 0 # Maximum conductance of model is equal to 50 single channels
-                if self.GluT:
-                    funcArgs[-1]["GluTrans"] = self.optGluT # Maximum conductance of model is equal to 50 single channels
 
-                cells = PAPModel(**funcArgs[-1])
-                cells.initialize()
-                if self.stimCount > 1:
-                    cells.multiSpike(number=self.stimCount,
-                                     freq=self.freq,
-                                     Ko=self.ko
-                                     )
-                else:
-                    cells.setK(Ko=self.ko,delay = 0)
-                cells.run()
-                cells = cells.copyAttr()
-                if size > 1:
-                    AllCells = comm.gather(cells, root=0)
-                else:
-                    AllCells.append([cells])
+            funcArgs.append(
+                {
+                    # 'currentClamp':0,
+                    # 'voltageClamp':20,
+                    'mode':0,
+                    'ComplexMorph':True,
+                    'bNum':1,
+                    'readHoc':True,
+                    'Glu':True,
+                    "kir2":self.optKir,
+                    'clleak':self.leak,
+                    'naleak':self.leak,
+                    'dt':self.dt,
+                    # "readHoc":readHoc
+                }
+            )
+            if self.NMDAR:
+                funcArgs[-1]["multiple"] = self.optNMDAR # Maximum conductance of model is equal to 50 single channels
+            else:
+                funcArgs[-1]["multiple"] = 0 # Maximum conductance of model is equal to 50 single channels
+            if self.GluT:
+                funcArgs[-1]["GluTrans"] = self.optGluT # Maximum conductance of model is equal to 50 single channels
+
+            comm.Barrier()
+            iterations = comm.bcast([[i] for i in range(papCount)])
+            ccList = ['seed']
+            # results are collected only on rank 0
+            callMethods =[[]]
+            callArgs = [[]]
+            if self.KStim and self.stimCount == 1:
+                    callMethods[0] += ["initialize", "setK","run"]
+                    callArgs[0] += [{}, {"Ko":self.ko},{}]
+            elif self.stimCount > 1:
+                    callMethods[0] += ["initialize", "multiSpike","run"]
+                    callArgs[0] += [{}, {"number":self.stimCount,"Ko":self.ko,"freq":self.freq},{}]
+            else:
+                callMethods[0]  += ["initialize","run"]
+                callArgs[0] += [{},{}]
+
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                callMethods,
+                callArgs
+            )
+
+            comm.Barrier()
+            if rank == 0:
+                cells = results
+                AllCells += cells
+            
         if rank == 0:
+            self.GluT = False
+            self.NMDAR = False
+            self.addChannelTag()
             resMat = np.zeros((3,papCount))
             for cells in AllCells:
                 for cell in cells:
@@ -704,15 +723,16 @@ class procedure():
                         k = 2
                     
                     resMat[k][cell.seed] = max(cell.vPAP) - cell.RMP
+
             val = []
             sd = []
             category = ['Control','GluT KO', 'NMDAR KO']
             for i in range(len(resMat)):
-                val.append(np.mean(resMat[i]))
-                sd.append(np.std(resMat[i]))
+                val.append(np.nanmean(resMat[i]))
+                sd.append(np.nanstd(resMat[i]))
             plt.bar(category, val, yerr=sd)
             plt.ylabel('Vm (mV)')
-            plt.savefig(os.path.join('../results/paperRes','KO_maxDepolarComp.pdf'))
+            plt.savefig(os.path.join('../results/paperRes',f'KO_maxDepolarComp_avg{papCount}_{self.tag}.pdf'))
             
     def singleRun(self):
         # add multispike ek clamp
