@@ -416,20 +416,20 @@ class PAPModel(ResultsPAPModel):
                     fname = f'astro{v}_{int(h.t/self.dt)}.psf'
                     self.plotWholecellVariable(
                         v,
-                        os.path.join('video',fname)
+                        os.path.join('../morphResults/video',fname)
                     )
                     if zoom:
                         fname = f'pap{v}_{int(h.t/self.dt)}.psf'
                         self.plotWholecellVariable(
                             v,
-                            os.path.join('video',fname),
+                            os.path.join('../morphResults/video',fname),
                             zoom=zoom
                         )
             h.fadvance()
         for v in var:
-            subprocess.call(f'convert -delay 2 -loop 0 video/astro{v}*.psf video/{v}Morph_{self.seed}_{self.Ko}.gif',shell=True)
+            subprocess.call(f'convert -delay 2 -loop 0 ../morphResults/video/astro{v}*.psf ../morphResults/video/{v}Morph_{self.seed}_{self.Ko}.gif',shell=True)
             if zoom:
-                subprocess.call(f'convert -delay 2 -loop 0 video/pap{v}*.psf video/{v}PAPMorph_{self.seed}_{self.Ko}.gif',shell=True)
+                subprocess.call(f'convert -delay 2 -loop 0 ../morphResults/video/pap{v}*.psf ../morphResults/video/{v}PAPMorph_{self.seed}_{self.Ko}.gif',shell=True)
         return
 
     def plotWholecellVariable(self,var,frameName,zoom=False):
@@ -443,9 +443,9 @@ class PAPModel(ResultsPAPModel):
         if rank == 0:
             if self.readHoc:
                 if zoom:
-                    ps = h.plotPAP_topology(f"astrocyte_PAPtopology_{self.seed}.psf",self.PAPs)
+                    ps = h.plotPAP_topology(os.path.join('../morphResults/',f"astrocyte_PAPtopology_{self.seed}.psf"),self.PAPs)
                 else:
-                    ps = h.plot_topology(f"astrocyte_topology_{self.seed}.psf")
+                    ps = h.plot_topology(os.path.join('../morphResults/',f"astrocyte_topology_{self.seed}.psf"))
             else:
                 ps = h.PlotShape()
                 ps.color_all(1)

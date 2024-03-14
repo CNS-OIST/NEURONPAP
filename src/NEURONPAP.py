@@ -110,32 +110,8 @@ if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
-    if size > 1:
-        parallel = True
-    else:
-        parallel = False
-
-        #     print(f'rank{rank} initialized')
-        # sys.stdout.flush()
     comm.Barrier()
     # arg parse
     args = argParser().parse_args()
-
-    if parallel:
-        comm.Barrier()
-        start = time.time()
-        comm.bcast(start, root=0)
-
-    # print(args.__dict__)
     args.__dict__['parallel'] = True
     callExperimentMode(**args.__dict__)
-
-    if parallel:
-        comm.Barrier()
-        end = time.time()
-        comm.bcast(end, root=0)
-    if parallel and rank == 0:
-        time_took = end - start
-        with open(f"timeres{size}.txt", "w") as f:
-            f.write(str(time_took))
-    # measureRi((2.8e8,50,3.5e7,3))

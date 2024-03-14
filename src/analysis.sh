@@ -1,9 +1,11 @@
 np=`nproc`
 output=`date +'%m-%d-%H-%M'`out.log
+outputDir="../outlog/"
+output=$outputDir$output
 touch $output
 
 nrnivmodl neuronMOD
-rm video/* intermediaryData/*
+rm ../morphResults/video/* intermediaryData/*
 rm -r ../results/paperRes
 mkdir ../results/paperRes
 
