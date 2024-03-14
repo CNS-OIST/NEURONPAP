@@ -19,7 +19,7 @@ for i in `seq 0 4`; do # seq 0 9
         {
             if (( $i == 0 )); then
                      echo "KO Comparison"
-                     python NEURONPAP.py --koComp --ko $j $i
+                     mpiexec -n 10 python NEURONPAP.py --koComp --ko $j $i
             fi
             echo "Making videos and branch attenuation"
             python NEURONPAP.py -v --ko $j $i
@@ -31,7 +31,7 @@ for i in `seq 0 4`; do # seq 0 9
         mpiexec -n $np python NEURONPAP.py -c --ko $j --NMDAR 0 --GluT 0 $i
     done
     mpiexec -n $np python NEURONPAP.py --kComp $i
-    mpiexec -n $np python NEURONPAP.py --kComp --stimCount 5 $i
+    # mpiexec -n $np python NEURONPAP.py --kComp --stimCount 5 $i
     mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i
     python NEURONPAP.py --ekComp $i
 done
