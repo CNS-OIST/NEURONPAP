@@ -9,6 +9,7 @@ import argparse
 import random
 from distutils.util import strtobool
 
+
 def randomGen(rangeInt):
     return random.randint(0, rangeInt)
 
@@ -31,7 +32,7 @@ def argParser(rangeInt=100):
         dest="Optimize",
         action="store_true",
         default=False,
-        help="flag for optimization (works with input Resistance Flag"
+        help="flag for optimization (works with input Resistance Flag",
     )
 
     parser.add_argument(
@@ -50,59 +51,59 @@ def argParser(rangeInt=100):
         default=False,
         help="Used to run a single simulation in nonhoc",
     )
-     
+
     parser.add_argument(
         "-d",
         "--distance",
         dest="distance",
         action="store_true",
         default=False,
-        help="Used to run simulations for various distances"
-    )  
+        help="Used to run simulations for various distances",
+    )
     parser.add_argument(
         "-c",
         "--channels",
         dest="channel",
         action="store_true",
         default=False,
-        help="Used to run simulations for various channel counts"
-    )  
+        help="Used to run simulations for various channel counts",
+    )
     parser.add_argument(
         "--kComp",
         dest="kcomp",
         action="store_true",
         default=False,
-        help="Used to run simulations for various potassium conc"
-    )  
+        help="Used to run simulations for various potassium conc",
+    )
     parser.add_argument(
         "--ekComp",
         dest="ekcomp",
         action="store_true",
         default=False,
-        help="Used to run simulations for comparison of ek clamp"
-    )  
+        help="Used to run simulations for comparison of ek clamp",
+    )
     parser.add_argument(
         "--koComp",
         dest="kocomp",
         action="store_true",
         default=False,
-        help="Used to run simulations for comparing various KO conditions"
-    )  
+        help="Used to run simulations for comparing various KO conditions",
+    )
     parser.add_argument(
         "-v",
         "--video",
         dest="video",
         action="store_true",
         default=False,
-        help="Used to run simulations for video"
-    )  
+        help="Used to run simulations for video",
+    )
     parser.add_argument(
         "-b",
         "--branch",
         dest="branch",
         action="store_true",
         default=False,
-        help="Used to run simulations for branch attenuation"
+        help="Used to run simulations for branch attenuation",
     )
     parser.add_argument(
         "-p",
@@ -110,14 +111,14 @@ def argParser(rangeInt=100):
         dest="phase",
         action="store_true",
         default=False,
-        help="Used to run simulations for phase plot"
+        help="Used to run simulations for phase plot",
     )
     parser.add_argument(
         "--vClamp",
         dest="vclamp",
         action="store_true",
         default=False,
-        help="Used to run v clamp simulations"
+        help="Used to run v clamp simulations",
     )
     parser.add_argument(
         "--debug",
@@ -157,16 +158,15 @@ def argParser(rangeInt=100):
         dest="ek",
         default=None,
         nargs=1,
-        help="Used to set the ek; only set when called. Works only during channel comparison experiment and single run"
-    ) 
+        help="Used to set the ek; only set when called. Works only during channel comparison experiment and single run",
+    )
 
     parser.add_argument(
         "--stim",
         dest="stim",
         action="store_true",
         default=False,
-        help=
-        "Called for running experiments with specific stimulus setting. Run along with option --stimGlu --stimK to turn on the specific stimulus. Glu, K are both initially set to False when --stim is called. With --delay you can delay the glutamate stimulus"        
+        help="Called for running experiments with specific stimulus setting. Run along with option --stimGlu --stimK to turn on the specific stimulus. Glu, K are both initially set to False when --stim is called. With --delay you can delay the glutamate stimulus",
     )
 
     parser.add_argument(
@@ -175,9 +175,8 @@ def argParser(rangeInt=100):
         dest="delay",
         nargs=1,
         default=0,
-        help="Used to set the delay of glutamate stimulus after K stimulus"
+        help="Used to set the delay of glutamate stimulus after K stimulus",
     )  # end time arg
-
 
     parser.add_argument(
         "--stimGlu",
@@ -192,22 +191,21 @@ def argParser(rangeInt=100):
         default=False,
     )
 
-    
     parser.add_argument(
         "--GluT",
         type=int,
         dest="glut",
         default=1,
-        help="Used to set Glutamate Transporters; 1 True; 0 False"
-    )  
+        help="Used to set Glutamate Transporters; 1 True; 0 False",
+    )
 
     parser.add_argument(
         "--NMDAR",
         type=int,
         dest="nmdar",
         default=1,
-        help="Used to set NMDAR; 1 True; 0 False"
-    )  
+        help="Used to set NMDAR; 1 True; 0 False",
+    )
 
     parser.add_argument(
         "seed",

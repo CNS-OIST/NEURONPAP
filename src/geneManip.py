@@ -1,5 +1,6 @@
 from textSDIO import *
 
+
 class GENEManipulation:
     compartment = object()
     GENE = dict()
@@ -67,7 +68,7 @@ class GENEManipulation:
                     seg.kir2.gkbar = seg.kir2.gkbar * multiple
             # else:
             #     print('found PAP')
-                
+
 
 class GENExpression(GENEManipulation):
     compartments = object()
@@ -77,7 +78,7 @@ class GENExpression(GENEManipulation):
     # class that actually calls and manipulates the
     # necessary functions to alter expressions and what not
 
-    def __init__(self, compartments, PAPs,GENE):
+    def __init__(self, compartments, PAPs, GENE):
         if GENE == None:
             return
         self.compartments = compartments
@@ -99,11 +100,11 @@ class GENExpression(GENEManipulation):
         else:
             wMessage(f"No {gName} skipped")
 
-    def alterDistribution(self,gName,ratioToPAP=1):
+    def alterDistribution(self, gName, ratioToPAP=1):
         # print(gName)
         # print(self.GENE.keys())
         if gName in self.GENE.keys():
-            self.changeExpression(f'{gName}Dist',xfoldXpression=ratioToPAP)
+            self.changeExpression(f"{gName}Dist", xfoldXpression=ratioToPAP)
 
     def checkExpressionStatement(self):
         for gName, multiple in self.GENE.items():

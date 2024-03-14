@@ -2,7 +2,8 @@ import copy
 import numpy as np
 from neuron import h
 
-class ResultsPAPModel():
+
+class ResultsPAPModel:
     # class to copy data of simulations
     # necessary for MPI copy as NEURON components cannot be copied
 
@@ -15,14 +16,9 @@ class ResultsPAPModel():
         "NMDAs",
         "GluTs",
         "NCs",
-        "GENEobj"
-        ]
-    currents = [
-        "iKPAP",
-        "iClPAP",
-        "iNaPAP",
-        "iKSoma"
-        ]
+        "GENEobj",
+    ]
+    currents = ["iKPAP", "iClPAP", "iNaPAP", "iKSoma"]
 
     def copyAttr(self):
         # print("copying to result class")
@@ -36,9 +32,9 @@ class ResultsPAPModel():
         # total current calculate mA/cm2 to nA
         for attr in newInstance.__dict__:
             if attr in self.currents:
-                newInstance.__dict__[attr] = np.array(
-                    newInstance.__dict__[attr]
-                ) * self.PAParea * 0.01
+                newInstance.__dict__[attr] = (
+                    np.array(newInstance.__dict__[attr]) * self.PAParea * 0.01
+                )
 
         # Convert Vector to list
         # for attr in newInstance.__dict__:
