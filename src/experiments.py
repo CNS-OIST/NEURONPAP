@@ -8,6 +8,7 @@ import os
 import utils
 import numpy as np
 from utils import *
+from textSDIO import *
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
 from math import floor
