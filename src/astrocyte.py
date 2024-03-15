@@ -57,6 +57,7 @@ class PAPModel(ResultsPAPModel):
         dt=0.001,
         seed=0,
         PAPCount=1,
+        PAPLen=0.3,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -95,6 +96,7 @@ class PAPModel(ResultsPAPModel):
         self.PAPWid = PAPWid
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
+        self.PAPLen = PAPLen
 
         if self.readHoc:
             # subsitute
@@ -125,7 +127,7 @@ class PAPModel(ResultsPAPModel):
                 h.PAP = h.get_randomfinalSection(h.soma)
                 self.PAP = h.PAP.sec
                 # can change to sec = later
-                h.slPAP = h.get_parent_sections(self.PAP, sec=self.PAP)
+                h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
                 if i == 0:
                     self.PAPs = h.slPAP
                 else:

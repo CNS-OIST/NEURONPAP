@@ -1245,6 +1245,74 @@ class procedure:
                 totResults += results
             self.plotHeatmap(totResults, divedend=len(resFiles))
 
+    def glutamateSpillOver(self):
+        iterations = comm.bcast([[i] for i in np.logspace(-1,1,num=5)])
+        # # Adjust the range for the last process
+
+        comm.Barrier()
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "readHoc": True,
+                "Glu": self.GluStim,
+                "ComplexMorph": True,
+                "naleak": self.leak,
+                "clleak": self.leak,
+                "dt": self.dt,
+                "seed": self.seed,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+                "multiple": self.optNMDAR,
+                "GluTrans": self.optGluT,
+                "kir2": self.optKir
+            }
+        )
+        ccList = ["PAPLen"]
+        # make sure that funcParms is in the correct order of whatever iterations spits out
+        # results are collected only on rank 0
+        if self.KStim and self.stimCount == 1:
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                [["initialize", "setK", "run"]],
+                [[{}, {}, {}]],
+            )
+        elif self.stimCount > 1:
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                [["initialize", "multiSpike", "run"]],
+                [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
+            )
+
+        else:
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                [["initialize", "run"]],
+                [[{}, {}]],
+            )
+
+        comm.Barrier()
+        if rank == 0:
+            plt.cla()
+            plt.clf()
+            for i,cells in enumerate(results):
+                for cell in cells:
+                    initStep = int((cell.initTstop - 5) / cell.dt)
+                    plt.plot(list(cell.time)[initstep:],list(cell.vPAP)[initstep],label=f'{cell.PAPLen} um',color= cm.jet(i/len(results)) )
+            plt.legend()
+            plt.savefig(
+                os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
+            )
+
     def potassiumComparison(self):
         self.addChannelTag()
         # Calculate the number of iterations for all parm sets

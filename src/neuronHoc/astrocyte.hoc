@@ -121,7 +121,7 @@ obfunc get_parent_sections() {local totalLen, lenThr localobj parent_sections, c
     // $o1 {psection()}
     $o1 current_section = new SectionRef()
     totalLen = 0
-    lenThr = 0.3 // micron
+    lenThr = $2 // micron
     // Iterate through parent sections
     current_section.sec {
         // psection()
