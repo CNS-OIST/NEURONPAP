@@ -9,8 +9,8 @@ rm ../morphResults/video/* intermediaryData/*
 rm -r ../results/paperRes
 mkdir ../results/paperRes
 
-for i in `seq 0 4`; do # seq 0 9
-    for j in 0.5 1 2 4 8; do # 0,0.5,8
+for i in 1; do # seq 0 9
+    for j in 0.5 4; do # 0,0.5,8
         echo "seed $i-Ko$j" >> $output
         mpiexec -n $np python NEURONPAP.py -c --ko $j $i
         # mpiexec -n $np python NEURONPAP.py -c --ko $j --stimCount 2 $i
@@ -21,11 +21,13 @@ for i in `seq 0 4`; do # seq 0 9
         {
             if (( $i == 0 )); then
                      echo "KO Comparison"
-                     mpiexec -n 10 python NEURONPAP.py --koComp --ko $j $i
+                     mpiexec -n $np python NEURONPAP.py --koComp --ko $j $i
+                     mpiexec -n $np python NEURONPAP.py --koComp --stimCount 10 --ko $j $i
             fi
             echo "Making videos and branch attenuation"
             python NEURONPAP.py -v --ko $j $i
             python NEURONPAP.py -b --stimCount 10 --ko $j $i
+            python NEURONPAP.py -b --stimCount 10 --stimGlu --ko $j $i
         } >> $output
         echo "Running KO experiments" >> $output
         mpiexec -n $np python NEURONPAP.py -c --ko $j --NMDAR 0 --GluT 1 $i
@@ -33,14 +35,17 @@ for i in `seq 0 4`; do # seq 0 9
         mpiexec -n $np python NEURONPAP.py -c --ko $j --NMDAR 0 --GluT 0 $i
     done
     mpiexec -n $np python NEURONPAP.py --kComp $i
+    mpiexec -n $np python NEURONPAP.py --kComp --stimGlu $i
     # mpiexec -n $np python NEURONPAP.py --kComp --stimCount 5 $i
     mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i
+    mpiexec -n $np python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i
     python NEURONPAP.py --ekComp $i
+    # mpiexec -n 10 python NEURONPAP.py --gluSpill --GluT 1 --NMDAR 1 $i
 done
 
 seed=1
 # echo "Running No Glutamate stimulus" >> $output
-# mpiexec -n $np python NEURONPAP.py -c --stim --stimK $seed
+mpiexec -n $np python NEURONPAP.py -c --stim --stimK $seed
 # mpiexec -n $np python NEURONPAP.py -c --stim --stimGlu $seed
 
 # for i in `seq 0 5`; do

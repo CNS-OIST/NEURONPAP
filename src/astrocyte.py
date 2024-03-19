@@ -68,7 +68,7 @@ class PAPModel(ResultsPAPModel):
         # print('loaded files')
 
         # Set simulation parameters
-        self.initTstop = initTstop
+        self.initTstop = initTstop * ms
         self.dt = dt
 
         h.dt = self.dt
@@ -149,6 +149,7 @@ class PAPModel(ResultsPAPModel):
                 self.PAParea += (
                     h.area(0.5, sec=self.PAP) * sec.nseg
                 )  # should be updated
+            self.somaArea = h.area(0.5,sec=self.soma)
 
         else:
             # set K parms
@@ -587,6 +588,11 @@ class PAPModel(ResultsPAPModel):
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
+            self.GluTGlu = h.Vector()
+            self.GluTGlu.record(sGluT._ref_Gluout)
+            if toFile:
+                self.iFile = h.File("iFile.dat")
+                self.iFile.wopen("iFile.dat")
 
         if hasattr(self.PAP(0.5), "pas"):
             self.iMemPAP = h.Vector()
@@ -696,34 +702,11 @@ class PAPModel(ResultsPAPModel):
                 self.branchAtten[-1].record(self.branch(i / 10.0)._ref_v)
 
         else:
-            path = list(self.getPath(self.PAP))
-            totLen = h.distance(self.PAP(1), sec=self.soma)
-            cutLen = 10
-            pathLenList = [totLen * i / cutLen for i in range(1, cutLen)]
-            j = 0
-            i = 0
-            path.reverse()  # Flip from soma to PAP
-            # print(pathLenList)
-            equiDistSec = [self.soma(0.5)]
-            secRight = 0
-            while secRight < totLen:
-                currSec = path[i]
-                secLeft = h.distance(currSec(0), sec=self.soma)
-                secRight = h.distance(currSec(1), sec=self.soma)
-                # print(secLeft,secRight)
-                # print(j)
-                # print(pathLenList[j])
-                if secLeft < pathLenList[j] and secRight > pathLenList[j]:
-                    x = (pathLenList[j] - secLeft) / (secRight - secLeft)
-                    equiDistSec.append(currSec(x))
-                    j += 1
-                if j < cutLen - 1:
-                    if secRight < pathLenList[j]:
-                        i += 1
-                else:
-                    break
-            equiDistSec.append(self.PAP(0.5))
             # print(equiDistSec)
+            equiDistSec = self.getEquiDistSec(
+                list(self.getPath(self.PAP))
+            )
+
             for sec in equiDistSec:
                 self.branchAtten.append(h.Vector())
                 self.branchAtten[-1].record(sec._ref_v)
@@ -734,6 +717,34 @@ class PAPModel(ResultsPAPModel):
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
+    def getEquiDistSec(self,path,cutLen=10):
+        totLen = h.distance(self.PAP(1), sec=self.soma)
+        pathLenList = [totLen * i / cutLen for i in range(1, cutLen)]
+        j = 0
+        i = 0
+        path.reverse()  # Flip from soma to PAP
+        # print(pathLenList)
+        equiDistSec = [self.soma(0.5)]
+        secRight = 0
+        while secRight < totLen:
+            currSec = path[i]
+            secLeft = h.distance(currSec(0), sec=self.soma)
+            secRight = h.distance(currSec(1), sec=self.soma)
+            # print(secLeft,secRight)
+            # print(j)
+            # print(pathLenList[j])
+            if secLeft < pathLenList[j] and secRight > pathLenList[j]:
+                x = (pathLenList[j] - secLeft) / (secRight - secLeft)
+                equiDistSec.append(currSec(x))
+                j += 1
+            if j < cutLen - 1:
+                if secRight < pathLenList[j]:
+                    i += 1
+            else:
+                break
+        equiDistSec.append(self.PAP(0.5))
+        return equiDistSec
+
     def getPath(self, section):
         currentSection = h.SectionRef(sec=section)
         sl = h.SectionList()
@@ -742,7 +753,7 @@ class PAPModel(ResultsPAPModel):
             currentSection = h.SectionRef(sec=currentSection.parent)
         return sl
 
-    def setK(self, Ko=None, restKo=2.5, mode="pulse", dur=500, delay=0):
+    def setK(self, Ko=None, restKo=2.5, mode="step", dur=0.5, delay=0):
         if Ko == None:
             Ko = self.Ko
             # print(f'set Ko to {Ko}\n')
@@ -757,7 +768,7 @@ class PAPModel(ResultsPAPModel):
                 h.setK(self.PAPs, Ko, papk + Ko, 1)
                 self.KoPAP[-1] = papk + Ko
                 h.fcurrent()
-                h.fadvance()
+                h.fadvance() # change to 1 ms?
                 h.setK(self.PAPs, 0, restKo, 0)
             if mode == "step":
                 h.continuerun(delay * ms + h.t)

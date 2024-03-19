@@ -127,7 +127,7 @@ INITIAL {
 }
 NET_RECEIVE(weight) {
     tSyn = t
-    maxGlu = weight * 1 (mM) / 1 (liter)
+    maxGlu = weight * 1 (mM) / 1 (liter) + Gluout - Gluout_0
     : printf("Glu:%g\n",maxGlu)
 }
 

@@ -73,7 +73,7 @@ def argParser(rangeInt=100):
         dest="kcomp",
         action="store_true",
         default=False,
-        help="Used to run simulations for various potassium conc",
+        help="Used to run simulations for various potassium conc. Use --stimGlu to turn on Glutamate Stim.",
     )
     parser.add_argument(
         "--ekComp",
@@ -90,6 +90,13 @@ def argParser(rangeInt=100):
         help="Used to run simulations for comparing various KO conditions",
     )
     parser.add_argument(
+        "--gluSpill",
+        dest="gluspill",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for glutamate spillover.",
+    )
+    parser.add_argument(
         "-v",
         "--video",
         dest="video",
@@ -103,7 +110,7 @@ def argParser(rangeInt=100):
         dest="branch",
         action="store_true",
         default=False,
-        help="Used to run simulations for branch attenuation",
+        help="Used to run simulations for branch attenuation. Use --stimGlu to turn on Glutamate stimulus.",
     )
     parser.add_argument(
         "-p",
@@ -142,7 +149,7 @@ def argParser(rangeInt=100):
         dest="papcount",
         default=1,
         nargs=1,
-        help="Used to set extracellular potassium of simulation. Default: 0.5 mM.",
+        help="Used to set number of active PAPs in simulation. Default: 1",
     )  # end time arg
     parser.add_argument(
         "--stimCount",
@@ -183,6 +190,7 @@ def argParser(rangeInt=100):
         dest="glustim",
         action="store_true",
         default=False,
+        help="Works with --kComp, --branch to turn on/off glutamate stim. (With option --stimGlu it is turned on."
     )
     parser.add_argument(
         "--stimK",
@@ -195,7 +203,7 @@ def argParser(rangeInt=100):
         "--GluT",
         type=int,
         dest="glut",
-        default=1,
+        default=0,
         help="Used to set Glutamate Transporters; 1 True; 0 False",
     )
 

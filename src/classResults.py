@@ -18,7 +18,17 @@ class ResultsPAPModel:
         "NCs",
         "GENEobj",
     ]
-    currents = ["iKPAP", "iClPAP", "iNaPAP", "iKSoma"]
+    memcurrents = [
+        "iKPAP",
+        "iClPAP",
+        "iNaPAP",
+        "iMemPAP"
+        "iKSoma",
+        "iClSoma",
+        "iNaSoma",
+        "iMemSoma"
+                   ]
+    ppcurrents = ["iGluT","iNMDA","iGluTSoma"]
 
     def copyAttr(self):
         # print("copying to result class")
@@ -31,9 +41,21 @@ class ResultsPAPModel:
         }
         # total current calculate mA/cm2 to nA
         for attr in newInstance.__dict__:
-            if attr in self.currents:
+            if attr in self.memcurrents:
+                if "PAP" in attr:
+                    area = self.PAParea
+                else:
+                    area = self.somaArea
                 newInstance.__dict__[attr] = (
-                    np.array(newInstance.__dict__[attr]) * self.PAParea * 0.01
+                    np.array(newInstance.__dict__[attr]) * area * 0.01
+                )
+
+        # nA to pA
+        currList = self.memcurrents + self.ppcurrents
+        for attr in newInstance.__dict__:
+            if attr in currList:
+                newInstance.__dict__[attr] = (
+                    np.array(newInstance.__dict__[attr]) * 1e3
                 )
 
         # Convert Vector to list

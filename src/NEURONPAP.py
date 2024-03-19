@@ -74,6 +74,7 @@ def callExperimentMode(**kwargs):
 
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
+        exp.GluStim = kwargs["glustim"]        
         exp.potassiumComparison()
 
     if "video" in kwargs.keys() and kwargs["video"]:
@@ -82,6 +83,7 @@ def callExperimentMode(**kwargs):
 
     if "branch" in kwargs.keys() and kwargs["branch"]:
         # Plot branch atten
+        exp.GluStim = kwargs["glustim"]        
         exp.branchAttenuation()
 
     if "stim" in kwargs.keys() and kwargs["stim"]:
@@ -105,6 +107,9 @@ def callExperimentMode(**kwargs):
 
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
+        
+    if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
+        exp.glutamateSpillOver()
 
 
 if __name__ == "__main__" or parallel:
