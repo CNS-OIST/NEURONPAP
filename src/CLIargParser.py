@@ -69,6 +69,13 @@ def argParser(rangeInt=100):
         help="Used to run simulations for various channel counts",
     )
     parser.add_argument(
+        "--spillOver",
+        dest="spill",
+        action="store_true",
+        default=False,
+        help="Used to run simulations with spill over, only works for KV Phase plot",
+    )
+    parser.add_argument(
         "--kComp",
         dest="kcomp",
         action="store_true",
@@ -151,6 +158,7 @@ def argParser(rangeInt=100):
         nargs=1,
         help="Used to set number of active PAPs in simulation. Default: 1",
     )  # end time arg
+    
     parser.add_argument(
         "--stimCount",
         type=int,
@@ -159,6 +167,16 @@ def argParser(rangeInt=100):
         nargs=1,
         help="Used to set the number of potassium stimulations in the simulation. Default: 0.5 mM at 100 Hz.",
     )  # end time arg
+
+    parser.add_argument(
+        "--ExpVm",
+        action="store_true",
+        default=False,
+        dest="expVm",
+        help="Used when optimizing Vm",
+    )
+
+    
     parser.add_argument(
         "--ek",
         type=int,

@@ -2,3 +2,4 @@
 *.psf
 video/
 *.log
+*.json

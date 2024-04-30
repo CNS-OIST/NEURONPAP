@@ -199,8 +199,9 @@ class PAPModel(ResultsPAPModel):
                 h.fadvance()
         else:
             for i in range(number):
+                currTime = h.t
                 self.setK(Ko=Ko)
-                h.continuerun(ISI * ms + h.t)
+                h.continuerun(ISI * ms + currTime)
 
     def setkin(self, kin):
         if self.readHoc:
@@ -414,7 +415,7 @@ class PAPModel(ResultsPAPModel):
         self.RMP = RMP
         return RMP
 
-    def makeVideo(self, var, interval=10, stop=None, zoom=False):
+    def makeVideo(self, var, interval=5, stop=None, zoom=False):
         if not hasattr(self, "frames"):
             self.frames = []
         if stop == None:
@@ -465,7 +466,8 @@ class PAPModel(ResultsPAPModel):
                     ps = h.plot_topology(
                         os.path.join(
                             "../morphResults/", f"astrocyte_topology_{self.seed}.psf"
-                        )
+                        ),
+                        self.PAPs,
                     )
             else:
                 ps = h.PlotShape()
@@ -670,9 +672,10 @@ class PAPModel(ResultsPAPModel):
             self.iClSoma = h.Vector()
             self.iClSoma.record(self.soma(0.5)._ref_icl)
 
-            self.iGluTSoma = h.Vector()
-            somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][0]
-            self.iGluTSoma.record(somaGluT._ref_iGluT)
+            if hasattr(self,'GluTs'):
+                self.iGluTSoma = h.Vector()
+                somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][0]
+                self.iGluTSoma.record(somaGluT._ref_iGluT)
 
             self.ekSoma = h.Vector()
             self.ekSoma.record(self.soma(0.5)._ref_ek)
@@ -703,11 +706,11 @@ class PAPModel(ResultsPAPModel):
 
         else:
             # print(equiDistSec)
-            equiDistSec = self.getEquiDistSec(
+            self.equiDistSec = self.getEquiDistSec(
                 list(self.getPath(self.PAP))
             )
 
-            for sec in equiDistSec:
+            for sec in self.equiDistSec:
                 self.branchAtten.append(h.Vector())
                 self.branchAtten[-1].record(sec._ref_v)
 
@@ -794,6 +797,24 @@ class PAPModel(ResultsPAPModel):
 
                     sec.ek = -90 * mV
             # print('Potassium Parms')
+
+    def LambdaEq(self,ra,rm,d):
+        return (rm * d  / ra / 4) ** 0.5  # um
+
+            
+    def spaceConstant(self):
+        # h.clampSwitch(4, self.voltageClamp)
+        # h.run()
+        self.initialize()
+        Rm_Rd = [(seg.sec.Ra,1/seg.sec.g_pas,seg.sec.diam) for seg in self.equiDistSec]
+        LambdaList = [self.LambdaEq(*vals) for vals in Rm_Rd]
+        LenList = [h.distance(self.soma(0.5),seg) for seg in self.equiDistSec]
+        h.clampSwitch(4, self.voltageClamp)
+        self.run()
+        VList = [list(v)[-1] for v in self.branchAtten]
+        return LambdaList,VList,LenList
+        
+        
 
     def getPAPK(self):
         if self.readHoc:

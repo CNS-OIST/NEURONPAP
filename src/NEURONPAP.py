@@ -25,6 +25,9 @@ def callExperimentMode(**kwargs):
     exp.stimCount = kwargs["stimcount"]
     exp.ek = kwargs["ek"]
 
+    if "spill" in kwargs.keys() and kwargs["spill"]:
+        exp.PAPLen = 2
+
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
         print("single run")
@@ -102,15 +105,27 @@ def callExperimentMode(**kwargs):
         # plot phase plot
         exp.SomaVC()
 
+    if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
+        # run before kocomp for automatic peak identification
+        exp.glutamateSpillOver()
+        
     if "kocomp" in kwargs.keys() and kwargs["kocomp"]:
         exp.KOComp()
 
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
         
-    if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
-        exp.glutamateSpillOver()
-
+    if "expVm" in kwargs.keys() and kwargs["expVm"]:
+        print(
+            minimize(
+                exp.optDepolarizationSearch,
+                # (20,  30,  2,  8e-04,1),
+                (10),
+                method="Nelder-Mead",
+                bounds=[(0, None)]
+            )
+        )
+        
 
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD
