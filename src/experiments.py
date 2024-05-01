@@ -1472,7 +1472,13 @@ class procedure(plotFigures):
                 multiplier+=1
             ax.axhline(val_means['confined'][0],linestyle='--')
 
-            with open("ttest_res.json","w") as ofile:
+            with open(
+                    os.path.join(
+                        "../results/paperRes",
+                        "ttest_res.json"
+                        ),
+                    "w"
+            ) as ofile:
                 json.dump(val_test,ofile)
             # for k,v in val_test.items():
             #     if v.pvalue < 0.05:
@@ -1892,14 +1898,24 @@ class procedure(plotFigures):
             plt.scatter(LenList,LambdaList,label='Section Space Constant')
             plt.title(f'avg:{sum(LambdaList)/len(LambdaList)}')
             
-            plt.savefig('SpaceConstant.pdf')
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    'SpaceConstant.pdf'
+                )
+            )
             plt.cla()
             plt.clf()
             plt.scatter(LenList,VList)
             popt,pcov = curve_fit(self.SCeq,LenList,VList)
             plt.plot(LenList,self.SCeq(np.array(LenList),*popt),label=f'{popt[0]}exp(-x/{popt[1]}+{popt[2]}')
             plt.legend()
-            plt.savefig('spaceConstantFit.pdf')
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    'spaceConstantFit.pdf'
+                )
+            )
             
 
 
@@ -1930,7 +1946,6 @@ class procedure(plotFigures):
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
-        print(f"trial:{Ko}")
         cells.setK(Ko=float(Ko))
         cells.run()
         return abs(max(list(cells.vPAP))-cells.RMP - optmV)
