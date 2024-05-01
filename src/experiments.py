@@ -197,6 +197,7 @@ class plotFigures:
                 ax.set_ylim((0, 9))
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("extracellular [K] (mM)")
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
 
                 # ax2 = ax.inset_axes([0.7, 0.3, 0.3, 0.3])  # Define the position and size of the new subplot
@@ -235,6 +236,7 @@ class plotFigures:
                 )
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Conc. (mM)")
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
                 if zoom:
                     ax.set_xlim((initStep * cell.dt, initStep * cell.dt + 20))
@@ -279,6 +281,7 @@ class plotFigures:
                 # ax.plot(list(cell.time), list(cell.KiPAP), label="PAP Ki")
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Voltage (mV)")
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
 
@@ -344,6 +347,7 @@ class plotFigures:
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Currents at PAP (pA)")
                 # ax.set_ylim([-1e-3,1e-3])
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 if zoom or self.stimCount > 1:
                     ax.legend(loc="lower left")
                 else:
@@ -407,6 +411,7 @@ class plotFigures:
                 #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Currents at Soma (pA)")
+                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 # ax.set_ylim([-1e-3,1e-3])
                 ax.legend(loc="lower right")
 
