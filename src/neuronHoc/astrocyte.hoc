@@ -383,6 +383,8 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
         ps.scale(-80,-60)
     } else if (strcmp($s1,"ko")==0) {
         ps.scale(0,10)
+    } else if (strcmp($s1,"Ri")==0) {
+        ps.scale(0,1500)
     }
     ps.exec_menu("Shape Plot")
     ps.exec_menu("Show Diam")
@@ -461,3 +463,43 @@ proc plotPAP_varMorph() {local size localobj rando, sref,slPAP,ps
 }
 
 
+proc measure_input_resistance() {local testStop localobj stim,sec_v,sec_i,sref
+    testStop = t+50 // ms
+    // Create a current clamp electrode
+    stim = new IClamp(0.5)
+    stim.amp = 0.0
+    stim.dur = testStop
+    stim.del = (testStop - t) /2 + t
+    print (testStop -t)/2 + t
+    
+    // Record voltage at the center of the section
+    sref = new SectionRef()
+    print secname()
+    sec_v = new Vector()
+    sec_v.record(&sref.sec.v(0.5))
+
+    // Record injected current
+    sec_i = new Vector()
+    sec_i.record(&stim.i)
+
+    // Run simulation
+    continuerun(testStop) //ms
+    print sec_v.max()
+    
+    delta_v = sec_v.max() - sec_v.min()  // Change in voltage
+    print delta_v
+    delta_i = stim.amp                   // Amplitude of injected current
+    input_resistance = delta_v / delta_i
+    Ri = input_resistance
+}
+
+proc getAllRi() {localobj all_sections
+    all_sections = new SectionList()
+    all_sections.wholetree()
+    
+    forsec all_sections {  // Loop over all sections
+        print secname()
+        insert inputRes
+        measure_input_resistance()
+    }
+}
