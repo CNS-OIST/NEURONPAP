@@ -1,0 +1,104 @@
+load_file("stdgui.hoc")
+double stimStart[1]
+stimStart = 50
+create soma  // Create a single-compartment soma
+access soma
+L = 1
+diam = 1
+
+// Insert your mechanism (point process channel)
+objref sGluT,nc,FinGluT,stim
+
+stim = new NetStim(.5)
+stim.interval = stimStart
+stim.number = 1
+stim.start = stimStart
+stim.noise = 0
+
+sGluT = new GluTrans(0.5)
+nc = new NetCon(stim,sGluT)
+
+
+proc fINITGLUT(){
+    nc.weight = 1
+    nc.delay = 0
+}
+FinGluT = new FInitializeHandler(3,"fINITGLUT()")
+
+celsius = 34
+Ra = 100
+cm = 0.8
+insert pas
+e_pas = -85
+g_pas = 1 /  11150
+ki0_k_ion = 130
+nai0_na_ion = 15
+nao = 140
+nai = 15
+ki = 130
+// Mechanisms of astrocytic K+ clearance and swelling under high extracellular K+ concentrations
+
+psection()
+
+// Set up the voltage clamp
+objref vclamp, vec_voltage, vec_current,timeVec,glutamate
+vclamp = new VClamp(0.5)  // VClamp at the center of the soma
+vclamp.dur[0] = 200  // Duration of each voltage step (ms)
+vclamp.amp[0] = -80  // Starting holding potential (mV)
+
+
+// vec_voltage.record(&soma.v(0.5))
+// vec_current.record(&sGluT.iGluT)
+
+
+// Run simulation
+tstop = 200
+dt = 0.1
+
+// Total Vec
+objref totalCurr,totalV
+
+objref gr
+strdef fname
+vec_voltage = new Vector()
+vec_current = new Vector()
+timeVec = new Vector()
+glutamate = new Vector()
+
+// Initialize vectors to store voltage and current values
+for (k = 0; k <= 50; k += 5) {
+    totalCurr = new Vector()
+    totalV = new Vector()
+    ko=k
+    for (p = -100; p <= 40; p += 20) {
+        vclamp.amp[0] = p  // Set holding potential
+        vec_voltage.record(&soma.v(0.5))
+        vec_current.record(&sGluT.iGluT)
+        glutamate.record(&sGluT.Gluout)
+        timeVec.record(&t)
+        finitialize()
+        run()
+        totalCurr.append(vec_current.min())
+        print vec_current.min()
+        totalV.append(p)
+        gr = new Graph()
+        vec_current.plot(gr,timeVec)
+        gr.size(0, 200, -1, 1)  // Adjust size and position as needed
+        // gr.size(0, 200, -100, 100)  // Adjust size and position as needed
+        gr.flush()
+        sprint(fname,"GluTtime%f.psf",int(p))
+        gr.printfile(fname)
+    }
+
+
+    // Plot IV curve
+    objref gr
+    gr = new Graph()
+    // vec_current.plot(gr,vec_voltage)
+    totalCurr = totalCurr.div(totalCurr.x[0])
+    totalCurr.plot(gr,totalV)
+    gr.size(-100, 40, -0.5, 2)  // Adjust size and position as needed
+    gr.flush()
+    sprint(fname,"GluTVD%f.psf",int(k))
+    gr.printfile(fname)
+}
