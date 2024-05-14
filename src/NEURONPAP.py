@@ -44,24 +44,7 @@ def callExperimentMode(**kwargs):
         # Optimal Ri
         # Soma 2.5836550239043317 MOhm
         # PAP 1035.108930679734 MOhm
-        if "Optimize" in kwargs.keys() and kwargs["Optimize"]:
-            print(
-                minimize(
-                    exp.measureRi,
-                    # (20,  30,  2,  8e-04,1),
-                    (11.61, 11.03, 2.157, 1.165, 1),
-                    method="Nelder-Mead",
-                    bounds=[(1, None), (1, None), (1, None), (1e-20, None), (1, 1)],
-                    options={"disp": True},
-                    tol=0.00001,
-                )
-            )
-
-        else:
-            # optimal Ri
-            # 2.4580089963064253 MOhm
-            # 1049.999549680487 MOhm
-            exp.measureRi((11.61, 11.03, 2.157, 1.165, 1))
+        exp.measureRi()
 
     if "distance" in kwargs.keys() and kwargs["distance"]:
         # Plot for vatious distnace channel counts
@@ -116,15 +99,21 @@ def callExperimentMode(**kwargs):
         exp.ekComp()
         
     if "expVm" in kwargs.keys() and kwargs["expVm"]:
-        print(
-            minimize(
-                exp.optDepolarizationSearch,
-                # (20,  30,  2,  8e-04,1),
-                (10),
-                method="Nelder-Mead",
-                bounds=[(0, None)]
-            )
+        # print(
+        #     minimize(
+        #         exp.optDepolarizationSearch,
+        #         (43),
+        #         method="Nelder-Mead",
+        #         bounds=[(0, None)]
+        #     )
+        # )
+        res = minimize(
+            exp.optSpikeSearch,
+            (10000,96),
+            method="Nelder-Mead",
+            bounds=[(0, None),(0,None)]
         )
+        print(res)
         
 
 if __name__ == "__main__" or parallel:

@@ -38,68 +38,7 @@ class plotFigures:
                 return self.colorDict[typeName]
         else:
             eMessage(f'Color not found for {key}')
-                
-    def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.05, barh=.05, fs=None, maxasterix=None):
-        """ 
-        Annotate barplot with p-values.
-
-        :param num1: number of left bar to put bracket over
-        :param num2: number of right bar to put bracket over
-        :param data: string to write or number for generating asterixes
-        :param center: centers of all bars (like plt.bar() input)
-        :param height: heights of all bars (like plt.bar() input)
-        :param yerr: yerrs of all bars (like plt.bar() input)
-        :param dh: height offset over bar / bar + yerr in axes coordinates (0 to 1)
-        :param barh: bar height in axes coordinates (0 to 1)
-        :param fs: font size
-        :param maxasterix: maximum number of asterixes to write (for very small p-values)
-        """
-
-        if type(data) is str:
-            text = data
-        else:
-            # * is p < 0.05
-            # ** is p < 0.005
-            # *** is p < 0.0005
-            # etc.
-            text = ''
-            p = .05
-
-            while data < p:
-                text += '*'
-                p /= 10.
-
-                if maxasterix and len(text) == maxasterix:
-                    break
-
-            if len(text) == 0:
-                text = 'n. s.'
-
-        lx, ly = center[num1], height[num1]
-        rx, ry = center[num2], height[num2]
-
-        if yerr:
-            ly += yerr[num1]
-            ry += yerr[num2]
-
-        ax_y0, ax_y1 = plt.gca().get_ylim()
-        dh *= (ax_y1 - ax_y0)
-        barh *= (ax_y1 - ax_y0)
-
-        y = max(ly, ry) + dh
-
-        barx = [lx, lx, rx, rx]
-        bary = [y, y+barh, y+barh, y]
-        mid = ((lx+rx)/2, y+barh)
-
-        plt.plot(barx, bary, c='black')
-
-        kwargs = dict(ha='center', va='bottom')
-        if fs is not None:
-            kwargs['fontsize'] = fs
-
-        plt.text(*mid, text, **kwargs)
-            
+                            
     def plotPAPs(self):
         funcArgs = []
         funcArgs.append(
@@ -121,6 +60,19 @@ class plotFigures:
         cells.initialize()
         cells.setK(Ko=self.ko)
         cells.run(video=True)
+
+    def plotMorphProperties(self):
+        funcArgs = []
+        funcArgs.append(
+            {
+                "ComplexMorph": True,
+                "readHoc": True,
+                "seed": self.seed,
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.plotMorphParms()
+        
 
     def plotMergeSeries(self, AllCells):
         for attr in ["KoPAP", "vPAP"]:
@@ -465,9 +417,6 @@ class plotFigures:
                 max(res[0].vPAP) - res[0].RMP
             )
         cmap = 'magma'
-        if self.GluT:
-            cmap = 'virdis'
-        
         
         imArray /= divedend
         plt.imshow(
@@ -490,7 +439,7 @@ class plotFigures:
         if self.NMDAR:
             plt.xlabel("# of NMDAR Channel")
         elif self.GluT:
-            plt.xlabel("GluT Channel")
+            plt.xlabel("# of GluT Channel")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
         plt.clim((0, 50))
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
@@ -811,59 +760,113 @@ class procedure(plotFigures):
                     os.path.join("../results/paperRes", f"./3Dplot{name}{j}.pdf")
                 )
 
-    def measureRi(self, x):
-        somaSize, bLen, bWid, PAPWid, bNum = x
-        # Make a list for tested currents
-        cList = np.arange(-20, 21, 2)
-        vSomaList = []
-        vPAPList = []
+    def readIterationRi(self,all_file_names,dName="../results/paperRes"):
+        # Define the pattern to match files
+        pattern = "RiRes*"
+
+        # Construct the full path
+        full_path = os.path.join(dName, pattern)
+
+        # Use glob to find files matching the pattern
+        matched_files = glob.glob(full_path)
+
+        # Initialize an empty list to store extracted file names
+        extracted_file_names = []
+
+        # Extract file names without prefix and extension
+        for file in matched_files:
+            file_name = os.path.splitext(os.path.basename(file))[0][len("RiRes"):]
+            extracted_file_names.append(file_name)
+
+        # Convert both lists to sets
+        extracted_set = set(extracted_file_names)
+        all_set = set(all_file_names)
+
+        # Find the elements that are unique to each set
+        unique_all = all_set - extracted_set
+
+        return list(unique_all)
+
+    def measureRi(self):
         funcArgs = []
-        for current in cList:
-            funcArgs.append(
-                {
-                    "currentClamp": current,
-                    "bLen": bLen,
-                    "bWid": bWid,
-                    "somaSize": somaSize,
-                    "mode": 3,
-                    "bNum": int(bNum),
-                    "PAPWid": PAPWid,
-                    "readHoc": True,
-                    "somaCheck": True,
-                    "Glu": False,
-                }
+        funcArgs.append(
+            {
+                "ComplexMorph": True,
+                "readHoc": True,
+                "Glu": False,
+                "kir2": self.optKir,
+                "clleak": self.leak,
+                "naleak": self.leak,
+                "multiple":0,
+                "dt": 0.1,
+                "seed": self.seed,
+            }
+        )
+        if size == 1:
+            sim = PAPModel(**funcArgs[-1])
+            sim.initialize()
+            sim.measureRiAll()
+        else:
+            comm.Barrier()
+            remaining_iteration = None
+            if rank == 0:
+                sim = PAPModel(**funcArgs[-1])
+                iterations = [sec.hname() for sec in h.allsec()]
+                remaining_iteration = self.readIterationRi(
+                    iterations,
+                )
+                remaining_iteration = [[sec] for sec in remaining_iteration]
+
+            remaining_iteration = comm.bcast(
+                remaining_iteration,
+                root=0,
             )
-            simSoma = PAPModel(**funcArgs[-1])
-            simSoma.initialize()
-            simSoma.run()
-            vSomaList.append(list(simSoma.vSoma))
+            ccList = comm.bcast(
+                ["RiSec"],
+                root=0,
+            )
+            comm.Barrier()
+            results = parallizeFor(
+                remaining_iteration,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                [
+                    ["initialize", "measureRiAll"],
+                ],
+                [[{}, {'parallel':True}]],
+            )
+            comm.Barrier()
+            if rank == 0:
+                merged_dict = {}
+                for sName in iterations:
+                    filePath = os.path.join(
+                        "../results/paperRes",
+                        f"RiRes{sName}.json"
+                    )
+                    if os.path.isfile(filePath):
+                        with open(
+                                filePath,
+                                "r"
+                        ) as rfile:
+                            try:
+                                RiDict = json.load(rfile)
+                            except json.decoder.JSONDecodeError as e:
+                                print(filePath)
+                        merged_dict.update(RiDict)
+                with open(
+                        os.path.join(
+                            "../results/paperRes",
+                            "RiRes.json"
+                        ),
+                        "w"
+                ) as ofile:
+                    json.dump(merged_dict,ofile)
 
-            funcArgs[-1]["somaCheck"] = False
-            simPAP = PAPModel(**funcArgs[-1])
-            simPAP.initialize()
-            simPAP.run()
-            vPAPList.append(list(simPAP.vPAP))
-            # plt.plot(np.array(range(len(vSomaList[-1])))*PAPModel.dt,vSomaList[-1],label=f'{current} pA')
-        vList, somaC = remove_nan_values([v[-1] for v in vSomaList], cList)
-        if len(vList) > 1:
-            somapopt, pcov = curve_fit(eq, somaC, vList)
-            print(f"{abs(somapopt[0])} MOhm")
-        else:
-            somapopt = [float("inf")]
-        # x = np.linspace(-600,600)
-        # plt.plot(eq(x,*somapopt),x)
-        # plt.legend()
-        # plt.show()
-        vList, PAPC = remove_nan_values([v[-1] for v in vPAPList], cList)
-        if len(vList) > 1:
-            PAPpopt, pcov = curve_fit(eq, PAPC, vList)
-            print(f"{abs(PAPpopt[0])} MOhm")
-        else:
-            PAPpopt = [float("inf")]
 
-        return (
-            abs(somapopt[0] - 2.6) * 0.1 / 2.6 + abs(PAPpopt[0] - 1050) * 0.9 / 1050
-        )  # soma input resistance score
+                sim = PAPModel(**funcArgs[-1])
+                sim.mapRi(merged_dict)
+            comm.Barrier()
 
     def SomaVC(self):
         vClampList = np.arange(-95, -59, 5)
@@ -871,35 +874,24 @@ class procedure(plotFigures):
         funcArgs = []
         plt.cla()
         plt.clf()
-        for v in vClampList:
-            funcArgs.append(
-                {
-                    "somaCheck": True,
-                    "mode": 2,
-                    "ComplexMorph": True,
-                    "readHoc": True,
-                    "dt": self.dt,
-                    "naleak": self.leak,
-                    "clleak": self.leak,
-                    "kir2": self.optKir,
-                    "multiple": self.optNMDAR,
-                    "seed": self.seed,
-                    "GluTrans": self.optGluT,
-                }
-            )
-            simSoma = PAPModel(**funcArgs[-1])
-            simSoma.initialize()
-            simSoma.run()
-            vSomaList.append(list(simSoma.vSoma))
-            initStep = int((simSoma.initTstop - 10) / simSoma.dt)
-            plt.plot(
-                list(simSoma.time)[initStep:],
-                list(simSoma.vSoma)[initStep:],
-                label=f"{v} mV",
-                color="black",
-            )
-        # plt.legend()
-        plt.savefig(os.path.join("../results/paperRes", f"VoltageClampAstrocyte.pdf"))
+        funcArgs.append(
+            {
+                "somaCheck": True,
+                "mode": 2,
+                "ComplexMorph": True,
+                "readHoc": True,
+                "dt": self.dt,
+                "naleak": self.leak,
+                "clleak": self.leak,
+                "kir2": self.optKir,
+                "multiple": self.optNMDAR,
+                "seed": self.seed,
+                "GluTrans": self.optGluT,
+            }
+        )
+        simSoma = PAPModel(**funcArgs[-1])
+        simSoma.initialize()
+        
 
     def branchAttenuation(self, alterDist=False):
         self.addChannelTag()        
@@ -1804,6 +1796,23 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT,
             }
         )
+        if self.NMDAR:
+            funcArgs[-1][
+                "multiple"
+            ] = (
+                self.optNMDAR
+            )  # Maximum conductance of model is equal to 50 single channels
+        else:
+            funcArgs[-1][
+                "multiple"
+            ] = 0  # Maximum conductance of model is equal to 50 single channels
+        if self.GluT:
+            funcArgs[-1][
+                "GluTrans"
+            ] = (
+                self.optGluT
+            )  # Maximum conductance of model is equal to 50 single channels
+
         ccList = ["kir2", "Ko"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
@@ -1949,3 +1958,39 @@ class procedure(plotFigures):
         cells.setK(Ko=float(Ko))
         cells.run()
         return abs(max(list(cells.vPAP))-cells.RMP - optmV)
+
+    def optSpikeSearch(self,x,optmV=19.2):
+        freq, number = x
+        freq = round(freq)
+        number = round(number)
+        # add multispike ek clamp
+        self.addChannelTag()
+        # print(self.tag)
+        AllCells = []
+        # single run
+        funcArgs = []
+        funcArgs.append(
+            {
+                # 'currentClamp':0,
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "Glu": False,
+                "kir2": self.optKir,
+                "clleak": self.leak,
+                "naleak": self.leak,
+                "dt": self.dt/100,
+                "seed": self.seed,
+                "multiple":self.optNMDAR,
+                "GluTrans":self.optGluT
+                # "readHoc":readHoc
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize()
+        cells.multiSpike(number=number, freq=freq, Ko=self.ko)
+        print(x)
+        print(abs(max(list(cells.vPAP))-cells.RMP - optmV))
+        return abs(max(list(cells.vPAP))-cells.RMP - optmV)
+    

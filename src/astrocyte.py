@@ -6,6 +6,7 @@ from utils import *
 from geneManip import GENExpression
 import matplotlib.pyplot as plt
 import plotly
+import json
 
 
 class PAPModel(ResultsPAPModel):
@@ -37,28 +38,29 @@ class PAPModel(ResultsPAPModel):
     varMorph = ["v", "ko"]
 
     def __init__(
-        self,
-        readHoc=True,
-        PAPWid=0.02,
-        bWid=3,
-        bNum=1,
-        bLen=30,
-        voltageClamp=40,
-        somaSize=10,
-        currentClamp=2,
-        multiple=1,
-        mode=0,
-        somaCheck=False,
-        ComplexMorph=True,
-        Glu=False,
-        Ko=2.5,
-        stimdelay=0,
-        initTstop=150,
-        dt=0.001,
-        seed=0,
-        PAPCount=1,
-        PAPLen=0.3,
-        **kwargs,
+            self,
+            readHoc=True,
+            PAPWid=0.02,
+            bWid=3,
+            bNum=1,
+            bLen=30,
+            voltageClamp=40,
+            somaSize=10,
+            currentClamp=2,
+            multiple=1,
+            mode=0,
+            somaCheck=False,
+            ComplexMorph=True,
+            Glu=False,
+            Ko=2.5,
+            stimdelay=0,
+            initTstop=150,
+            dt=0.001,
+            seed=0,
+            PAPCount=1,
+            PAPLen=0.3,
+            RiSec=None,
+            **kwargs,
     ):
         # Load NEURON GUI and parameters
         from neuron import h
@@ -97,6 +99,7 @@ class PAPModel(ResultsPAPModel):
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
         self.PAPLen = PAPLen
+        self.RiSec = str(RiSec)
 
         if self.readHoc:
             # subsitute
@@ -148,7 +151,7 @@ class PAPModel(ResultsPAPModel):
             for sec in self.PAPs:
                 self.PAParea += (
                     h.area(0.5, sec=self.PAP) * sec.nseg
-                )  # should be updated
+                )
             self.somaArea = h.area(0.5,sec=self.soma)
 
         else:
@@ -396,9 +399,14 @@ class PAPModel(ResultsPAPModel):
                 h.continuerun((self.tstop) * ms)
             except RuntimeError as e:
                 if "hocobj_call" in str(e):
-                    print("skip run")
-                    vPAP = ["nan"]
-                    vSoma = ["nan"]
+                    if self.dt < 1e-6:
+                        print("skip run")
+                        vPAP = ["nan"]
+                        vSoma = ["nan"]
+                    else:
+                        self.dt = self.dt / 10
+                        h.t = self.dt
+                        self.run(printRes=printRes, video=video, koclamp=koclamp)
 
         # print('finish run')
         if printRes:
@@ -502,6 +510,12 @@ class PAPModel(ResultsPAPModel):
         compartment.insert("twik")
         compartment.insert("k_acc")
         compartment.insert("kdifl")
+
+    def plotMorphParms(self):
+        if self.readHoc:
+            h.plot_varMorph("diam","DiamMap.psf")
+            h.plot_varMorph("nseg","nsegMap.psf")
+
 
     def morph(self, isolate=False, printTopology=False):
         # Access the PAP object
@@ -813,8 +827,47 @@ class PAPModel(ResultsPAPModel):
         self.run()
         VList = [list(v)[-1] for v in self.branchAtten]
         return LambdaList,VList,LenList
+
+    def getSecbyName(self,secname):
+        for sec in h.allsec():
+            if sec.hname() == secname:
+                return sec
+        else:
+            return None
         
-        
+    def measureRiAll(self,parallel=False):
+        if self.readHoc:
+            if parallel:
+                if self.RiSec != None:
+                    RiSec = self.getSecbyName(self.RiSec)
+                    RiSec.insert('inputRes')
+                    h.measure_input_resistance(sec=RiSec)
+                    self.RiDict = { str(RiSec):float(RiSec.Ri_inputRes)}
+                    if len(self.RiDict) > 0:
+                        self.saveRiDict()
+            else:
+                h.getAllRi()
+                h.plot_varMorph("Ri","RiMap.psf")
+
+    def mapRi(self,sectionDict):
+        for k,v in sectionDict.items():
+            RiSec = self.getSecbyName(k)
+            RiSec.insert('inputRes')
+            RiSec.Ri_inputRes = v
+        h.plot_varMorph("Ri_inputRes","RiMap.psf")
+
+    def saveRiDict(self):
+        for sName,v in self.RiDict.items():
+            with open(
+                    os.path.join(
+                        "../results/paperRes",
+                        f"RiRes{sName}.json"
+                    ),
+                    "w"
+            ) as ofile:
+                json.dump(self.RiDict,ofile)
+
+    
 
     def getPAPK(self):
         if self.readHoc:
