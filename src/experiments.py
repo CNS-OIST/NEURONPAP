@@ -102,7 +102,7 @@ class plotFigures:
                 )
             )
 
-    def plotIKSeries(self, AllCells, zoom=False):
+    def plotIKSeries(self, AllCells, zoom=False,setyLim=None):
         for cells in AllCells:
             for cell in cells:
                 if (
@@ -298,7 +298,9 @@ class plotFigures:
                 #     ax.plot(list(cell.time), list(cell.iMemSoma), label="iMem Soma")
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Currents at PAP (pA)")
-                # ax.set_ylim([-1e-3,1e-3])
+                if setyLim != None:
+                    ax.set_ylim(setyLim)
+                    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 if zoom or self.stimCount > 1:
                     ax.legend(loc="lower left")
@@ -1407,17 +1409,27 @@ class procedure(plotFigures):
                     self.tag += '_KOComp'
                     if cell.PAPLen > 0.3:
                         self.tag += f'spillover'
-                    self.plotIKSeries([[cell]])
+                    self.plotIKSeries([[cell]],setyLim=[-7,1])
                     resMat[k][cell.seed] = max(cell.vPAP) - cell.RMP
 
             title = 'One-way ANOVA '
+            pvalDict = {}
             for i in list(range(0,koCond*2,koCond)):
                 ommit_cond = 1
                 stat,pval = f_oneway(*resMat[i:i+koCond-ommit_cond]) # select based on control, OE, KD leave NMDAR out
                 if i == koCond:
                     title += f'spillover p-value:{pval:.2E}'
+                    key = 'spillover'
                 else:
                     title += f'constrained p-value:{pval:.2E}'
+                    key = 'confined'
+                if pval < 0.05:
+                    if pval < 0.01:
+                        pvalDict[key]='**'
+                    else:
+                        pvalDict[key]='*'
+                else:
+                    pvalDict[key]='n.s.'
                         
             val_means = {
                 'confined':[],
@@ -1455,7 +1467,7 @@ class procedure(plotFigures):
                     v,
                     width,
                     yerr=val_sd[k],
-                    label=k,
+                    label=f'{k}|{pvalDict[k]} ',
                     color=color,
                     hatch=pattern[k],
                     edgecolor = "black",
@@ -1643,11 +1655,11 @@ class procedure(plotFigures):
                 totResults += results
             self.plotHeatmap(totResults, divedend=len(resFiles))
 
-    def glutamateSpillOver(self):
+    def glutamateSpillOver(self,sampleNum=10):
         self.addChannelTag()
         iterations = np.concatenate((np.logspace(-1,1,num=19),np.array([self.PAPLen])))
         iterations = np.sort(iterations)
-        iterations = comm.bcast([[i] for i in iterations])
+        iterations = comm.bcast([(i,j) for i in iterations for j in range(sampleNum)])
         # # Adjust the range for the last process
 
         comm.Barrier()
@@ -1661,7 +1673,6 @@ class procedure(plotFigures):
                 "naleak": self.leak,
                 "clleak": self.leak,
                 "dt": self.dt,
-                "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
                 "multiple": self.optNMDAR,
@@ -1669,7 +1680,7 @@ class procedure(plotFigures):
                 "kir2": self.optKir
             }
         )
-        ccList = ["PAPLen"]
+        ccList = ["PAPLen","seed"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
         if self.KStim and self.stimCount == 1:
@@ -1708,20 +1719,25 @@ class procedure(plotFigures):
             vList = []
             sizeList = []
             controlIndex = None            
-            for i,cells in enumerate(results):
+            iterations = np.concatenate((np.logspace(-1,1,num=19),np.array([self.PAPLen])))
+            iterations = np.sort(iterations)
+            vListarray = np.zeros((sampleNum,len(iterations)))
+            for cells in results:
                 for cell in cells:
+                    i = np.where(cell.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
+                    cindex = i/len(iterations)
+                    color = cm.BrBG(cindex)
                     initStep = int((cell.initTstop - 10) / cell.dt)
                     plt.plot(
                         list(cell.time)[initStep:],
                         np.array(list(cell.vPAP)[initStep:])-cell.RMP,
-                        label=f'{cell.PAPLen:.2f} um',
-                        color= cm.BrBG(i/len(results)),
+                        color= color,
                     )
-                    if cell.PAPLen == self.PAPLen:
-                        controlV = max(list(cell.vPAP)[initStep:])-cell.RMP
-                        controlIndex = i
-                    vList.append(max(list(cell.vPAP)[initStep:])-cell.RMP)
-                    sizeList.append(cell.PAPLen)
+                    vListarray[cell.seed][i] = max(list(cell.vPAP)[initStep:])-cell.RMP
+            sizeList = iterations
+            vListarray = vListarray.T
+            controlIndex = np.where(self.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
+            controlV = np.nansum(vListarray[controlIndex])/sampleNum
             plt.xlabel('time (ms)')
             plt.ylabel('Voltage (mV)')
             plt.savefig(
@@ -1735,28 +1751,33 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
             
+            vList = [np.nansum(vListarray[i])/sampleNum for i in range(len(vListarray))]
+            vstdList = [np.nanstd(vListarray[i]) for i in range(len(vListarray))]
+            plt.errorbar(sizeList, vList, yerr=vstdList, ecolor='black', elinewidth=0.5, capsize=5,ls='none')
             plt.scatter(
                 sizeList,
                 vList,
                 cmap='BrBG',
-                c=range(len(results))
+                c=[i/len(iterations) for i in range(len(iterations))]
             )
             # plot control as diamond
             if controlIndex != None:
                 plt.scatter(
                     self.PAPLen,
                     controlV,
-                    color=cm.BrBG(controlIndex/len(results)),
+                    color=cm.BrBG(controlIndex/len(iterations)),
                     marker='D',
                     label='Confined',
+                    zorder=10,
                 )
             maxIndex = vList.index(max(vList))
             plt.scatter(
                 sizeList[maxIndex],
                 vList[maxIndex],
-                color=cm.BrBG(maxIndex/len(results)),
+                color=cm.BrBG(maxIndex/len(iterations)),
                 marker='D',
                 label='Spillover',
+                zorder=11,
             )
             plt.legend()
             plt.ylim((0,22))
@@ -1765,7 +1786,9 @@ class procedure(plotFigures):
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf")
             )
-            self.peakLen = sizeList[int(np.argmax(vList))]
+            Calculated_PeakLen = sizeList[int(np.argmax(vList))]
+            self.optNMDAR = int(Calculated_PeakLen/self.peakLen* self.optNMDAR) #Compensate opt NMDAR density to match Peak Len
+            self.peakLen = Calculated_PeakLen
             cellList = [[[cell]] for cells in results for cell in cells if cell.PAPLen in [self.PAPLen,10,self.peakLen]]
             for cell in cellList:
                 self.tag = self.tag.split('_PAPLen')[0]

@@ -232,14 +232,11 @@ class PAPModel(ResultsPAPModel):
             self.NMDAs = list(h.NMDAs)
             # print(self.NMDAs)
             self.NCs += list(h.ncNMDAList)
-            # h.stim.number = 1
-            # h.stim.interval = 10 * ms
-            # print(h.nc.weight[0])
             for i, sNMDA in enumerate(self.NMDAs):
                 if self.Glu:
-                    # distribute the total num of NMDA equally among all patches
+                    # distribute the total num of NMDA equally among all patches with remainder clustered at tip
                     totNMDA = len(self.NMDAs)
-                    if i < self.multiple % totNMDA:
+                    if i > (totNMDA - self.multiple % totNMDA):
                         sNMDA.multiple = 1 + self.multiple // totNMDA
                     else:
                         sNMDA.multiple = self.multiple // totNMDA
