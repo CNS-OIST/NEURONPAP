@@ -17,14 +17,14 @@ class GENEManipulation:
                     seg.kir4.Pkir = 1.0
 
     def kir2Change(self, multiple):
-        # get PAP
-        PAP = self.PAPs
         # get PAP area
         PAParea = 0
-        for sec in PAP:
-            for seg in sec:
-                PAParea += seg.area()
-        # set channel count to uniform density
+        for pap in self.PAPs:
+            for sec in pap:
+                for seg in sec:
+                    PAParea += seg.area()
+                    # set channel count to uniform density
+        PAParea /= len(self.PAPs)
         for sec in self.compartments:
             for seg in sec:
                 # print(sec)

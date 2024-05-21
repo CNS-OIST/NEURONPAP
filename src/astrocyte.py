@@ -68,8 +68,9 @@ class PAPModel(ResultsPAPModel):
         h.load_file("stdgui.hoc")
         h.load_file("./neuronHoc/params.hoc")
         # print('loaded files')
+        # sys.stdout.flush()
 
-        # Set simulation parameters
+        # set simulation parameters
         self.initTstop = initTstop * ms
         self.dt = dt
 
@@ -98,6 +99,8 @@ class PAPModel(ResultsPAPModel):
         self.PAPWid = PAPWid
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
+        if PAPLen > 0.3:
+            self.multiple = int(PAPLen/0.3 * multiple) # Maintain density
         self.PAPLen = PAPLen
         self.RiSec = str(RiSec)
 
@@ -124,34 +127,29 @@ class PAPModel(ResultsPAPModel):
 
             # match sections to self
             # print("Match section")
+            # sys.stdout.flush()
+
             self.seed = seed
             h.setSeed(seed)
+            # print(self.PAPLen)
             for i in range(PAPCount):
                 h.PAP = h.get_randomfinalSection(h.soma)
                 self.PAP = h.PAP.sec
-                # can change to sec = later
                 h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
                 if i == 0:
-                    self.PAPs = h.slPAP
+                    self.PAPs = [h.slPAP]
                 else:
-                    for sec in h.slPAP:
-                        self.PAPs.append(sec)
-            # self.PAPs.printnames()
-            # h('objref sref')
-            # h('soma sref = new SectionRef()')
-            # h('PAP.sec slPAP = get_parent_sections(PAP)')
-
-            # self.PAPs = h.slPAP
-            # self.PAP = h.getLeaf(self.PAPs).sec
+                    self.PAPs.append(h.slPAP)
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
 
             self.PAParea = 0
-            for sec in self.PAPs:
+            for sec in self.flattenPAP():
                 self.PAParea += (
-                    h.area(0.5, sec=self.PAP) * sec.nseg
+                    h.area(0.5, sec=sec) * sec.nseg
                 )
+            self.PAParea /= len(self.PAPs)
             self.somaArea = h.area(0.5,sec=self.soma)
 
         else:
@@ -171,6 +169,7 @@ class PAPModel(ResultsPAPModel):
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
         self.GENEDict = kwargs
         # print('set GENE manipulation')
+        # sys.stdout.flush()
 
         # print(self.GENEDict)
         if self.multiple == 0 and "GluTrans" in self.GENEDict.keys():
@@ -222,15 +221,16 @@ class PAPModel(ResultsPAPModel):
             if not hasattr(self, "NCs"):
                 self.NCs = []
             if not hasattr(h, "slPAP"):
-                h.slPAP = self.PAPs
-            # can change to sec = later
+                h.slPAP = self.flattenPAP()
             h("slPAP {setNMDAs(slPAP)}")
+            # h.setNMDAs(self.flattenPAP())
 
     def setNMDAs(self):
         self.initNMDAs()
         if self.readHoc:
             self.NMDAs = list(h.NMDAs)
             # print(self.NMDAs)
+            # sys.stdout.flush()
             self.NCs += list(h.ncNMDAList)
             for i, sNMDA in enumerate(self.NMDAs):
                 if self.Glu:
@@ -251,8 +251,9 @@ class PAPModel(ResultsPAPModel):
             if not hasattr(self, "NCs"):
                 self.NCs = []
             if not hasattr(h, "slPAP"):
-                h.slPAP = self.PAPs
+                h.slPAP = self.flattenPAP()
             h("slPAP {setGluTs(slPAP)}")
+            # h.setGluTs(self.flattenPAP())
 
     def setGluTs(self):
         self.initGluTs()
@@ -285,6 +286,10 @@ class PAPModel(ResultsPAPModel):
         h.stim.interval = 10 * ms
         h.stim.start = (self.initTstop + self.stimdelay) * ms  # Mutual Setup
 
+    def setTstop(self,tstop):
+        h.tstop = tstop
+        self.tstop = tstop
+
     def checkNetCons(self):
         print(self.NCs)
         for nc in self.NCs:
@@ -299,15 +304,21 @@ class PAPModel(ResultsPAPModel):
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
 
+        # print('placing GluChannel')
+        # sys.stdout.flush()            
+        self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
-        self.setNMDAs()
         self.setGluTs()
+        # print('placed GluT')
+        # sys.stdout.flush()
         self.setStimStart()
+        # print('setStim')
+        # sys.stdout.flush()
         # self.checkNetCons()
         if self.Glu:
             PAPGluT = [
-                s.syn() for s in list(h.ncGluList) if s.postseg().sec == self.PAP
+                s.syn() for s in list(h.ncGluList) if s.postseg().sec in self.flattenPAP()
             ]
             # print(PAPGluT)
             if len(PAPGluT) == 1:
@@ -450,10 +461,16 @@ class PAPModel(ResultsPAPModel):
                 )
         return
 
+    def flattenPAP(self):
+        flattenPap = []
+        for pap in self.PAPs:
+            flattenPap += pap
+        return h.SectionList(flattenPap)
+
     def plotWholecellVariable(self, var, frameName, zoom=False):
         if self.readHoc:
             if zoom:
-                ps = h.plotPAP_varMorph(var, frameName, self.PAPs)
+                ps = h.plotPAP_varMorph(var, frameName, self.flattenPAP())
             else:
                 ps = h.plot_varMorph(var, frameName)
 
@@ -465,19 +482,19 @@ class PAPModel(ResultsPAPModel):
                         os.path.join(
                             "../morphResults/", f"astrocyte_PAPtopology_{self.seed}.psf"
                         ),
-                        self.PAPs,
+                        self.flattenPAP(),
                     )
                 else:
                     ps = h.plot_topology(
                         os.path.join(
                             "../morphResults/", f"astrocyte_topology_{self.seed}.psf"
                         ),
-                        self.PAPs,
+                        self.flattenPAP()
                     )
             else:
                 ps = h.PlotShape()
                 ps.color_all(1)
-                ps.color_list(self.PAPs, 2)
+                ps.color_list(self.flattenPAP(), 2)
                 ps.printfile(f"{fname}.psf")
 
     def cleanMorphology(self):
@@ -515,44 +532,45 @@ class PAPModel(ResultsPAPModel):
 
 
     def morph(self, isolate=False, printTopology=False):
-        # Access the PAP object
-        if not hasattr(self, "PAP"):
-            self.PAP = h.Section(name="PAP")
-            self.astroMem(self.PAP)
+        print('depracated')
+        # # Access the PAP object
+        # if not hasattr(self, "PAP"):
+        #     self.PAP = h.Section(name="PAP")
+        #     self.astroMem(self.PAP)
 
-        # Set astrocyte leaf membrane parameters
-        self.PAP.L = 0.3
-        self.PAP.diam = self.PAPWid
-        self.PAP.nseg = 1
+        # # Set astrocyte leaf membrane parameters
+        # self.PAP.L = 0.3
+        # self.PAP.diam = self.PAPWid
+        # self.PAP.nseg = 1
 
-        # h.psection(sec=self.PAP)
-        if not isolate:
-            # create Soma
-            if not hasattr(self, "soma"):
-                self.soma = h.Section(name="soma")
-                self.astroMem(self.soma)
-            self.soma.diam = self.somaSize
-            self.soma.L = self.somaSize
-            # h.psection(sec=self.soma)
-            sl = h.SectionList()  # section shows up again bug
-            branchCount = len(
-                [branch for branch in self.branches if branch in list(sl)]
-            )
-            for i in range(self.bNum - branchCount):
-                # Create the branch (not included in the original hoc file)
-                self.branches.append(h.Section(name=f"branch{i}"))
-                self.branches[-1].L = self.bLen
-                self.branches[-1].diam = self.bWid
-                self.branches[-1].nseg = 10
-                self.astroMem(self.branches[-1])
-                # h.psection(sec=self.branches[-1])
+        # # h.psection(sec=self.PAP)
+        # if not isolate:
+        #     # create Soma
+        #     if not hasattr(self, "soma"):
+        #         self.soma = h.Section(name="soma")
+        #         self.astroMem(self.soma)
+        #     self.soma.diam = self.somaSize
+        #     self.soma.L = self.somaSize
+        #     # h.psection(sec=self.soma)
+        #     sl = h.SectionList()  # section shows up again bug
+        #     branchCount = len(
+        #         [branch for branch in self.branches if branch in list(sl)]
+        #     )
+        #     for i in range(self.bNum - branchCount):
+        #         # Create the branch (not included in the original hoc file)
+        #         self.branches.append(h.Section(name=f"branch{i}"))
+        #         self.branches[-1].L = self.bLen
+        #         self.branches[-1].diam = self.bWid
+        #         self.branches[-1].nseg = 10
+        #         self.astroMem(self.branches[-1])
+        #         # h.psection(sec=self.branches[-1])
 
-                # Connect
-                self.branches[-1].connect(self.soma(0.5))
-                if i == 0:
-                    self.PAP.connect(self.branches[-1])
-        if printTopology:
-            h.topology()
+        #         # Connect
+        #         self.branches[-1].connect(self.soma(0.5))
+        #         if i == 0:
+        #             self.PAP.connect(self.branches[-1])
+        # if printTopology:
+        #     h.topology()
 
     def readParameters(self, fDir="./results/optimize"):
         self.readParms = True
@@ -779,35 +797,20 @@ class PAPModel(ResultsPAPModel):
                 h.continuerun(delay * ms + h.t)
                 # print("setting Ko to pulse mode")
                 papk = self.getPAPK()
-                h.setK(self.PAPs, Ko, papk + Ko, 1)
+                h.setK(self.flattenPAP(), Ko, papk + Ko, 1)
                 self.KoPAP[-1] = papk + Ko
                 h.fcurrent()
                 h.fadvance() # change to 1 ms?
-                h.setK(self.PAPs, 0, restKo, 0)
+                h.setK(self.flattenPAP(), 0, restKo, 0)
             if mode == "step":
                 h.continuerun(delay * ms + h.t)
                 papk = self.getPAPK()
-                h.setK(self.PAPs, Ko, Ko + papk, 2)
+                h.setK(self.flattenPAP(), Ko, Ko + papk, 2)
                 h.fcurrent()
                 h.continuerun(dur * ms + h.t)
                 # papk = self.getPAPK()
-                h.setK(self.PAPs, 0, restKo, 0)
+                h.setK(self.flattenPAP(), 0, restKo, 0)
             self.Ko = Ko
-        else:
-            if mode == "pulse":
-                h.init()  # quite important
-                for sec in h.allsec():
-                    # h.psection(sec=sec)
-                    if sec == self.PAP:
-                        for seg in sec:
-                            seg.ko = Ko * mM
-                        # print('set PAP Ko')
-                    else:
-                        for seg in sec:
-                            seg.ko = self.defaultKo * mM
-
-                    sec.ek = -90 * mV
-            # print('Potassium Parms')
 
     def LambdaEq(self,ra,rm,d):
         return (rm * d  / ra / 4) ** 0.5  # um

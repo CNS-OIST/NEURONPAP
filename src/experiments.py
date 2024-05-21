@@ -16,6 +16,7 @@ import glob
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import f_oneway,ttest_rel
 import json
+import pandas as pd
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
@@ -1272,17 +1273,19 @@ class procedure(plotFigures):
                 self.NMDAR = True
                 controlKir = self.optKir
                 self.optKir = controlKir
+                controlLeak = self.leak
                 tmpdt = self.dt
             elif i < 3:
                 self.GluT = True
                 self.NMDAR = True
                 if i == 1:
                     # Kir OE
-                    self.optKir = controlKir + 30
+                    self.optKir = controlKir + 80
+                    self.leak = controlLeak
                     self.dt *= 0.1
                 else:
-                    self.dt = tmpdt
-                    self.optKir = controlKir - 30
+                    self.leak = self.leak * 2
+                    self.optKir = controlKir - 80
             else:
                 self.dt = tmpdt
                 self.optKir = controlKir
@@ -1336,7 +1339,10 @@ class procedure(plotFigures):
 
             comm.Barrier()
             if self.peakLen == None:
-                self.peakLen = 2
+                self.peakLen = 2.61
+            else:
+                if rank==0:
+                    print(self.peakLen)
             iterations = comm.bcast([(i,j) for j in [0.3, self.peakLen] for i in range(papCount)])
             ccList = ["seed","PAPLen"]
             # results are collected only on rank 0
@@ -1474,7 +1480,24 @@ class procedure(plotFigures):
                 )
                 # ax.bar_label(rects,padding=3)
                 multiplier+=1
-            ax.axhline(val_means['confined'][0],linestyle='--')
+
+            # get indexes
+            iterations = np.concatenate((np.logspace(-0.5,1,num=19),np.array([self.PAPLen])))
+            iterations = np.sort(iterations)
+            controlIndex = np.where(self.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
+            maxIndex = np.where(self.peakLen == iterations)[0][0] # get index of PAPLen position in iterations
+
+                
+            ax.axhline(
+                val_means['confined'][0],
+                linestyle='--', 
+                c=cm.BrBG(controlIndex/len(iterations))
+           )
+            ax.axhline(
+                val_means['spillover'][0],
+                linestyle='--',
+                c=cm.BrBG(maxIndex/len(iterations))            
+            )
 
             with open(
                     os.path.join(
@@ -1488,7 +1511,7 @@ class procedure(plotFigures):
             #     if v.pvalue < 0.05:
             #         index = category.index(k)
             ax.set_ylabel("Voltage (mV)")
-            ax.set_ylim(0,30)
+            ax.set_ylim(0,70)
             ax.set_xticks(x+ width/len(val_means.keys()),category)
             ax.legend(loc='upper left', ncols = 2)
             plt.savefig(
@@ -1498,7 +1521,7 @@ class procedure(plotFigures):
                 )
             )
             
-    def singleRun(self):
+    def singleRun(self,expOverlay=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -1518,7 +1541,7 @@ class procedure(plotFigures):
                 "clleak": self.leak,
                 "naleak": self.leak,
                 "dt": self.dt,
-                "seed": self.seed
+                "seed": self.seed,
                 # "readHoc":readHoc
             }
         )
@@ -1540,6 +1563,7 @@ class procedure(plotFigures):
             )  # Maximum conductance of model is equal to 50 single channels
 
         cells = PAPModel(**funcArgs[-1])
+        cells.setTstop(500)
         cells.initialize()
         # cells.setK(Ko=ko,mode='step',dur=100,delay = i*20*ms)
         # cells.setK(Ko=self.ko)
@@ -1563,8 +1587,28 @@ class procedure(plotFigures):
             AllCells.append([cells])
         if rank == 0:
             self.plotIKSeries(AllCells)
-            plt.plot(list(cells.time),list(cells.GluTGlu))
-            plt.savefig('GlutamateTimecourse.pdf')
+            if expOverlay:
+                results = AllCells[0][0]
+                plt.plot(list(results.time),np.array(list(results.vPAP)) - results.RMP,label='model')
+                df = pd.read_csv('./Data/depolarTime.csv')
+                stimIndex = 31
+                # calibrate to relative point from stimulus onset
+                for c in df.columns:
+                    if c == 'V':
+                        avgV = df[c][:stimIndex].mean()
+                        df[c] = df[c] - avgV
+                    else:
+                        df[c] = df[c] - df[c][stimIndex]
+                # Match stim initialization with model
+                df['t'] = df['t'] + (results.initTstop + results.stimdelay) * ms
+                plt.scatter(df['t'],df['V'],label='experiment',c='black')
+                initStep = results.initTstop - 50
+                plt.xlim((initStep,500))
+                plt.legend()
+                plt.savefig('Experimental Overlay.pdf')
+                
+            # plt.plot(list(cells.time),list(cells.GluTGlu))
+            # plt.savefig('GlutamateTimecourse.pdf')
 
 
     def channelComparison(self):
@@ -1656,10 +1700,10 @@ class procedure(plotFigures):
             self.plotHeatmap(totResults, divedend=len(resFiles))
 
     def glutamateSpillOver(self,sampleNum=10):
-        self.addChannelTag()
-        iterations = np.concatenate((np.logspace(-1,1,num=19),np.array([self.PAPLen])))
+        self.addChannelTag() 
+        iterations = np.concatenate((np.logspace(-0.5,1,num=19),np.array([self.PAPLen])))
         iterations = np.sort(iterations)
-        iterations = comm.bcast([(i,j) for i in iterations for j in range(sampleNum)])
+        paralleliterations = comm.bcast([(i,j) for i in iterations for j in range(sampleNum)])
         # # Adjust the range for the last process
 
         comm.Barrier()
@@ -1685,7 +1729,7 @@ class procedure(plotFigures):
         # results are collected only on rank 0
         if self.KStim and self.stimCount == 1:
             results = parallizeFor(
-                iterations,
+                paralleliterations,
                 [PAPModel],
                 funcArgs,
                 ccList,
@@ -1694,7 +1738,7 @@ class procedure(plotFigures):
             )
         elif self.stimCount > 1:
             results = parallizeFor(
-                iterations,
+                paralleliterations,
                 [PAPModel],
                 funcArgs,
                 ccList,
@@ -1704,7 +1748,7 @@ class procedure(plotFigures):
 
         else:
             results = parallizeFor(
-                iterations,
+                paralleliterations,
                 [PAPModel],
                 funcArgs,
                 ccList,
@@ -1717,10 +1761,7 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
             vList = []
-            sizeList = []
             controlIndex = None            
-            iterations = np.concatenate((np.logspace(-1,1,num=19),np.array([self.PAPLen])))
-            iterations = np.sort(iterations)
             vListarray = np.zeros((sampleNum,len(iterations)))
             for cells in results:
                 for cell in cells:
@@ -1734,12 +1775,11 @@ class procedure(plotFigures):
                         color= color,
                     )
                     vListarray[cell.seed][i] = max(list(cell.vPAP)[initStep:])-cell.RMP
-            sizeList = iterations
             vListarray = vListarray.T
             controlIndex = np.where(self.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex])/sampleNum
             plt.xlabel('time (ms)')
-            plt.ylabel('Voltage (mV)')
+            plt.ylabel('Voltage Change (mV)')
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
             )
@@ -1753,16 +1793,17 @@ class procedure(plotFigures):
             
             vList = [np.nansum(vListarray[i])/sampleNum for i in range(len(vListarray))]
             vstdList = [np.nanstd(vListarray[i]) for i in range(len(vListarray))]
-            plt.errorbar(sizeList, vList, yerr=vstdList, ecolor='black', elinewidth=0.5, capsize=5,ls='none')
-            plt.scatter(
-                sizeList,
+            fig, ax = plt.subplots()
+            ax.errorbar(iterations, vList, yerr=vstdList, ecolor='black', elinewidth=0.5, capsize=5,ls='none')
+            ax.scatter(
+                iterations,
                 vList,
                 cmap='BrBG',
                 c=[i/len(iterations) for i in range(len(iterations))]
             )
-            # plot control as diamond
+            # plot control as diamond            
             if controlIndex != None:
-                plt.scatter(
+                ax.scatter(
                     self.PAPLen,
                     controlV,
                     color=cm.BrBG(controlIndex/len(iterations)),
@@ -1771,24 +1812,23 @@ class procedure(plotFigures):
                     zorder=10,
                 )
             maxIndex = vList.index(max(vList))
-            plt.scatter(
-                sizeList[maxIndex],
+            ax.scatter(
+                iterations[maxIndex],
                 vList[maxIndex],
                 color=cm.BrBG(maxIndex/len(iterations)),
                 marker='D',
                 label='Spillover',
                 zorder=11,
             )
-            plt.legend()
-            plt.ylim((0,22))
-            plt.xlabel('Affected PAP length (um)')
-            plt.ylabel('Peak Voltage (mV)')
+            ax.legend()
+            ax.set_ylim((0,65))
+            ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.set_xlabel('Affected PAP length (um)')
+            ax.set_ylabel('Peak Voltage (mV)')
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf")
             )
-            Calculated_PeakLen = sizeList[int(np.argmax(vList))]
-            self.optNMDAR = int(Calculated_PeakLen/self.peakLen* self.optNMDAR) #Compensate opt NMDAR density to match Peak Len
-            self.peakLen = Calculated_PeakLen
+            self.peakLen = iterations[int(np.argmax(vList))]
             cellList = [[[cell]] for cells in results for cell in cells if cell.PAPLen in [self.PAPLen,10,self.peakLen]]
             for cell in cellList:
                 self.tag = self.tag.split('_PAPLen')[0]
