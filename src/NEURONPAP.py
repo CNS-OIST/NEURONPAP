@@ -60,7 +60,7 @@ def callExperimentMode(**kwargs):
 
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
-        exp.GluStim = kwargs["glustim"]        
+        exp.GluStim = kwargs["glustim"]
         exp.potassiumComparison()
 
     if "video" in kwargs.keys() and kwargs["video"]:
@@ -69,7 +69,7 @@ def callExperimentMode(**kwargs):
 
     if "branch" in kwargs.keys() and kwargs["branch"]:
         # Plot branch atten
-        exp.GluStim = kwargs["glustim"]        
+        exp.GluStim = kwargs["glustim"]
         exp.branchAttenuation()
 
     if "stim" in kwargs.keys() and kwargs["stim"]:
@@ -91,13 +91,13 @@ def callExperimentMode(**kwargs):
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
         # run before kocomp for automatic peak identification
         exp.glutamateSpillOver()
-        
+
     if "kocomp" in kwargs.keys() and kwargs["kocomp"]:
         exp.KOComp()
 
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
-        
+
     if "expVm" in kwargs.keys() and kwargs["expVm"]:
         # print(
         #     minimize(
@@ -109,12 +109,12 @@ def callExperimentMode(**kwargs):
         # )
         res = minimize(
             exp.optSpikeSearch,
-            (10000,96),
+            (10000, 96),
             method="Nelder-Mead",
-            bounds=[(0, None),(0,None)]
+            bounds=[(0, None), (0, None)],
         )
         print(res)
-        
+
 
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD

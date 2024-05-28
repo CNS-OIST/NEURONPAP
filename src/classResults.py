@@ -24,13 +24,12 @@ class ResultsPAPModel:
         "iKPAP",
         "iClPAP",
         "iNaPAP",
-        "iMemPAP"
-        "iKSoma",
+        "iMemPAP" "iKSoma",
         "iClSoma",
         "iNaSoma",
-        "iMemSoma"
-                   ]
-    ppcurrents = ["iGluT","iNMDA","iGluTSoma"]
+        "iMemSoma",
+    ]
+    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma"]
 
     def copyAttr(self):
         # print("copying to result class")
@@ -56,9 +55,7 @@ class ResultsPAPModel:
         currList = self.memcurrents + self.ppcurrents
         for attr in newInstance.__dict__:
             if attr in currList:
-                newInstance.__dict__[attr] = (
-                    np.array(newInstance.__dict__[attr]) * 1e3
-                )
+                newInstance.__dict__[attr] = np.array(newInstance.__dict__[attr]) * 1e3
 
         # Convert Vector to list
         # for attr in newInstance.__dict__:

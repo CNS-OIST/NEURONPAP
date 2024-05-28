@@ -39,29 +39,29 @@ class PAPModel(ResultsPAPModel):
     varMorph = ["v", "ko"]
 
     def __init__(
-            self,
-            readHoc=True,
-            PAPWid=0.02,
-            bWid=3,
-            bNum=1,
-            bLen=30,
-            voltageClamp=40,
-            somaSize=10,
-            currentClamp=2,
-            multiple=1,
-            mode=0,
-            somaCheck=False,
-            ComplexMorph=True,
-            Glu=False,
-            Ko=2.5,
-            stimdelay=0,
-            initTstop=150,
-            dt=0.001,
-            seed=0,
-            PAPCount=1,
-            PAPLen=0.3,
-            RiSec=None,
-            **kwargs,
+        self,
+        readHoc=True,
+        PAPWid=0.02,
+        bWid=3,
+        bNum=1,
+        bLen=30,
+        voltageClamp=40,
+        somaSize=10,
+        currentClamp=2,
+        multiple=1,
+        mode=0,
+        somaCheck=False,
+        ComplexMorph=True,
+        Glu=False,
+        Ko=2.5,
+        stimdelay=0,
+        initTstop=150,
+        dt=0.001,
+        seed=0,
+        PAPCount=1,
+        PAPLen=0.3,
+        RiSec=None,
+        **kwargs,
     ):
         # Load NEURON GUI and parameters
         from neuron import h
@@ -102,7 +102,9 @@ class PAPModel(ResultsPAPModel):
         self.ComplexMorph = ComplexMorph
         self.PAPLen = PAPLen
         if PAPLen > 0.3:
-            self.multiple = int(self.multiple * (math.pi*(1-math.e**(1-PAPLen/0.3))+1))
+            self.multiple = int(
+                self.multiple * (math.pi * (1 - math.e ** (1 - PAPLen / 0.3)) + 1)
+            )
             # Density decreases in gaussian manner with units of PAPLen
         self.RiSec = str(RiSec)
 
@@ -148,11 +150,9 @@ class PAPModel(ResultsPAPModel):
 
             self.PAParea = 0
             for sec in self.flattenPAP():
-                self.PAParea += (
-                    h.area(0.5, sec=sec) * sec.nseg
-                )
+                self.PAParea += h.area(0.5, sec=sec) * sec.nseg
             self.PAParea /= len(self.PAPs)
-            self.somaArea = h.area(0.5,sec=self.soma)
+            self.somaArea = h.area(0.5, sec=self.soma)
 
         else:
             # set K parms
@@ -190,7 +190,7 @@ class PAPModel(ResultsPAPModel):
     def koClamp(self, ko=None):
         h.koclamp(ko)
 
-    def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False,video=False):
+    def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False, video=False):
         ISI = 1 / freq * 1e3  # change to ms
         if Ko == None:
             Ko = self.Ko
@@ -208,8 +208,8 @@ class PAPModel(ResultsPAPModel):
                 if video:
                     self.makeVideo(
                         self.varMorph,
-                        stop=ISI*ms+currTime,
-                        interval=ISI/2/self.dt # sample at half ISI ms interval
+                        stop=ISI * ms + currTime,
+                        interval=ISI / 2 / self.dt,  # sample at half ISI ms interval
                     )
                 else:
                     h.continuerun(ISI * ms + currTime)
@@ -295,7 +295,7 @@ class PAPModel(ResultsPAPModel):
         h.stim.interval = 10 * ms
         h.stim.start = (self.initTstop + self.stimdelay) * ms  # Mutual Setup
 
-    def setTstop(self,tstop):
+    def setTstop(self, tstop):
         h.tstop = tstop
         self.tstop = tstop
 
@@ -314,7 +314,7 @@ class PAPModel(ResultsPAPModel):
             self.setK()
 
         # print('placing GluChannel')
-        # sys.stdout.flush()            
+        # sys.stdout.flush()
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
@@ -327,7 +327,9 @@ class PAPModel(ResultsPAPModel):
         # self.checkNetCons()
         if self.Glu:
             PAPGluT = [
-                s.syn() for s in list(h.ncGluList) if s.postseg().sec in self.flattenPAP()
+                s.syn()
+                for s in list(h.ncGluList)
+                if s.postseg().sec in self.flattenPAP()
             ]
             # print(PAPGluT)
             if len(PAPGluT) == 1:
@@ -498,7 +500,7 @@ class PAPModel(ResultsPAPModel):
                         os.path.join(
                             "../morphResults/", f"astrocyte_topology_{self.seed}.psf"
                         ),
-                        self.flattenPAP()
+                        self.flattenPAP(),
                     )
             else:
                 ps = h.PlotShape()
@@ -536,12 +538,11 @@ class PAPModel(ResultsPAPModel):
 
     def plotMorphParms(self):
         if self.readHoc:
-            h.plot_varMorph("diam","DiamMap.psf")
-            h.plot_varMorph("nseg","nsegMap.psf")
-
+            h.plot_varMorph("diam", "DiamMap.psf")
+            h.plot_varMorph("nseg", "nsegMap.psf")
 
     def morph(self, isolate=False, printTopology=False):
-        print('depracated')
+        print("depracated")
         # # Access the PAP object
         # if not hasattr(self, "PAP"):
         #     self.PAP = h.Section(name="PAP")
@@ -710,9 +711,11 @@ class PAPModel(ResultsPAPModel):
             self.iClSoma = h.Vector()
             self.iClSoma.record(self.soma(0.5)._ref_icl)
 
-            if hasattr(self,'GluTs'):
+            if hasattr(self, "GluTs"):
                 self.iGluTSoma = h.Vector()
-                somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][0]
+                somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][
+                    0
+                ]
                 self.iGluTSoma.record(somaGluT._ref_iGluT)
 
             self.ekSoma = h.Vector()
@@ -744,9 +747,7 @@ class PAPModel(ResultsPAPModel):
 
         else:
             # print(equiDistSec)
-            self.equiDistSec = self.getEquiDistSec(
-                list(self.getPath(self.PAP))
-            )
+            self.equiDistSec = self.getEquiDistSec(list(self.getPath(self.PAP)))
 
             for sec in self.equiDistSec:
                 self.branchAtten.append(h.Vector())
@@ -758,7 +759,7 @@ class PAPModel(ResultsPAPModel):
             self.tFile = h.File("tFile.dat")
             self.tFile.wopen("tFile.dat")
 
-    def getEquiDistSec(self,path,cutLen=10):
+    def getEquiDistSec(self, path, cutLen=10):
         totLen = h.distance(self.PAP(1), sec=self.soma)
         pathLenList = [totLen * i / cutLen for i in range(1, cutLen)]
         j = 0
@@ -809,7 +810,7 @@ class PAPModel(ResultsPAPModel):
                 h.setK(self.flattenPAP(), Ko, papk + Ko, 1)
                 self.KoPAP[-1] = papk + Ko
                 h.fcurrent()
-                h.fadvance() # change to 1 ms?
+                h.fadvance()  # change to 1 ms?
                 h.setK(self.flattenPAP(), 0, restKo, 0)
             if mode == "step":
                 h.continuerun(delay * ms + h.t)
@@ -821,62 +822,57 @@ class PAPModel(ResultsPAPModel):
                 h.setK(self.flattenPAP(), 0, restKo, 0)
             self.Ko = Ko
 
-    def LambdaEq(self,ra,rm,d):
-        return (rm * d  / ra / 4) ** 0.5  # um
+    def LambdaEq(self, ra, rm, d):
+        return (rm * d / ra / 4) ** 0.5  # um
 
-            
     def spaceConstant(self):
         # h.clampSwitch(4, self.voltageClamp)
         # h.run()
         self.initialize()
-        Rm_Rd = [(seg.sec.Ra,1/seg.sec.g_pas,seg.sec.diam) for seg in self.equiDistSec]
+        Rm_Rd = [
+            (seg.sec.Ra, 1 / seg.sec.g_pas, seg.sec.diam) for seg in self.equiDistSec
+        ]
         LambdaList = [self.LambdaEq(*vals) for vals in Rm_Rd]
-        LenList = [h.distance(self.soma(0.5),seg) for seg in self.equiDistSec]
+        LenList = [h.distance(self.soma(0.5), seg) for seg in self.equiDistSec]
         h.clampSwitch(4, self.voltageClamp)
         self.run()
         VList = [list(v)[-1] for v in self.branchAtten]
-        return LambdaList,VList,LenList
+        return LambdaList, VList, LenList
 
-    def getSecbyName(self,secname):
+    def getSecbyName(self, secname):
         for sec in h.allsec():
             if sec.hname() == secname:
                 return sec
         else:
             return None
-        
-    def measureRiAll(self,parallel=False):
+
+    def measureRiAll(self, parallel=False):
         if self.readHoc:
             if parallel:
                 if self.RiSec != None:
                     RiSec = self.getSecbyName(self.RiSec)
-                    RiSec.insert('inputRes')
+                    RiSec.insert("inputRes")
                     h.measure_input_resistance(sec=RiSec)
-                    self.RiDict = { str(RiSec):float(RiSec.Ri_inputRes)}
+                    self.RiDict = {str(RiSec): float(RiSec.Ri_inputRes)}
                     if len(self.RiDict) > 0:
                         self.saveRiDict()
             else:
                 h.getAllRi()
-                h.plot_varMorph("Ri","RiMap.psf")
+                h.plot_varMorph("Ri", "RiMap.psf")
 
-    def mapRi(self,sectionDict):
-        for k,v in sectionDict.items():
+    def mapRi(self, sectionDict):
+        for k, v in sectionDict.items():
             RiSec = self.getSecbyName(k)
-            RiSec.insert('inputRes')
+            RiSec.insert("inputRes")
             RiSec.Ri_inputRes = v
-        h.plot_varMorph("Ri_inputRes","RiMap.psf")
+        h.plot_varMorph("Ri_inputRes", "RiMap.psf")
 
     def saveRiDict(self):
-        for sName,v in self.RiDict.items():
+        for sName, v in self.RiDict.items():
             with open(
-                    os.path.join(
-                        "../results/paperRes",
-                        f"RiRes{sName}.json"
-                    ),
-                    "w"
+                os.path.join("../results/paperRes", f"RiRes{sName}.json"), "w"
             ) as ofile:
-                json.dump(self.RiDict,ofile)
-
-    
+                json.dump(self.RiDict, ofile)
 
     def getPAPK(self):
         if self.readHoc:

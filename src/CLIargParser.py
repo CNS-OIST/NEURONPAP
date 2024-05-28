@@ -158,7 +158,7 @@ def argParser(rangeInt=100):
         nargs=1,
         help="Used to set number of active PAPs in simulation. Default: 1",
     )  # end time arg
-    
+
     parser.add_argument(
         "--stimCount",
         type=int,
@@ -176,7 +176,6 @@ def argParser(rangeInt=100):
         help="Used when optimizing Vm",
     )
 
-    
     parser.add_argument(
         "--ek",
         type=int,
@@ -208,7 +207,7 @@ def argParser(rangeInt=100):
         dest="glustim",
         action="store_true",
         default=False,
-        help="Works with --kComp, --branch to turn on/off glutamate stim. (With option --stimGlu it is turned on."
+        help="Works with --kComp, --branch to turn on/off glutamate stim. (With option --stimGlu it is turned on.)",
     )
     parser.add_argument(
         "--stimK",
