@@ -1,7 +1,8 @@
 """
 Author: Joel Nakatani
 Overview:
-text stdio.
+text stdio. formatting.
+Just the way I like it.
 """
 
 import sys

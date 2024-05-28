@@ -1,3 +1,13 @@
+#########################################################
+# Zsh Script to run  all analyses in the paper          #
+#                                                       #
+# It should generate all figures utilized in the paper  #
+# as well as other additional plots.                    #
+# all results will be zipped in                         #
+# FullResults.zip                                       #
+#                                      by RJ Nakatani   #
+#########################################################
+
 np=`nproc`
 output=`date +'%m-%d-%H-%M'`out.log
 outputDir="../outlog/"
@@ -23,7 +33,7 @@ for i in `seq 0 9`;
                      python NEURONPAP.py --ekComp $i
             fi
             echo "Making videos and branch attenuation"
-            python NEURONPAP.py -v --ko $j $i
+            python NEURONPAP.py -v --stimCount 10 --ko $j $i
             python NEURONPAP.py -b --stimCount 10 --ko 10 $i
             python NEURONPAP.py -b --stimCount 10 --stimGlu --ko $j $i
         } >> $output
@@ -37,10 +47,11 @@ for i in `seq 0 9`;
 done
 
 seed=1
-for i in `seq 0 5`; do
-    mpiexec -n $np python NEURONPAP.py -c --stim --stimK --stimGlu --stimCount 10 --delay $i $seed
-done
+# for i in `seq 0 5`; do
+#     mpiexec -n $np python NEURONPAP.py -c --stim --stimK --stimGlu --stimCount 10 --delay $i $seed
+# done
 
+# change value 10 for more simultaneous activation
 for i in 10; do
     mpiexec -n $np python NEURONPAP.py -c --PAPCount $i --stimCount 10 $seed
 done

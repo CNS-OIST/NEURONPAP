@@ -1,7 +1,17 @@
 """
-To Do:
-[x] FInitializeHandler for setK
+Main file to call
+astrocyte.hoc
+and run simulation programming via
+experiments.py
 
+NEURONPAP.py reads command line using CLIargParser.py,
+executing desired experimental protocol.
+experiments.py runs the actual simulations,
+which calls astrocyte.py.
+astrocyte.py is the python wrapper for
+astrocyte.hoc
+
+by RJ Nakatani
 """
 
 from mpi4py import MPI

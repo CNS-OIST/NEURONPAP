@@ -1,3 +1,11 @@
+"""
+Class that manipulates channel densities.
+Any channel desired for manipulation must have a
+[channelname]Change method within GENEManipulation class.
+
+[channelname] should match the suffix of NEURON MODL
+"""
+
 from textSDIO import *
 
 

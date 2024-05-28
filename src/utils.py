@@ -1,3 +1,6 @@
+"""
+Library of conveninet utils such as parallizeFor
+"""
 import math
 from mpi4py import MPI
 import tqdm

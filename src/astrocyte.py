@@ -13,6 +13,7 @@ import math
 class PAPModel(ResultsPAPModel):
     tstop = 260 * ms
     v_init = -85 * mV
+    # parameters for three compartment model
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
     bWid = 3
@@ -110,9 +111,11 @@ class PAPModel(ResultsPAPModel):
 
         if self.readHoc:
             # subsitute
-            # [x] morphology
-            # [x] NMDA setting up
-            # [x] membrane properties
+            # morphology
+            # NMDA setting up
+            # membrane properties
+            # using the HOC astrocyte.hoc library instead of
+            # setting up within python 
             # print("read hoc")
 
             h.load_file("stdgui.hoc")
@@ -262,7 +265,9 @@ class PAPModel(ResultsPAPModel):
             if not hasattr(h, "slPAP"):
                 h.slPAP = self.flattenPAP()
             h("slPAP {setGluTs(slPAP)}")
+            # using 
             # h.setGluTs(self.flattenPAP())
+            # causes error
 
     def setGluTs(self):
         self.initGluTs()
@@ -436,6 +441,8 @@ class PAPModel(ResultsPAPModel):
 
     def getRMP(self):
         # decapreated
+        # just call self.RMP
+        print("function getRMP is decapreated")
         self.initialize()
         self.run()
         RMP = sum(list(self.vSoma)) / len(list(self.vSoma))
@@ -473,6 +480,7 @@ class PAPModel(ResultsPAPModel):
         return
 
     def flattenPAP(self):
+        # flatten self.PAPs to section list
         flattenPap = []
         for pap in self.PAPs:
             flattenPap += pap
@@ -509,6 +517,9 @@ class PAPModel(ResultsPAPModel):
                 ps.printfile(f"{fname}.psf")
 
     def cleanMorphology(self):
+        # Used for removing morphology
+        # use when morphology is built within
+        # python interface
         # print('cleaning')
 
         for sec in h.allsec():
@@ -522,6 +533,8 @@ class PAPModel(ResultsPAPModel):
 
     def astroMem(self, compartment):
         # add astrocyte properties
+        # used only when model constructed within
+        # python interface
         compartment.Ra = 100
         compartment.cm = 0.8
         compartment.insert("pas")
@@ -531,6 +544,8 @@ class PAPModel(ResultsPAPModel):
 
     def channels(self, compartment):
         # insert relevant channels
+        # used only when model constructed within
+        # python interface
         compartment.insert("kir2")
         compartment.insert("twik")
         compartment.insert("k_acc")
@@ -542,47 +557,51 @@ class PAPModel(ResultsPAPModel):
             h.plot_varMorph("nseg", "nsegMap.psf")
 
     def morph(self, isolate=False, printTopology=False):
-        print("depracated")
-        # # Access the PAP object
-        # if not hasattr(self, "PAP"):
-        #     self.PAP = h.Section(name="PAP")
-        #     self.astroMem(self.PAP)
+        print("function morph is depracated")
+        # Access the PAP object
+        if not hasattr(self, "PAP"):
+            self.PAP = h.Section(name="PAP")
+            self.astroMem(self.PAP)
 
-        # # Set astrocyte leaf membrane parameters
-        # self.PAP.L = 0.3
-        # self.PAP.diam = self.PAPWid
-        # self.PAP.nseg = 1
+        # Set astrocyte leaf membrane parameters
+        self.PAP.L = 0.3
+        self.PAP.diam = self.PAPWid
+        self.PAP.nseg = 1
 
-        # # h.psection(sec=self.PAP)
-        # if not isolate:
-        #     # create Soma
-        #     if not hasattr(self, "soma"):
-        #         self.soma = h.Section(name="soma")
-        #         self.astroMem(self.soma)
-        #     self.soma.diam = self.somaSize
-        #     self.soma.L = self.somaSize
-        #     # h.psection(sec=self.soma)
-        #     sl = h.SectionList()  # section shows up again bug
-        #     branchCount = len(
-        #         [branch for branch in self.branches if branch in list(sl)]
-        #     )
-        #     for i in range(self.bNum - branchCount):
-        #         # Create the branch (not included in the original hoc file)
-        #         self.branches.append(h.Section(name=f"branch{i}"))
-        #         self.branches[-1].L = self.bLen
-        #         self.branches[-1].diam = self.bWid
-        #         self.branches[-1].nseg = 10
-        #         self.astroMem(self.branches[-1])
-        #         # h.psection(sec=self.branches[-1])
+        # h.psection(sec=self.PAP)
+        if not isolate:
+            # create Soma
+            if not hasattr(self, "soma"):
+                self.soma = h.Section(name="soma")
+                self.astroMem(self.soma)
+            self.soma.diam = self.somaSize
+            self.soma.L = self.somaSize
+            # h.psection(sec=self.soma)
+            sl = h.SectionList()  # section shows up again bug
+            branchCount = len(
+                [branch for branch in self.branches if branch in list(sl)]
+            )
+            for i in range(self.bNum - branchCount):
+                # Create the branch (not included in the original hoc file)
+                self.branches.append(h.Section(name=f"branch{i}"))
+                self.branches[-1].L = self.bLen
+                self.branches[-1].diam = self.bWid
+                self.branches[-1].nseg = 10
+                self.astroMem(self.branches[-1])
+                # h.psection(sec=self.branches[-1])
 
-        #         # Connect
-        #         self.branches[-1].connect(self.soma(0.5))
-        #         if i == 0:
-        #             self.PAP.connect(self.branches[-1])
-        # if printTopology:
-        #     h.topology()
+                # Connect
+                self.branches[-1].connect(self.soma(0.5))
+                if i == 0:
+                    self.PAP.connect(self.branches[-1])
+        if printTopology:
+            h.topology()
 
     def readParameters(self, fDir="./results/optimize"):
+        # used only when model constructed within
+        # python interface and NMDAR parameters are read from file
+        # fails during parallel
+        
         self.readParms = True
         # Load optimization parameters
         lines = MPIReadlines(f"{fDir}/optT2.dat")
@@ -614,6 +633,7 @@ class PAPModel(ResultsPAPModel):
         return sNMDA
 
     def record(self, sNMDA=None, sGluT=None, toFile=False):
+        # Function recording each individual aspect of astrocyte variable
         h.frecord_init()
         # Save Stuff
         if sNMDA != None:
@@ -788,6 +808,7 @@ class PAPModel(ResultsPAPModel):
         return equiDistSec
 
     def getPath(self, section):
+        # get section list from PAP to soma
         currentSection = h.SectionRef(sec=section)
         sl = h.SectionList()
         while currentSection.has_parent():
@@ -879,7 +900,12 @@ class PAPModel(ResultsPAPModel):
             return h.getPAPK(self.PAP, sec=self.PAP)
 
     def printRec(self):
+        # used to write each recorded aspect into .dat file
         #  need to update to fit new record function
+        # fails under parallel
+        #
+        # Just call self.attr instead
+        
         if hasattr(self, "iNMDA"):
             self.iNMDA.printf(self.iFile)
             self.iFile.close()
