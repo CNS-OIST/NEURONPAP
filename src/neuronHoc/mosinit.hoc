@@ -1,3 +1,0 @@
-load_file("nrngui.hoc")
-load_file("Exp08-NaSpike-ExpSyn.hoc")
-
