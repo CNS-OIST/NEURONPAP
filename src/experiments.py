@@ -59,7 +59,10 @@ class plotFigures:
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
-        cells.setK(Ko=self.ko)
+        if self.stimCount > 1:
+            cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko,video=True)
+        else:
+            cells.setK(Ko=self.ko, delay=0)
         cells.run(video=True)
 
     def plotMorphProperties(self):
@@ -442,7 +445,7 @@ class plotFigures:
         if self.NMDAR:
             plt.xlabel("# of NMDAR Channel")
         elif self.GluT:
-            plt.xlabel("# of GluT Channel")
+            plt.xlabel("Multiple of estiamted GluT density")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
         plt.clim((0, 50))
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
@@ -1231,12 +1234,13 @@ class procedure(plotFigures):
                     label=f"iNMDAR",
                     color=self.returnColor("NMDAR"),
                 )
-                plt.plot(
-                    list(cell.time)[initStep:],
-                    list(cell.iGluT)[initStep:],
-                    label=f"iGluT",
-                    color=self.returnColor("GluT"),                    
-                )
+                if hasattr(cell,"iGluT"):
+                    plt.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iGluT)[initStep:],
+                        label=f"iGluT",
+                        color=self.returnColor("GluT"),                    
+                    )
                 plt.legend()
                 plt.xlabel("time (ms)")
                 plt.ylabel("current (pA)")
@@ -1250,19 +1254,19 @@ class procedure(plotFigures):
         plt.cla()
         plt.clf()
         plt.scatter(ekList, depList,color='black')
-        plt.ylabel("Relative Amplitude (mV)")
+        plt.ylabel("Membrane potential change (mV)")
         plt.xlabel("ek (mV)")
         plt.savefig(os.path.join("../results/paperRes", "ekDepolarcomp.pdf"))
 
         plt.cla()
         plt.clf()
         plt.scatter(koList, depList,color='black')
-        plt.ylabel("Relative Amplitude (mV)")
+        plt.ylabel("Membrane potential change (mV)")
         plt.xlabel("extracellular [K+] (mM)")
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
         print(koList)
 
-    def KOComp(self, papCount=10,koCond=4):
+    def KOComp(self, papCount=10,koCond=6):
         AllCells = []
         # single run
         for i in range(koCond):
@@ -1280,13 +1284,14 @@ class procedure(plotFigures):
                 self.NMDAR = True
                 if i == 1:
                     # Kir OE
-                    self.optKir = controlKir + 80
+                    self.optKir = controlKir * 1.4 # from experiment
+                    # self.dt *= 0.1
                     self.leak = controlLeak
-                    self.dt *= 0.1
                 else:
-                    self.leak = self.leak * 2
-                    self.optKir = controlKir - 80
+                    self.leak = 0
+                    self.optKir = 0 # from experiment
             else:
+                self.leak = controlLeak
                 self.dt = tmpdt
                 self.optKir = controlKir
                 if i == 3:
@@ -1339,7 +1344,7 @@ class procedure(plotFigures):
 
             comm.Barrier()
             if self.peakLen == None:
-                self.peakLen = 2.61
+                self.peakLen = 1.47
             else:
                 if rank==0:
                     print(self.peakLen)
@@ -1415,7 +1420,7 @@ class procedure(plotFigures):
                     self.tag += '_KOComp'
                     if cell.PAPLen > 0.3:
                         self.tag += f'spillover'
-                    self.plotIKSeries([[cell]],setyLim=[-7,1])
+                    self.plotIKSeries([[cell]],setyLim=[-7,3])
                     resMat[k][cell.seed] = max(cell.vPAP) - cell.RMP
 
             title = 'One-way ANOVA '
@@ -1429,9 +1434,13 @@ class procedure(plotFigures):
                 else:
                     title += f'constrained p-value:{pval:.2E}'
                     key = 'confined'
+                print(pval)
                 if pval < 0.05:
                     if pval < 0.01:
-                        pvalDict[key]='**'
+                        if pval < 0.001:
+                            pvalDict[key]='***'
+                        else:
+                            pvalDict[key]='**'
                     else:
                         pvalDict[key]='*'
                 else:
@@ -1445,7 +1454,7 @@ class procedure(plotFigures):
                 'confined':[],
                 'spillover':[]
             }
-            category = ["Control", "Kir OE", "Kir KD", "NMDAR KO", "GluT KO", "NMDAR KO\nGluT KO"]
+            category = ["Control", "Kir OE", "Kir Block", "NMDAR KO", "GluT KO", "NMDAR KO\nGluT KO"]
             category = category[:koCond]
             val_test = {}
             for i in range(len(resMat)):
@@ -1454,49 +1463,82 @@ class procedure(plotFigures):
                     val_test[category[i]] = ttest_rel(resMat[i],resMat[i+koCond])
                 else:
                     dict_key = 'spillover'
+                # if i > 0:
+                #     print(dict_key)
+                #     print(category[i-1],category[i])
+                #     print(ttest_rel(resMat[i-1],resMat[i]))
                     
                 val_means[dict_key].append(np.nanmean(resMat[i]))
                 val_sd[dict_key].append(np.nanstd(resMat[i]))
 
             width = 0.25
             multiplier = 0
-            x = np.arange(len(category))
-            fig, ax = plt.subplots(layout='constrained')
-            fig.suptitle(title)
-            color = ['orange','darkorange','gold','orange','orange','orange']
-            color = color[:koCond]
-            pattern = {'confined':'','spillover':'/'}
+            x = np.arange(int(len(category)-2))
+            pattern = {'confined':'','spillover':'/'}            
             for k,v in val_means.items():
                 offset = width * multiplier
-                rects = ax.bar(
+                rects = plt.bar(
                     x + offset,
-                    v,
+                    v[0:1]+v[3:],
                     width,
-                    yerr=val_sd[k],
-                    label=f'{k}|{pvalDict[k]} ',
-                    color=color,
+                    yerr=val_sd[k][0:1] + val_sd[k][3:],
+                    label=f'{k}',
                     hatch=pattern[k],
                     edgecolor = "black",
                 )
                 # ax.bar_label(rects,padding=3)
                 multiplier+=1
+            plt.xticks(x + width/len(val_means.keys()),category[0:1]+category[3:])
+            plt.legend()
+            plt.ylabel("Voltage (mV)")
+            plt.ylim(0,70)
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    'KO_GENE_Comparison.pdf',
+                )
+            )
+            plt.cla()
+            plt.clf()
+
+            fig, ax = plt.subplots(layout='constrained')
+            fig.suptitle(title)
+            color = ['orange','darkorange','gold','orange','orange','orange']
+            for k,v in val_means.items():
+                offset = width * multiplier
+                rects = ax.bar(
+                    x[:3] + offset,
+                    v[:3],
+                    width,
+                    yerr=val_sd[k][:3],
+                    label=f'{k}|{pvalDict[k]} ',
+                    color=color[:3],
+                    hatch=pattern[k],
+                    edgecolor = "black",
+                )
+                # ax.bar_label(rects,padding=3)
+                multiplier+=1
+                
 
             # get indexes
             iterations = np.concatenate((np.logspace(-0.5,1,num=19),np.array([self.PAPLen])))
             iterations = np.sort(iterations)
             controlIndex = np.where(self.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
-            maxIndex = np.where(self.peakLen == iterations)[0][0] # get index of PAPLen position in iterations
+            try:
+                maxIndex = np.where(self.peakLen == iterations)[0][0] # get index of PAPLen position in iterations
+            except IndexError:
+                maxIndex = (np.abs(iterations - self.peakLen)).argmin()
 
                 
             ax.axhline(
                 val_means['confined'][0],
                 linestyle='--', 
-                c=cm.BrBG(controlIndex/len(iterations))
+                c=cm.twilight(controlIndex/len(iterations))
            )
             ax.axhline(
                 val_means['spillover'][0],
                 linestyle='--',
-                c=cm.BrBG(maxIndex/len(iterations))            
+                c=cm.twilight(maxIndex/len(iterations))            
             )
 
             with open(
@@ -1512,7 +1554,7 @@ class procedure(plotFigures):
             #         index = category.index(k)
             ax.set_ylabel("Voltage (mV)")
             ax.set_ylim(0,70)
-            ax.set_xticks(x+ width/len(val_means.keys()),category)
+            ax.set_xticks(x[:3]+ 2*width/len(val_means.keys()),category[:3])
             ax.legend(loc='upper left', ncols = 2)
             plt.savefig(
                 os.path.join(
@@ -1767,7 +1809,7 @@ class procedure(plotFigures):
                 for cell in cells:
                     i = np.where(cell.PAPLen == iterations)[0][0] # get index of PAPLen position in iterations
                     cindex = i/len(iterations)
-                    color = cm.BrBG(cindex)
+                    color = cm.twilight(cindex)
                     initStep = int((cell.initTstop - 10) / cell.dt)
                     plt.plot(
                         list(cell.time)[initStep:],
@@ -1794,11 +1836,12 @@ class procedure(plotFigures):
             vList = [np.nansum(vListarray[i])/sampleNum for i in range(len(vListarray))]
             vstdList = [np.nanstd(vListarray[i]) for i in range(len(vListarray))]
             fig, ax = plt.subplots()
+            maxY = 65
             ax.errorbar(iterations, vList, yerr=vstdList, ecolor='black', elinewidth=0.5, capsize=5,ls='none')
             ax.scatter(
                 iterations,
                 vList,
-                cmap='BrBG',
+                cmap='twilight',
                 c=[i/len(iterations) for i in range(len(iterations))]
             )
             # plot control as diamond            
@@ -1806,29 +1849,48 @@ class procedure(plotFigures):
                 ax.scatter(
                     self.PAPLen,
                     controlV,
-                    color=cm.BrBG(controlIndex/len(iterations)),
+                    color=cm.twilight(controlIndex/len(iterations)),
                     marker='D',
                     label='Confined',
                     zorder=10,
                 )
+                # ax.axvline(
+                #     self.PAPLen,
+                #     ymax=controlV/top,
+                #     linestyle='--',
+                #     color=cm.twilight(controlIndex/len(iterations)),
+                #     zorder=-1,
+                # )
             maxIndex = vList.index(max(vList))
+            self.peakLen = iterations[maxIndex]
             ax.scatter(
                 iterations[maxIndex],
                 vList[maxIndex],
-                color=cm.BrBG(maxIndex/len(iterations)),
+                color=cm.twilight(maxIndex/len(iterations)),
                 marker='D',
                 label='Spillover',
                 zorder=11,
             )
+            ax.axvline(
+                self.peakLen,
+                ymax=vList[maxIndex]/maxY,
+                linestyle='--',
+                color=cm.twilight(maxIndex/len(iterations)),
+                zorder=-2,
+            )
+            ax.text(
+                self.peakLen + 0.1,
+                0.1*maxY,
+                f'{self.peakLen:.2f} um'
+            )
             ax.legend()
-            ax.set_ylim((0,65))
+            ax.set_ylim((0,maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
             ax.set_xlabel('Affected PAP length (um)')
             ax.set_ylabel('Peak Voltage (mV)')
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf")
             )
-            self.peakLen = iterations[int(np.argmax(vList))]
             cellList = [[[cell]] for cells in results for cell in cells if cell.PAPLen in [self.PAPLen,10,self.peakLen]]
             for cell in cellList:
                 self.tag = self.tag.split('_PAPLen')[0]

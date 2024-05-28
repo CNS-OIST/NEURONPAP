@@ -7,6 +7,7 @@ from geneManip import GENExpression
 import matplotlib.pyplot as plt
 import plotly
 import json
+import math
 
 
 class PAPModel(ResultsPAPModel):
@@ -99,9 +100,10 @@ class PAPModel(ResultsPAPModel):
         self.PAPWid = PAPWid
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
-        if PAPLen > 0.3:
-            self.multiple = int(PAPLen/0.3 * multiple) # Maintain density
         self.PAPLen = PAPLen
+        if PAPLen > 0.3:
+            self.multiple = int(self.multiple * (math.pi*(1-math.e**(1-PAPLen/0.3))+1))
+            # Density decreases in gaussian manner with units of PAPLen
         self.RiSec = str(RiSec)
 
         if self.readHoc:
@@ -188,7 +190,7 @@ class PAPModel(ResultsPAPModel):
     def koClamp(self, ko=None):
         h.koclamp(ko)
 
-    def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False):
+    def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False,video=False):
         ISI = 1 / freq * 1e3  # change to ms
         if Ko == None:
             Ko = self.Ko
@@ -203,7 +205,14 @@ class PAPModel(ResultsPAPModel):
             for i in range(number):
                 currTime = h.t
                 self.setK(Ko=Ko)
-                h.continuerun(ISI * ms + currTime)
+                if video:
+                    self.makeVideo(
+                        self.varMorph,
+                        stop=ISI*ms+currTime,
+                        interval=ISI/2/self.dt # sample at half ISI ms interval
+                    )
+                else:
+                    h.continuerun(ISI * ms + currTime)
 
     def setkin(self, kin):
         if self.readHoc:
@@ -233,7 +242,7 @@ class PAPModel(ResultsPAPModel):
             # sys.stdout.flush()
             self.NCs += list(h.ncNMDAList)
             for i, sNMDA in enumerate(self.NMDAs):
-                if self.Glu:
+                if self.Glu and self.multiple != 0:
                     # distribute the total num of NMDA equally among all patches with remainder clustered at tip
                     totNMDA = len(self.NMDAs)
                     if i > (totNMDA - self.multiple % totNMDA):

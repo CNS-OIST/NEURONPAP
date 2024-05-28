@@ -382,7 +382,7 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     if (strcmp($s1,"v")==0){
         ps.scale(-80,-60)
     } else if (strcmp($s1,"ko")==0) {
-        ps.scale(0,10)
+        ps.scale(3.5,5)
     } else if (strcmp($s1,"Ri_inputRes")==0) {
         ps.scale(0,1500)
     } else if (strcmp($s1,"diam")==0) {
@@ -439,7 +439,7 @@ proc plotPAP_varMorph() {local size localobj rando, sref,slPAP,ps
     if (strcmp($s1,"v")==0){
         ps.scale(-80,-60)
     } else if (strcmp($s1,"ko")==0) {
-        ps.scale(0,10)
+        ps.scale(3.5,5)
     }
     soma sref = new SectionRef()
     // $o3.printnames()
