@@ -1501,6 +1501,7 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
 
+            multiplier = 0
             fig, ax = plt.subplots(layout='constrained')
             fig.suptitle(title)
             color = ['orange','darkorange','gold','orange','orange','orange']
@@ -1554,7 +1555,7 @@ class procedure(plotFigures):
             #         index = category.index(k)
             ax.set_ylabel("Voltage (mV)")
             ax.set_ylim(0,70)
-            ax.set_xticks(x[:3]+ 2*width/len(val_means.keys()),category[:3])
+            ax.set_xticks(x[:3]+ width/len(val_means.keys()),category[:3])
             ax.legend(loc='upper left', ncols = 2)
             plt.savefig(
                 os.path.join(
