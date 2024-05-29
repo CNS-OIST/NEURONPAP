@@ -1,3 +1,8 @@
+//
+//Morphology created by savtchenko et al is the paper
+// - Savtchenko LP, Bard L, Jensen TP, Reynolds JP, Kraev I, Medvedev N, Stewart MG, Henneberger C, Rusakov DA (2018) Disentangling astroglial physiology with a realistic cell model in silico. [Nat Commun](http://dx.doi.org/10.1038/s41467-018-05896-w) 9:3554 [ModelDB](https://senselab.med.yale.edu/ModelDB/ShowModel?model=243508#tabs-1)
+// Containing nanoscopic structures of the PAP as well as the main structure of the astrocyte
+//
 proc celldef() {
   topol()
 }

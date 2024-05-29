@@ -68,7 +68,7 @@ class PAPModel(ResultsPAPModel):
         from neuron import h
 
         h.load_file("stdgui.hoc")
-        h.load_file("./neuronHoc/params.hoc")
+        # h.load_file("./neuronHoc/params.hoc")
         # print('loaded files')
         # sys.stdout.flush()
 
