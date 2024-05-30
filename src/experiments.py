@@ -33,7 +33,14 @@ class plotFigures:
         "Na": "gold",
         "Cl": "chocolate",
     }
-
+    def saveSourceData(self,dataDict):
+        with open(
+                os.path.join("../results/paperRes", f"SourceData{self.tag}"),
+                "w",
+        ) as ofile:
+            json.dump(dataDict, ofile)
+        
+        
     def returnColor(self, key):
         for typeName in self.colorDict.keys():
             if typeName in key:
@@ -393,7 +400,7 @@ class plotFigures:
         if self.NMDAR:
             plt.xlabel("# of NMDAR Channel")
         elif self.GluT:
-            plt.xlabel("Multiple of estiamted GluT density")
+            plt.xlabel("Multiple of estimated GluT density")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
         plt.clim((0, 50))
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
@@ -1533,7 +1540,9 @@ class procedure(plotFigures):
                 initStep = results.initTstop - 50
                 plt.xlim((initStep, 500))
                 plt.legend()
-                plt.savefig("Experimental Overlay.pdf")
+                plt.xlabel("Time (ms)")
+                plt.ylabel("Voltage Change (mV)")
+                plt.savefig(os.path.join("../results/paperRes", "Experimental Overlay.pdf"))
 
             # plt.plot(list(cells.time),list(cells.GluTGlu))
             # plt.savefig('GlutamateTimecourse.pdf')

@@ -17,7 +17,6 @@ class ResultsPAPModel:
         "GluTs",
         "NCs",
         "GENEobj",
-        "branchAtten",
         "equiDistSec",
     ]
     memcurrents = [

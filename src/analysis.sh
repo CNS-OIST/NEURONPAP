@@ -69,6 +69,7 @@ for i in `seq 0 9`; do # for ten random PAPs
         echo "Running KO experiments" >> $output
         mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 $i 
         mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 $i
+        mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 $i
     done
     echo "Running K comparison experiments" >> $output
     mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i #Fig 1f
