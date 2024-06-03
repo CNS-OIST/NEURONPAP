@@ -1518,6 +1518,8 @@ class procedure(plotFigures):
             AllCells.append([cells])
         if rank == 0:
             self.plotIKSeries(AllCells)
+            results = AllCells[0][0]
+            # print(max(list(results.vPAP)))
             if expOverlay:
                 results = AllCells[0][0]
                 plt.plot(
@@ -1541,7 +1543,7 @@ class procedure(plotFigures):
                 plt.xlim((initStep, 500))
                 plt.legend()
                 plt.xlabel("Time (ms)")
-                plt.ylabel("Voltage Change (mV)")
+                plt.ylabel("Membrane potential change (mV)")
                 plt.savefig(os.path.join("../results/paperRes", "Experimental Overlay.pdf"))
 
             # plt.plot(list(cells.time),list(cells.GluTGlu))
