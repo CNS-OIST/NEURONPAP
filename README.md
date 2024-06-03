@@ -121,11 +121,6 @@ options:
         - textSDIO.py
           print message formatter  
     
-    - results  
-      Results for figures  
-    - morphResults  
-      Results for Morphology  
-
 # Requirements
 The model uses NEURON ver 8.2 and python 3.10.
 Please install,
