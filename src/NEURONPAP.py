@@ -124,6 +124,15 @@ def callExperimentMode(**kwargs):
             bounds=[(0, None), (0, None)],
         )
         print(res)
+        
+    if "expRMP" in kwargs.keys() and kwargs["expRMP"]:
+        res = minimize(
+            exp.optRMPSearch,
+            (100),
+            method="Nelder-Mead",
+            bounds=[(0, None)],
+        )
+        print(res)
 
 
 if __name__ == "__main__" or parallel:

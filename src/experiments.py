@@ -396,9 +396,9 @@ class plotFigures:
             range(int(self.KirMax / self.KirStep) + 1),
             np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
         )
-        plt.ylabel("# of Kir Channel")
+        plt.ylabel("# of Kir Channels")
         if self.NMDAR:
-            plt.xlabel("# of NMDAR Channel")
+            plt.xlabel("# of NMDAR Channels")
         elif self.GluT:
             plt.xlabel("Multiple of estimated GluT density")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
@@ -436,11 +436,11 @@ class plotFigures:
             range(int(self.KirMax / self.KirStep) + 1),
             np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
         )
-        plt.ylabel("Kir Channel")
+        plt.ylabel("# of Kir Channels")
         if self.NMDAR:
-            plt.xlabel("NMDAR Channel")
+            plt.xlabel("# of NMDAR Channels")
         elif self.GluT:
-            plt.xlabel("GluT Channel")
+            plt.xlabel("# of GluT Channels")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(-100, -60, 10), extend="max")
         plt.clim((-100, -60))
         plt.savefig(os.path.join("../results/paperRes", f"FullRMP{tag}.pdf"))
@@ -478,11 +478,11 @@ class plotFigures:
             range(int(self.KirMax / self.KirStep) + 1),
             np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
         )
-        plt.ylabel("# of Kir Channel")
+        plt.ylabel("# of Kir Channels")
         if self.NMDAR:
-            plt.xlabel("# of NMDAR Channel")
+            plt.xlabel("# of NMDAR Channels")
         elif self.GluT:
-            plt.xlabel("GluT Channel")
+            plt.xlabel("GluT Channels")
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 1), extend="max")
         plt.clim((0, 10))
 
@@ -985,7 +985,7 @@ class procedure(plotFigures):
                 iterations = comm.bcast(
                     [
                         (kircount, conc)
-                        for conc in np.append(np.array(0), np.logspace(-2, 1, 9))
+                        for conc in np.array([0,0.5,1.0,5.0,10.0])
                     ],
                     root=0,
                 )
@@ -1032,11 +1032,18 @@ class procedure(plotFigures):
                         for i, cell in enumerate(results):
                             cell = cell[j]
                             initStep = int(cell.initTstop / cell.dt) - 200
+                            if cell.Ko == 0.5:
+                                color = 'r'
+                                z = len(results) + 1
+                            else:
+                                color = cm.summer(i / len(results))
+                                z = i
                             plt.plot(
                                 list(cell.KoPAP)[initStep:],
                                 list(cell.vPAP)[initStep:],
                                 label=f"{cell.Ko:.3f}",
-                                color=cm.summer(i / len(results)),
+                                color=color,
+                                zorder=z,
                             )
                             if i == len(results) - 1:
                                 x = np.linspace(
@@ -1199,11 +1206,13 @@ class procedure(plotFigures):
                 self.NMDAR = True
                 if i == 1:
                     # Kir OE
-                    self.optKir = controlKir * 1.4  # from experiment
-                    # self.dt *= 0.1
+                    self.optKir = controlKir * 6.0  # from experiment
+                    self.dt *= 0.1
                     self.leak = controlLeak
                 else:
-                    self.leak = 0
+                    self.leak = 8455
+                    # match findings of Djukic et al. (2007) of -76.3 mV
+                    self.dt = tmpdt
                     self.optKir = 0  # from experiment
             else:
                 self.leak = controlLeak
@@ -1235,6 +1244,14 @@ class procedure(plotFigures):
                     "dt": self.dt,
                 }
             )
+            if i == 2:
+                # nonspecific K+ block
+                # funcArgs[-1]['twik'] = 0
+                # funcArgs[-1]['kleak'] = 0
+                kblock = True 
+            else:
+                kblock = False
+                
             if self.NMDAR:
                 funcArgs[-1]["multiple"] = self.optNMDAR
             else:
@@ -1257,17 +1274,17 @@ class procedure(plotFigures):
             callArgs = [[]]
             if self.KStim and self.stimCount == 1:
                 callMethods[0] += ["initialize", "setK", "run"]
-                callArgs[0] += [{}, {"Ko": self.ko}, {}]
+                callArgs[0] += [{"kblock":kblock}, {"Ko": self.ko}, {}]
             elif self.stimCount > 1:
                 callMethods[0] += ["initialize", "multiSpike", "run"]
                 callArgs[0] += [
-                    {},
+                    {"kblock":kblock},
                     {"number": self.stimCount, "Ko": self.ko, "freq": self.freq},
                     {},
                 ]
             else:
                 callMethods[0] += ["initialize", "run"]
-                callArgs[0] += [{}, {}]
+                callArgs[0] += [{"kblock":kblock}, {}]
 
             results = parallizeFor(
                 iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs
@@ -1293,13 +1310,15 @@ class procedure(plotFigures):
                                 k = 4
                                 self.addChannelTag()
                         elif cell.GENEDict["kir2"] > controlKir:
-                            # GluT and NMDAR WT
+                            # Kir OE
                             k = 1
                             self.addChannelTag()
                         else:
-                            # GluT KO and NMDAR WT
+                            # Kir inhibition
                             self.addChannelTag()
                             k = 2
+                            plt.plot(cell.time,cell.vPAP)
+                            plt.savefig('KO changes.pdf')
                     else:
                         # NMDAR KO
                         if "GluTrans" in cell.GENEDict.keys():
@@ -1321,7 +1340,7 @@ class procedure(plotFigures):
                     self.tag += "_KOComp"
                     if cell.PAPLen > 0.3:
                         self.tag += f"spillover"
-                    self.plotIKSeries([[cell]], setyLim=[-7, 3])
+                    self.plotIKSeries([[cell]], setyLim=[-7, 7])
                     resMat[k][cell.seed] = max(cell.vPAP) - cell.RMP
 
             title = "One-way ANOVA "
@@ -1367,10 +1386,11 @@ class procedure(plotFigures):
                     val_test[category[i]] = ttest_rel(resMat[i], resMat[i + koCond])
                 else:
                     dict_key = "spillover"
-                # if i > 0:
-                #     print(dict_key)
-                #     print(category[i-1],category[i])
-                #     print(ttest_rel(resMat[i-1],resMat[i]))
+                if i in [0]:
+                    for cond in [1,2]:
+                        print(dict_key)
+                        print(category[i],category[i+cond])
+                        print(ttest_rel(resMat[i],resMat[i+cond]))
 
                 val_means[dict_key].append(np.nanmean(resMat[i]))
                 val_sd[dict_key].append(np.nanstd(resMat[i]))
@@ -1378,7 +1398,7 @@ class procedure(plotFigures):
             width = 0.25
             multiplier = 0
             x = np.arange(int(len(category) - 2))
-            pattern = {"confined": "", "spillover": "/"}
+            pattern = {"confined": "", "spillover": "|"}
             for k, v in val_means.items():
                 offset = width * multiplier
                 rects = plt.bar(
@@ -1468,6 +1488,50 @@ class procedure(plotFigures):
                 )
             )
 
+    def uptakeRatio(self):
+        # add multispike ek clamp
+        self.addChannelTag()
+        # print(self.tag)
+        AllCells = []
+        # single run
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "Glu": False,
+                "kir2": self.optKir,
+                "clleak": self.leak,
+                "naleak": self.leak,
+                "dt": self.dt,
+                "seed": self.seed,
+            }
+        )
+        if self.NMDAR:
+            funcArgs[-1]["multiple"] = self.optNMDAR
+        else:
+            funcArgs[-1]["multiple"] = 0
+        if self.GluT:
+            funcArgs[-1]["GluTrans"] = self.optGluT
+
+        cells = PAPModel(**funcArgs[-1])
+        cells.setTstop(500)
+        cells.initialize()
+        cells.setK(Ko=43, delay=0,dur=10)
+        cells.run()
+        cells = cells.copyAttr()
+        initStep = int((cells.initTstop + 10) / cells.dt) + 1
+        flux = np.array(list(cells.flux)[initStep:]) * -1
+        kbath = np.array(list(cells.kbath)[initStep:]) * -1
+        plt.plot(list(cells.time)[initStep:],np.divide(flux,kbath))
+        plt.xlabel('time (ms)')
+        plt.ylabel('Ratio of\ninflux / diffusion\nfor potassium')
+        plt.savefig('fluxRatioOvertime.pdf')
+        
+
+            
     def singleRun(self, expOverlay=True):
         # add multispike ek clamp
         self.addChannelTag()
@@ -1727,7 +1791,7 @@ class procedure(plotFigures):
             ]  # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex]) / sampleNum
             plt.xlabel("time (ms)")
-            plt.ylabel("Voltage Change (mV)")
+            plt.ylabel("Membrane Potential Change (mV)")
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
             )
@@ -1785,7 +1849,6 @@ class procedure(plotFigures):
                 iterations[maxIndex],
                 vList[maxIndex],
                 color=cm.twilight(maxIndex / len(iterations)),
-                marker="D",
                 label="Spillover",
                 zorder=11,
             )
@@ -1816,7 +1879,7 @@ class procedure(plotFigures):
             for cell in cellList:
                 self.tag = self.tag.split("_PAPLen")[0]
                 self.tag += f"_PAPLen{cell[0][0].PAPLen}"
-                self.plotIKSeries(cell)
+                self.plotIKSeries(cell,setyLim=[-6,2])
 
     def potassiumComparison(self):
         self.addChannelTag()
@@ -1901,7 +1964,7 @@ class procedure(plotFigures):
                 range(int(self.KirMax / self.KirStep) + 1),
                 np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
             )
-            plt.ylabel("# of Kir Channel")
+            plt.ylabel("# of Kir Channels")
             plt.xlabel("extracellular [K] (mM)")
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
@@ -2006,7 +2069,7 @@ class procedure(plotFigures):
                 "seed": self.seed,
                 "multiple": self.optNMDAR,
                 "GluTrans": self.optGluT,
-            }
+           }
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
@@ -2014,3 +2077,35 @@ class procedure(plotFigures):
         print(x)
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
+
+    def optRMPSearch(self, x, optmV=-76.3):
+        # x = leak value
+        x = int(x)
+        # add multispike ek clamp
+        self.addChannelTag()
+        # print(self.tag)
+        AllCells = []
+        # single run
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "kir2": 0,
+                "clleak": x,
+                "naleak": x,
+                "dt": self.dt,
+                "seed": self.seed,
+                "Glu":False,
+                "multiple": 0,
+                "GluTrans": 0,
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize()
+        print(x)
+        print(abs(cells.RMP - optmV))
+        return abs(cells.RMP - optmV)
+    

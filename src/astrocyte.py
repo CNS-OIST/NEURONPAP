@@ -12,7 +12,6 @@ import math
 
 class PAPModel(ResultsPAPModel):
     tstop = 260 * ms
-    v_init = -85 * mV
     # parameters for three compartment model
     somaSize = 10  # Soma Size
     bLen = 30  # Branch Size
@@ -62,6 +61,7 @@ class PAPModel(ResultsPAPModel):
         PAPCount=1,
         PAPLen=0.3,
         RiSec=None,
+        v_init = -85,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -78,6 +78,7 @@ class PAPModel(ResultsPAPModel):
 
         h.dt = self.dt
         h.tstop = self.tstop
+        self.v_init = v_init * mV
         h.v_init = self.v_init
 
         # print('set sim parms')
@@ -155,7 +156,13 @@ class PAPModel(ResultsPAPModel):
             for sec in self.flattenPAP():
                 self.PAParea += h.area(0.5, sec=sec) * sec.nseg
             self.PAParea /= len(self.PAPs)
+            # print(self.PAParea)
             self.somaArea = h.area(0.5, sec=self.soma)
+
+            # self.allarea = 0
+            # for sec in h.allsec():
+            #     self.allarea += h.area(0.5, sec=sec) * sec.nseg
+            # print(self.allarea)
 
         else:
             # set K parms
@@ -311,7 +318,7 @@ class PAPModel(ResultsPAPModel):
             print(nc.weight[0])
             print(nc.syn())
 
-    def initialize(self, saveState=False, video=False):
+    def initialize(self, saveState=False, video=False,kblock=False):
         # print('initializing')
         # sys.stdout.flush()
         if not self.readHoc:
@@ -364,6 +371,9 @@ class PAPModel(ResultsPAPModel):
             s.save()
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
+
+        if kblock:
+            h.kbath_off()
 
     def run(self, printRes=False, video=False, koclamp=None):
         # print('running')
@@ -672,6 +682,12 @@ class PAPModel(ResultsPAPModel):
         self.ekPAP = h.Vector()
         self.ekPAP.record(self.PAP(0.5)._ref_ek)
 
+        self.flux = h.Vector()
+        self.flux.record(self.PAP(0.5)._ref_flux_k_acc)
+
+        self.kbath = h.Vector()
+        self.kbath.record(self.PAP(0.5)._ref_kbath_k_acc)
+
         if hasattr(self.PAP(0.5), "_ref_ena"):
             self.enaPAP = h.Vector()
             self.enaPAP.record(self.PAP(0.5)._ref_ena)
@@ -815,6 +831,7 @@ class PAPModel(ResultsPAPModel):
             sl.append(currentSection.sec)
             currentSection = h.SectionRef(sec=currentSection.parent)
         return sl
+    
 
     def setK(self, Ko=None, restKo=2.5, mode="step", dur=0.5, delay=0):
         if Ko == None:

@@ -484,3 +484,9 @@ proc getAllRi() {localobj all_sections
         measure_input_resistance()
     }
 }
+
+proc kbath_off() {
+    forall {
+        tauk_k_acc = exp(700) // esenntially infinite kclearence (Never clears)
+    }
+}

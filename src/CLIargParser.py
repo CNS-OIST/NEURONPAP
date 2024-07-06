@@ -177,6 +177,14 @@ def argParser(rangeInt=100):
     )
 
     parser.add_argument(
+        "--ExpRMP",
+        action="store_true",
+        default=False,
+        dest="expRMP",
+        help="Used when optimizing RMP",
+    )
+
+    parser.add_argument(
         "--ek",
         type=int,
         dest="ek",

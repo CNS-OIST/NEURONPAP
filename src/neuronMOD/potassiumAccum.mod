@@ -13,7 +13,7 @@ ENDCOMMENT
 NEURON {
 	SUFFIX k_acc
 	USEION k READ ko, ik WRITE ko
-        RANGE tauk, ko0, flag
+        RANGE tauk, ko0, flag, kbath, flux
 	THREADSAFE
 }
 
@@ -35,6 +35,7 @@ PARAMETER {
 ASSIGNED {
     ik 	(mA/cm2)
     kbath (mM/ms)
+    flux (mM/ms)
     dt (ms)
 }
 
@@ -57,12 +58,14 @@ BREAKPOINT {
         : if (ko0 > 2.5){
         :     printf("%g\n",ko0)
     : }
-    ko' = (1e8)*ik /(fhspace*F) + kbath
+    ko' = flux + kbath
+    : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
 }
 PROCEDURE kbathRate(){
     UNITSOFF
+    flux = (1e8)*ik /(fhspace*F) 
     if (flag > 1){
-        kbath = - (1e8)*ik / (fhspace*F)
+        kbath = -1 * flux
         ko = ko0
         } else if (flag > 0){
             kbath = (ko0-ko) 
