@@ -2,7 +2,7 @@
 ## Active enhancement of synapse driven depolarization of perisynaptic astrocytic processes
 - Ryo J. Nakatani(ryo.nakatani@oist.jp)
 
-Last Modified: Wed, 29 May 14:21:54 JST 2024
+Last Modified: Fri, 19 Jul 15:19:54 JST 2024
 
 # introduction
 Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs) 
