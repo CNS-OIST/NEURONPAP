@@ -69,6 +69,21 @@ def argParser(rangeInt=100):
         help="Used to run simulations for various channel counts",
     )
     parser.add_argument(
+        "--freqComp",
+        dest="freqComp",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for various frequency counts",
+    )
+    parser.add_argument(
+        "-l",
+        "--length",
+        dest="length",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for various length",
+    )
+    parser.add_argument(
         "--spillOver",
         dest="spill",
         action="store_true",
@@ -169,11 +184,27 @@ def argParser(rangeInt=100):
     )  # end time arg
 
     parser.add_argument(
+        "--freq",
+        type=int,
+        dest="freq",
+        default=100,
+        nargs=1,
+        help="Used to set the frequency in Hz"
+    )  # end time arg
+    
+    parser.add_argument(
+        "--optVm",
+        action="store_true",
+        default=False,
+        dest="optVm",
+        help="Used when optimizing Vm",
+    )
+    parser.add_argument(
         "--ExpVm",
         action="store_true",
         default=False,
         dest="expVm",
-        help="Used when optimizing Vm",
+        help="Used when optimizing Vm to experimental values",
     )
 
     parser.add_argument(
@@ -238,6 +269,14 @@ def argParser(rangeInt=100):
         dest="nmdar",
         default=1,
         help="Used to set NMDAR; 1 True; 0 False",
+    )
+    
+    parser.add_argument(
+        "--OE",
+        type=int,
+        dest="overexpress",
+        default=0,
+        help="Used to set overexpression; 1 True; 0 False",
     )
 
     parser.add_argument(

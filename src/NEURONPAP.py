@@ -33,7 +33,9 @@ def callExperimentMode(**kwargs):
     exp.GluT = bool(kwargs["glut"])
     exp.PAPCount = kwargs["papcount"]
     exp.stimCount = kwargs["stimcount"]
+    exp.freq = kwargs["freq"]
     exp.ek = kwargs["ek"]
+    exp.OE = bool(kwargs["overexpress"])
 
     if "spill" in kwargs.keys() and kwargs["spill"]:
         exp.PAPLen = 2
@@ -49,7 +51,11 @@ def callExperimentMode(**kwargs):
     if "chan" in kwargs.keys() and kwargs["chan"]:
         # multiChannelEffects
         exp.multiChannel()
-
+        
+    if "freqComp" in kwargs.keys() and kwargs["freqComp"]:
+        # multiChannelEffects
+        exp.freqComparison()
+        
     if "Ri" in kwargs.keys() and kwargs["Ri"]:
         # Optimal Ri
         # Soma 2.5836550239043317 MOhm
@@ -67,6 +73,10 @@ def callExperimentMode(**kwargs):
     if "channel" in kwargs.keys() and kwargs["channel"]:
         # Plot for various channel counts
         exp.channelComparison()
+
+    if "length" in kwargs.keys() and kwargs["length"]:
+        # Plot for various length
+        exp.compareLen()
 
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
@@ -108,21 +118,31 @@ def callExperimentMode(**kwargs):
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
 
-    if "expVm" in kwargs.keys() and kwargs["expVm"]:
-        # print(
-        #     minimize(
-        #         exp.optDepolarizationSearch,
-        #         (43),
-        #         method="Nelder-Mead",
-        #         bounds=[(0, None)]
-        #     )
-        # )
-        res = minimize(
-            exp.optSpikeSearch,
-            (10000, 96),
-            method="Nelder-Mead",
-            bounds=[(0, None), (0, None)],
+    if "optVm" in kwargs.keys() and kwargs["optVm"]:
+        print(
+            minimize(
+                exp.optDepolarizationSearch,
+                (5),
+                method="Nelder-Mead",
+                bounds=[(0, None)]
+            )
         )
+
+    if "expVm" in kwargs.keys() and kwargs["expVm"]:
+        print(
+            minimize(
+                exp.optPotassiumSearch,
+                (10),
+                method="Nelder-Mead",
+                bounds=[(0, None)]
+            )
+        )
+        # res = minimize(
+        #     exp.optSpikeSearch,
+        #     (10000, 96),
+        #     method="Nelder-Mead",
+        #     bounds=[(0, None), (0, None)],
+        # )
         print(res)
         
     if "expRMP" in kwargs.keys() and kwargs["expRMP"]:

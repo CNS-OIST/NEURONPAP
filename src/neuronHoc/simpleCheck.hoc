@@ -1,0 +1,104 @@
+tstop = 500
+create soma
+access soma
+Ra = 100
+cm = 0.8
+insert pas
+e_pas = -85
+g_pas = 1 / 11150
+celsius = 25
+insert k_acc
+ko = 5
+ki = 130
+insert na_acc
+nao = 140
+nai = 15
+// inserting NMDARs
+objref sNMDA, NMDAs, stim, nc, ncNMDAList
+
+NMDAs = new List()
+ncNMDAList = new List()
+
+stim = new NetStim(.5)
+stim.interval = 1
+stim.number = 1
+stim.start = 0
+stim.noise = 0
+
+// slPAP.printnames()
+// print(lenPAP)
+proc setNMDAs(){local lenPAP
+    lenPAP = 0
+    // $o1.printnames()
+    forsec $o1 {
+        sNMDA = new Exp5NMDA(0.5)
+        // sNMDA = new SimpleNMDA(0.5)
+        NMDAs.append(sNMDA)
+        nc = new NetCon(stim,NMDAs.o(lenPAP))
+        ncNMDAList.append(nc)
+        lenPAP = lenPAP + 1
+    }
+}
+
+proc fINITNMDA(){
+    for i = 0, ncNMDAList.count - 1 {
+        ncNMDAList.o(i).weight = 1
+        ncNMDAList.o(i).delay = 0
+        // print(nc.weight)
+    }
+}
+objref FinNMDA
+FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
+
+objref sGluT, GluTs,ncGluList
+
+GluTs = new List()
+ncGluList = new List()
+
+proc setGluTs(){local lenPAP localobj sref
+    // $o1.printnames()
+    lenGluTs = 0
+    forall {
+        sGluT = new GluTrans(0.5)
+        GluTs.append(sGluT)
+        ifsec $o1 {
+            // psection()
+            
+            // print(lenPAP)
+            nc = new NetCon(stim,sGluT)
+            ncGluList.append(nc)
+        }
+        lenGluTs = lenGluTs + 1
+    }
+
+}
+
+proc fINITGLUT(){
+    for i = 0, ncGluList.count - 1 {
+        ncGluList.o(i).weight = 1
+        ncGluList.o(i).delay = 0
+        // print(nc.weight)
+    }
+}
+objref FinGluT
+FinGluT = new FInitializeHandler(3,"fINITGLUT()")
+
+objref vc,ic
+
+proc clampSwitch() {
+    if ($1 > 1) {
+        //------------current Clamp---------------------------
+        soma {ic = new IClamp(0.5)}
+        ic.dur = tstop
+        ic.del = 0  // ms starts with glutamate
+        ic.amp = $2   // nA current injection (1 pA)
+        //---------------------------------------------------
+    } else {
+        // voltage clamp
+        soma {vc = new VClamp(0.5)}
+        vc.dur[0] = tstop
+        vc.amp[0] = $2  // mV depolarization (dV = 20)
+        //---------------------------------------------------
+        
+    }
+}

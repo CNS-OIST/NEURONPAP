@@ -221,8 +221,8 @@ proc setGluTs(){local lenPAP localobj sref
             // psection()
             
             // print(lenPAP)
-            ncGluList.append(nc)
             nc = new NetCon(stim,sGluT)
+            ncGluList.append(nc)
         }
         lenGluTs = lenGluTs + 1
     }
@@ -487,6 +487,16 @@ proc getAllRi() {localobj all_sections
 
 proc kbath_off() {
     forall {
-        tauk_k_acc = exp(700) // esenntially infinite kclearence (Never clears)
+        tauk_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
+    }
+}
+proc kbath_on() {
+    forall {
+        tauk_k_acc = 3/6 // esenntially quickeruptake
+    }
+}
+proc kbath_rule() {
+    forall {
+        tauk_k_acc = 3 / $1 // esenntially decide tauk
     }
 }

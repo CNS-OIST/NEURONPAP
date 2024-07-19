@@ -6,6 +6,7 @@ from mpi4py import MPI
 import tqdm
 import numpy as np
 from textSDIO import *
+import copy
 
 
 comm = MPI.COMM_WORLD
@@ -91,7 +92,7 @@ def get_iter(parmA, parmASteps, parmB, parmBSteps):
 
 
 def parallizeFor(
-    iterations, functions, functionArgs, functionParms, callmethods, methodArgs
+        iterations, functions, functionArgs, functionParms, callmethods, methodArgs,mode='InitArgs'
 ):
     # Calculate the number of iterations each process will handle
     iterations_per_process = len(iterations) // size
@@ -128,25 +129,61 @@ def parallizeFor(
     )
 
     comm.Barrier()
+    if mode == 'InitArgs':
+        for index in range(minimum, maximum):
+            parmSet = iterations[index]
+            # print(f'Thread {rank} is performing set {parmSet}')
+            results.append([])
+            for k, func in enumerate(functions):
+                for l, parameterName in enumerate(functionParms):
+                    functionArgs[k][parameterName] = parmSet[l]
+                tmpInstance = functions[k](**functionArgs[k])
 
-    for index in range(minimum, maximum):
-        parmSet = iterations[index]
-        # print(f'Thread {rank} is performing set {parmSet}')
-        results.append([])
-        for k, func in enumerate(functions):
-            for l, parameterName in enumerate(functionParms):
-                functionArgs[k][parameterName] = parmSet[l]
-            tmpInstance = functions[k](**functionArgs[k])
+                for l, method in enumerate(callmethods[k]):
+                    getattr(tmpInstance, method)(**methodArgs[k][l])
 
-            for l, method in enumerate(callmethods[k]):
-                getattr(tmpInstance, method)(**methodArgs[k][l])
+                results[-1].append(
+                    tmpInstance.copyAttr()
+                )  # default workaround for mpi section pickle bug
 
-            results[-1].append(
-                tmpInstance.copyAttr()
-            )  # default workaround for mpi section pickle bug
+            # update tqdm
+            pbar.update(1)
+    elif mode == 'MethodArgs':
+        for index in range(minimum, maximum):
+            # print(index)
+            parmSet = iterations[index]
+            methodArgsTmp = copy.deepcopy(methodArgs)
+            # print(methodArgs)
+            # print(f'Thread {rank} is performing set {parmSet}')
+            # sys.stdout.flush()
+            results.append([])
+            for k, func in enumerate(functions):
+                tmpInstance = functions[k](**functionArgs[k])
 
-        # update tqdm
-        pbar.update(1)
+                for l, method in enumerate(callmethods[k]):
+                    if method in functionParms:
+                        keyList = [key for key,v in methodArgs[k][l].items() if type(v) == str and 'parallelItem' in v]
+                        # accepts only two variations in method args
+                        if len(keyList) == 2:
+                            if methodArgsTmp[k][l][keyList[0]] < methodArgsTmp[k][l][keyList[1]]:
+                                methodArgsTmp[k][l][keyList[0]] = parmSet[0]
+                                methodArgsTmp[k][l][keyList[1]] = parmSet[1]
+                            else:
+                                methodArgsTmp[k][l][keyList[1]] = parmSet[0]
+                                methodArgsTmp[k][l][keyList[0]] = parmSet[1]
+                        # else:
+                        #     print(f'Not two {keyList=}')
+                    # print(methodArgsTmp[k][l])
+                    # print(f'{parmSet=}')
+                    getattr(tmpInstance, method)(**methodArgsTmp[k][l])
+
+                results[-1].append(
+                    tmpInstance.copyAttr()
+                )  # default workaround for mpi section pickle bug
+                # print(tmpInstance.SpikeNum,tmpInstance.SpikeFreq)
+
+            # update tqdm
+            pbar.update(1)
 
     comm.Barrier()
     results = comm.gather(results, root=0)
@@ -154,6 +191,7 @@ def parallizeFor(
         tmpResults = []
         for res in results:
             tmpResults += res
+            # print(res[0][0].SpikeNum,res[0][0].SpikeFreq)
         return tmpResults
 
 

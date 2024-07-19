@@ -103,11 +103,6 @@ class PAPModel(ResultsPAPModel):
         self.branchAtten = []
         self.ComplexMorph = ComplexMorph
         self.PAPLen = PAPLen
-        if PAPLen > 0.3:
-            self.multiple = int(
-                self.multiple * (math.pi * (1 - math.e ** (1 - PAPLen / 0.3)) + 1)
-            )
-            # Density decreases in gaussian manner with units of PAPLen
         self.RiSec = str(RiSec)
 
         if self.readHoc:
@@ -185,11 +180,20 @@ class PAPModel(ResultsPAPModel):
 
         # print(self.GENEDict)
         if self.multiple == 0 and "GluTrans" in self.GENEDict.keys():
+            # Can be buggy
             self.comparecount = self.GENEDict["GluTrans"]
         else:
             # print('NMDAR selected')
             self.comparecount = self.multiple
             # print(self.multiple)
+
+        # scale the number at the end
+        if PAPLen > 0.3:
+            self.multiple = int(
+                self.multiple * (math.pi * (1 - math.e ** (1 - PAPLen / 0.3)) + 1)
+            )
+            # Density decreases in gaussian manner with units of PAPLen
+
 
     def channelDist(self, **channelDict):
         # change the density of a certain channel by xfold
@@ -201,10 +205,19 @@ class PAPModel(ResultsPAPModel):
         h.koclamp(ko)
 
     def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False, video=False):
-        ISI = 1 / freq * 1e3  # change to ms
+        self.SpikeFreq = freq
+        self.SpikeNum = number
+        # print(self.SpikeFreq,self.SpikeNum)
+        # sys.stdout.flush()
+        if freq == 0:
+            if number > 0:
+                number = 1
+            ISI = self.tstop
+        else:
+            ISI = 1 / freq * 1e3  # change to ms
         if Ko == None:
             Ko = self.Ko
-        if hasattr(h, "stim"):
+        if hasattr(h, "stim") and number > 0:
             h.stim.number = number
             h.stim.interval = ISI * ms
         if koclamp:
@@ -318,12 +331,20 @@ class PAPModel(ResultsPAPModel):
             print(nc.weight[0])
             print(nc.syn())
 
-    def initialize(self, saveState=False, video=False,kblock=False):
+    def initialize(self, saveState=False, video=False,kblock=False,kuptake=False,krule=None):
         # print('initializing')
         # sys.stdout.flush()
         if not self.readHoc:
             h.ki0_k_ion = 70 * mM  # Global concentration for astrocytes from Savtchenko
             self.setK()
+        if kblock:
+            h.kbath_off()
+        elif kuptake:
+            h.kbath_on()
+        elif type(krule) == float:
+            if krule == 0:
+                krule = 1/math.exp(700)
+            h.kbath_rule(krule)
 
         # print('placing GluChannel')
         # sys.stdout.flush()
@@ -344,7 +365,7 @@ class PAPModel(ResultsPAPModel):
                 if s.postseg().sec in self.flattenPAP()
             ]
             # print(PAPGluT)
-            if len(PAPGluT) == 1:
+            if len(PAPGluT) > 0:
                 self.record(sNMDA=self.NMDAs[-1], sGluT=PAPGluT[0])
             else:
                 self.record(sNMDA=self.NMDAs[-1])
@@ -372,8 +393,6 @@ class PAPModel(ResultsPAPModel):
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
 
-        if kblock:
-            h.kbath_off()
 
     def run(self, printRes=False, video=False, koclamp=None):
         # print('running')
@@ -661,6 +680,20 @@ class PAPModel(ResultsPAPModel):
                 self.iFile.wopen("iFile.dat")
             self.GluTGlu = h.Vector()
             self.GluTGlu.record(sGluT._ref_Gluout)
+            self.GluTC1 = h.Vector()
+            self.GluTC1.record(sGluT._ref_C1)
+            self.GluTC2 = h.Vector()
+            self.GluTC2.record(sGluT._ref_C2)
+            self.GluTC3 = h.Vector()
+            self.GluTC3.record(sGluT._ref_C3)
+            self.GluTC4 = h.Vector()
+            self.GluTC4.record(sGluT._ref_C4)
+            self.GluTC4 = h.Vector()
+            self.GluTC4.record(sGluT._ref_C4)
+            self.GluTC5 = h.Vector()
+            self.GluTC5.record(sGluT._ref_C5)
+            self.GluTC6 = h.Vector()
+            self.GluTC6.record(sGluT._ref_C6)
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")

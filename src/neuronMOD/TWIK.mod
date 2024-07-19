@@ -67,7 +67,8 @@ INITIAL {
 BREAKPOINT {
     SOLVE state METHOD derivimplicit
     
-    ik = (100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) / (4e5 (um2))
+    ik = (100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) /(4e5 (um2))
+    : ik = pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) 
     : divided by estimated surface area Radulescu A. et al (2022)
     : units changes to mA/cm2 for ik
     : printf("ik:%g\n",ik)
