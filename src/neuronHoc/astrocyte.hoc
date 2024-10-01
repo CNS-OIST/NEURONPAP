@@ -206,6 +206,37 @@ proc fINITNMDA(){
 objref FinNMDA
 FinNMDA = new FInitializeHandler(3,"fINITNMDA()")
 
+// inserting GABAaRs
+objref sGABAa, GABAas, nc, ncGABAaList
+
+GABAas = new List()
+ncGABAaList = new List()
+
+// slPAP.printnames()
+// print(lenPAP)
+proc setGABAas(){local lenPAP
+    lenPAP = 0
+    // $o1.printnames()
+    forsec $o1 {
+        sGABAa = new inhSyn(0.5)
+        // sGABAa = new SimpleGABAa(0.5)
+        GABAas.append(sGABAa)
+        nc = new NetCon(stim,GABAas.o(lenPAP))
+        ncGABAaList.append(nc)
+        lenPAP = lenPAP + 1
+    }
+}
+
+proc fINITGABAa(){
+    for i = 0, ncGABAaList.count - 1 {
+        ncGABAaList.o(i).weight = 1
+        ncGABAaList.o(i).delay = 0
+        // print(nc.weight)
+    }
+}
+objref FinGABAa
+FinGABAa = new FInitializeHandler(3,"fINITGABAa()")
+
 objref sGluT, GluTs,ncGluList
 
 GluTs = new List()
@@ -215,16 +246,21 @@ proc setGluTs(){local lenPAP localobj sref
     // $o1.printnames()
     lenGluTs = 0
     forall {
-        sGluT = new GluTrans(0.5)
-        GluTs.append(sGluT)
-        ifsec $o1 {
-            // psection()
-            
-            // print(lenPAP)
-            nc = new NetCon(stim,sGluT)
-            ncGluList.append(nc)
+        segLen = L / nseg
+        for i = 0,nseg-1 {
+            pos = segLen * (i+0.5)
+            normPos = pos/L
+            sGluT = new GluTrans(normPos)
+            GluTs.append(sGluT)
+            ifsec $o1 {
+                // psection()
+                
+                // print(lenPAP)
+                nc = new NetCon(stim,sGluT)
+                ncGluList.append(nc)
+            }
+            lenGluTs = lenGluTs + 1
         }
-        lenGluTs = lenGluTs + 1
     }
 
 }
@@ -238,6 +274,7 @@ proc fINITGLUT(){
 }
 objref FinGluT
 FinGluT = new FInitializeHandler(3,"fINITGLUT()")
+
 
 
 

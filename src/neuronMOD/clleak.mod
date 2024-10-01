@@ -41,6 +41,7 @@ PARAMETER {
     gleak = 5.57e-6 (uS) : ratio from Kalia et al. (2021) * Janic et al K leak
     :    cli = 7.6 (mM) : Thapaliya P et al 2023
     cli = 30 (mM): Verkhratsky A. review Adv Exp Med Biol 2019
+    clo_0 = 130 (mM): Untiet V. Nat Comm. 14, Article number: 1871 (2023) 
 }
 
 ASSIGNED {
@@ -64,7 +65,7 @@ BREAKPOINT {
     }
     
     PROCEDURE calcECL(){
-        clo = nao + ko : conservation of charge
+        clo = clo_0
         ecl = NERNST(clo, cli, z)
         
     }

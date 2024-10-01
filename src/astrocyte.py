@@ -53,6 +53,7 @@ class PAPModel(ResultsPAPModel):
         somaCheck=False,
         ComplexMorph=True,
         Glu=False,
+        GABA=False,
         Ko=2.5,
         stimdelay=0,
         initTstop=150,
@@ -172,6 +173,9 @@ class PAPModel(ResultsPAPModel):
         self.Glu = Glu
         self.stimdelay = stimdelay
 
+        # GABA setup
+        self.GABA = GABA
+
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
         self.GENEDict = kwargs
@@ -277,6 +281,39 @@ class PAPModel(ResultsPAPModel):
                     for nc in list(h.ncNMDAList):
                         nc.active(False)
 
+    def initGABAas(self):
+        if not hasattr(self, "GABAas"):
+            self.GABAas = []
+            if not hasattr(self, "NCs"):
+                self.NCs = []
+            if not hasattr(h, "slPAP"):
+                h.slPAP = self.flattenPAP()
+            h("slPAP {setGABAas(slPAP)}")
+            # h.setGABAas(self.flattenPAP())
+
+    def setGABAas(self):
+        self.initGABAas()
+        if self.readHoc:
+            self.GABAas = list(h.GABAas)
+            # print(self.GABAas)
+            # sys.stdout.flush()
+            self.NCs += list(h.ncGABAaList)
+            for i, sGABAa in enumerate(self.GABAas):
+                GABACount = 48 * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
+                if self.GABA:
+                    # distribute the total num of GABAa equally among all patches with remainder clustered at tip
+                    totGABAa = len(self.GABAas)
+                    if i > (totGABAa - GABACount % totGABAa):
+                        sGABAa.multiple = 1 + GABACount // totGABAa
+                        sGABAa.isOn = 1
+                    else:
+                        sGABAa.multiple = GABACount // totGABAa
+                        sGABAa.isOn = 1
+                else:
+                    sGABAa.multiple = 0
+                    for nc in list(h.ncGABAaList):
+                        nc.active(False)
+
     def initGluTs(self):
         if not hasattr(self, "GluTs"):
             self.GluTs = []
@@ -354,6 +391,9 @@ class PAPModel(ResultsPAPModel):
         self.setGluTs()
         # print('placed GluT')
         # sys.stdout.flush()
+        self.setGABAas()
+        # print('placed GluT')
+        # sys.stdout.flush()
         self.setStimStart()
         # print('setStim')
         # sys.stdout.flush()
@@ -366,9 +406,9 @@ class PAPModel(ResultsPAPModel):
             ]
             # print(PAPGluT)
             if len(PAPGluT) > 0:
-                self.record(sNMDA=self.NMDAs[-1], sGluT=PAPGluT[0])
+                self.record(sNMDA=self.NMDAs[-1], sGABA=self.GABAas[-1],sGluT=PAPGluT[0])
             else:
-                self.record(sNMDA=self.NMDAs[-1])
+                self.record(sNMDA=self.NMDAs[-1], sGABA=self.GABAas[-1])
         else:
             self.record()
         # print('setup Record')
@@ -661,7 +701,7 @@ class PAPModel(ResultsPAPModel):
 
         return sNMDA
 
-    def record(self, sNMDA=None, sGluT=None, toFile=False):
+    def record(self, sNMDA=None, sGABA=None,sGluT=None, toFile=False):
         # Function recording each individual aspect of astrocyte variable
         h.frecord_init()
         # Save Stuff
@@ -672,6 +712,13 @@ class PAPModel(ResultsPAPModel):
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
 
+        if sGABA != None:
+            self.iGABA = h.Vector()
+            self.iGABA.record(sGABA._ref_iGaba)
+            if toFile:
+                self.iFile = h.File("iFile.dat")
+                self.iFile.wopen("iFile.dat")
+                
         if sGluT != None:
             self.iGluT = h.Vector()
             self.iGluT.record(sGluT._ref_iGluT)

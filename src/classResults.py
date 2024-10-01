@@ -15,6 +15,7 @@ class ResultsPAPModel:
         "branch",
         "NMDAs",
         "GluTs",
+        "GABAas",
         "NCs",
         "GENEobj",
         "equiDistSec",
@@ -28,7 +29,7 @@ class ResultsPAPModel:
         "iNaSoma",
         "iMemSoma",
     ]
-    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma"]
+    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma","iGABA"]
 
     def copyAttr(self):
         # print("copying to result class")

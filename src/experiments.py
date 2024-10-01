@@ -26,6 +26,7 @@ rank = comm.Get_rank()
 class plotFigures:
     colorDict = {
         "NMDAR": "steelblue",
+        "GABAR": "purple",
         "GluT": "lightblue",
         "iK": "orange",
         "Soma": "deepskyblue",
@@ -59,7 +60,7 @@ class plotFigures:
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
                 "seed": self.seed,
@@ -278,6 +279,13 @@ class plotFigures:
                         list(cell.iNMDA)[initStep:],
                         label="iNMDA",
                         color=self.returnColor("NMDAR"),
+                    )
+                if hasattr(cell, "iGABA") and self.GABAR:
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iGABA)[initStep:],
+                        label="iGABAa",
+                        color=self.returnColor("GABAR"),
                     )
                 if hasattr(cell, "iGluT") and self.GluT:
                     ax.plot(
@@ -533,6 +541,7 @@ class procedure(plotFigures):
     tag = str()
     OE = False
     NMDAR = True
+    GABAR = True
     GluT = False
     GluStim = True
     KStim = True
@@ -776,7 +785,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "Glu": False,
                 "kir2": self.optKir,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "multiple": 0,
                 "dt": 0.1,
@@ -852,7 +861,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "dt": self.dt,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
                 "seed": self.seed,
@@ -874,7 +883,7 @@ class procedure(plotFigures):
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
                 "GluTrans": self.optGluT,
@@ -951,7 +960,7 @@ class procedure(plotFigures):
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
                 "seed": self.seed,
@@ -991,7 +1000,7 @@ class procedure(plotFigures):
                         "Glu": True,
                         "dt": 0.01,
                         "naleak": self.leak,
-                        "clleak": self.leak,
+                        "clleak": 0,
                         "seed": self.seed,
                         "PAPLen": self.PAPLen,
                     }
@@ -1125,7 +1134,7 @@ class procedure(plotFigures):
                     "readHoc": True,
                     "Glu": True,
                     "kir2": self.optKir,
-                    "clleak": self.leak,
+                    "clleak": 0,
                     "naleak": self.leak,
                     "dt": self.dt,
                     "seed": self.seed,
@@ -1272,7 +1281,7 @@ class procedure(plotFigures):
                     "readHoc": True,
                     "Glu": True,
                     "kir2": self.optKir,
-                    "clleak": self.leak,
+                    "clleak": 0,
                     "naleak": self.leak,
                     "dt": self.dt,
                 }
@@ -1528,7 +1537,6 @@ class procedure(plotFigures):
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
-        # single run
         funcArgs = []
         funcArgs.append(
             {
@@ -1538,7 +1546,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "Glu": False,
                 "kir2": self.optKir,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -1572,7 +1580,6 @@ class procedure(plotFigures):
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
-        # single run
         funcArgs = []
         funcArgs.append(
             {
@@ -1581,8 +1588,9 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "readHoc": True,
                 "Glu": True,
+                "GABA":True,
                 "kir2": self.optKir,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -1697,7 +1705,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
@@ -1782,7 +1790,7 @@ class procedure(plotFigures):
                 "Glu": True,
                 "ComplexMorph": True,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
@@ -1957,7 +1965,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
@@ -2042,7 +2050,6 @@ class procedure(plotFigures):
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
-        # single run
         funcArgs = []
         funcArgs.append(
             {
@@ -2052,7 +2059,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": self.optKir,
                 "GluTrans": self.optGluT,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -2094,7 +2101,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "Glu": False,
                 "kir2": self.optKir*int(x),
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -2125,7 +2132,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "Glu": False,
                 "kir2": 400,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -2161,7 +2168,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "Glu": False,
                 "kir2": self.optKir,
-                "clleak": self.leak,
+                "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt / 100,
                 "seed": self.seed,
@@ -2208,7 +2215,7 @@ class procedure(plotFigures):
                     "Glu": self.GluStim,
                     "ComplexMorph": True,
                     "naleak": self.leak,
-                    "clleak": self.leak,
+                    "clleak": 0,
                     "dt": self.dt,
                     "seed": self.seed,
                     "stimdelay": self.stimdelay,
@@ -2263,7 +2270,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "readHoc": True,
                 "kir2": 0,
-                "clleak": x,
+                "clleak": 0,
                 "naleak": x,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -2307,7 +2314,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
-                "clleak": self.leak,
+                "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
