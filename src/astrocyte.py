@@ -105,6 +105,7 @@ class PAPModel(ResultsPAPModel):
         self.ComplexMorph = ComplexMorph
         self.PAPLen = PAPLen
         self.RiSec = str(RiSec)
+        self.getPeriphery = True
 
         if self.readHoc:
             # subsitute
@@ -137,8 +138,13 @@ class PAPModel(ResultsPAPModel):
             h.setSeed(seed)
             # print(self.PAPLen)
             for i in range(PAPCount):
-                h.PAP = h.get_randomfinalSection(h.soma)
-                self.PAP = h.PAP.sec
+                if self.getPeriphery:
+                    h.PAP = h.get_randomfinalSection(h.soma)
+                    self.PAP = h.PAP.sec
+                else:
+                    # get chunk of section as PAP
+                    h.PAP = h.get_randomSection(h.soma,0.3)
+                    self.PAP = h.PAP.sec
                 h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
                 if i == 0:
                     self.PAPs = [h.slPAP]

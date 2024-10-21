@@ -4,6 +4,9 @@ strdef astro_name
 astro_name = "CA1"
 celsius = 34
 
+double lenUnits[1]
+lenUnits = 0.3
+
 // clear morphology
 
 {
@@ -37,8 +40,8 @@ celsius = 34
         // insert kdifl
         // ki0_kdifl = 110
         
-        if (L > 1) {
-            nseg = int(L)
+        if (L > lenUnits) {
+            nseg = int(L/lenUnits)
         }
     }
 }
@@ -100,8 +103,8 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
             rint = 0
         }
         current_section.child[rint] current_section = new SectionRef()
-        current_section.sec countDist = distance(0.5)
-        if (current_section.nchild == 0 && countDist < 50) {
+        // check distance and reselect if farther than 50
+        if (current_section.nchild == 0) {
             current_section.sec {
                 blacklist.append()
             }
@@ -115,6 +118,50 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
         }
     }
     return current_section
+}
+
+obfunc get_randomSection() {local lenThr,rloc,rint localobj current_section, child_sections
+    lenThr = $2
+    child_sections = new SectionList()
+    // Start from the currently accessed section
+    $o1 current_section = new SectionRef()
+    current_section.root() current_section = new SectionRef()
+    current_section.sec { distance(0,0.5) } // set origin at root
+    // Iterate through parent sections
+    while (current_section.nchild > 0) {
+        current_section.sec {
+            // psection()
+            child_sections.append()
+        }
+        // random selection Goto child or self
+        if (current_section.nchild > 1){
+            rint = r.discunif(0,current_section.nchild)
+        } else if (current_section.nchild == 1) {
+            rint = 0
+        }
+        // if random self check if appropriate
+        if (rint  == current_section.nchild) {
+            if (current_section.sec.L / current_section.sec.nseg < lenThr) {
+                rloc = r.discunif(0,current_section.sec.nseg) / current_section.sec.nseg
+                // Simplified PAP
+                // ToDo make smarter extract other PAPs
+                // or specifically select as PAP
+                create artificialPAP
+                artificialPAP {
+                    L = 0.3
+                    diam = 0.1
+                    nseg = 1
+                }
+                artificialPAP connect current_section.sec(rloc), 1
+                    
+                return artificialPAP
+            } else {
+            rint = r.discunif(0,current_section.nchild - 1)                
+            }
+        }
+        current_section.child[rint] current_section = new SectionRef()            
+    }
+    return current_section    
 }
 
 // Function to get parent sections
