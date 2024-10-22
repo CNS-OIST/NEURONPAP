@@ -214,6 +214,9 @@ class PAPModel(ResultsPAPModel):
     def koClamp(self, ko=None):
         h.koclamp(ko)
 
+    def setGEVI(self,tON,tOFF):
+        h.setGEVI(tON,tOFF)
+
     def multiSpike(self, number=None, freq=None, Ko=None, koclamp=False, video=False):
         self.SpikeFreq = freq
         self.SpikeNum = number
@@ -760,6 +763,9 @@ class PAPModel(ResultsPAPModel):
 
         self.vPAP = h.Vector()
         self.vPAP.record(self.PAP(0.5)._ref_v)
+        
+        self.fluorVPAP = h.Vector()
+        self.fluorVPAP.record(self.PAP(0.5)._ref_GEVI_dF)
 
         if toFile:
             self.vFile = h.File("vFile.dat")
@@ -785,7 +791,6 @@ class PAPModel(ResultsPAPModel):
         if toFile:
             self.ekFile = h.File("ekFile.dat")
             self.ekFile.wopen("ekFile.dat")
-
         self.KoPAP = h.Vector()
         self.KoPAP.record(self.PAP(0.5)._ref_ko)
         self.NaoPAP = h.Vector()

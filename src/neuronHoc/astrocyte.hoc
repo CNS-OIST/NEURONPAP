@@ -35,6 +35,7 @@ lenUnits = 0.3
         
         insert k_acc
         insert na_acc
+        insert GEVI
         // insert kdrglia
         // insert GluTrans
         // insert kdifl
@@ -375,6 +376,13 @@ proc setK(){local tmp localobj sref
 proc setkin(){
     forall {
         ki = $1
+    }
+}
+
+proc setGEVI(){
+    forall {
+        tON_GEVI = $1
+        tOFF_GEVI = $2
     }
 }
 
