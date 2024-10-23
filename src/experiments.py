@@ -538,7 +538,7 @@ class plotFigures:
 class procedure(plotFigures):
     leak = 3e5
     optKir = 120
-    optNMDAR = 10
+    optNMDAR = 12
     optGluT = 1
     channelCompareMax = 50
     channelCompareStep = 5
@@ -1596,7 +1596,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "readHoc": True,
                 "Glu": True,
-                "GABA":True,
+                "GABA":False,
                 "kir2": self.optKir,
                 "clleak": 0,
                 "naleak": self.leak,
@@ -1653,6 +1653,14 @@ class procedure(plotFigures):
                     np.array(list(results.vPAP)) - results.RMP,
                     label="model",
                 )
+                plt.plot(
+                    list(results.time),
+                    np.array(list(results.fluorVPAP)) - results.RMP,
+                    label="PAP fluor",
+                    color='forestgreen',
+                    linestyle='-.',
+                )
+
                 df = pd.read_csv("./Data/depolarTime.csv")
                 stimIndex = 31
                 # calibrate to relative point from stimulus onset
