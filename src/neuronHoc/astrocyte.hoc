@@ -46,6 +46,7 @@ lenUnits = 0.3
         }
     }
 }
+psection()
 
 objref r
 
@@ -104,8 +105,9 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
             rint = 0
         }
         current_section.child[rint] current_section = new SectionRef()
-        // check distance and reselect if farther than 50
-        if (current_section.nchild == 0) {
+        // check distance and reselect if closer than 50
+        current_section.sec countDist = distance(0.5)
+        if (current_section.nchild == 0 && countDist < 50) {
             current_section.sec {
                 blacklist.append()
             }

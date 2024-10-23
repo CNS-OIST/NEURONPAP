@@ -31,6 +31,7 @@ class plotFigures:
         "iK": "orange",
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
+        "fluor": "red",
         "Na": "gold",
         "Cl": "chocolate",
     }
@@ -216,6 +217,13 @@ class plotFigures:
                     label="PAP eK",
                     color=self.returnColor("PAP"),
                     linestyle="--",
+                )
+                ax.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.fluorVPAP)[initStep:],
+                    label="PAP fluor",
+                    color=self.returnColor("fluor"),
+                    linestyle='-.',
                 )
                 if not zoom:
                     ax.plot(

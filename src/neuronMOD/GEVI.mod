@@ -1,11 +1,11 @@
-TITLE input Resistance Range Var
+TITLE GEVI fluor
 COMMENT
 
 ENDCOMMENT
 
 NEURON {
 	SUFFIX GEVI
-        RANGE kON,kOFF
+        RANGE tON,tOFF
 	THREADSAFE
     }
     
@@ -14,7 +14,6 @@ NEURON {
     }
     ASSIGNED {
         v (mV)
-        v_initial (mV)
         fluor (mV/ms)
     }
     PARAMETER {
@@ -22,21 +21,25 @@ NEURON {
         tOFF = 48 (ms)
     }
     INITIAL {
-        dF = 0
-        v_initial = v
+        dF = v
     }
     STATE {
         dF (mV)        
     }
     BREAKPOINT {
+        calcFluor()
         SOLVE state METHOD derivimplicit
     }
     DERIVATIVE state {
-        if ((v - v_initial) - dF > 0 ){
-            fluor = ((v - v_initial) - dF) / tON
-        } else {
-            fluor = (dF - (v - v_initial)) / tOFF
-        }
+        : printf("%f\n",fluor)
         dF' = fluor
+    }
+    PROCEDURE calcFluor (){
+        if ((v - dF) > 0 ){
+            fluor = (v - dF) / tON
+        } else {
+            fluor = (v - dF) / tOFF
+        }
+        
     }
 

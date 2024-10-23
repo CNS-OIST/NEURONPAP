@@ -141,6 +141,7 @@ class PAPModel(ResultsPAPModel):
                 if self.getPeriphery:
                     h.PAP = h.get_randomfinalSection(h.soma)
                     self.PAP = h.PAP.sec
+                    print(self.PAP)
                 else:
                     # get chunk of section as PAP
                     h.PAP = h.get_randomSection(h.soma,0.3)
@@ -765,7 +766,7 @@ class PAPModel(ResultsPAPModel):
         self.vPAP.record(self.PAP(0.5)._ref_v)
         
         self.fluorVPAP = h.Vector()
-        self.fluorVPAP.record(self.PAP(0.5)._ref_GEVI_dF)
+        self.fluorVPAP.record(self.PAP(0.5)._ref_dF_GEVI)
 
         if toFile:
             self.vFile = h.File("vFile.dat")
@@ -873,8 +874,8 @@ class PAPModel(ResultsPAPModel):
                 self.branchAtten[-1].record(self.branch(i / 10.0)._ref_v)
 
         else:
-            # print(equiDistSec)
             self.equiDistSec = self.getEquiDistSec(list(self.getPath(self.PAP)))
+            
 
             for sec in self.equiDistSec:
                 self.branchAtten.append(h.Vector())
