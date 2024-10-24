@@ -2127,6 +2127,70 @@ class procedure(plotFigures):
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
+    def fitExpDepolarization(self, x,showFig=False):
+        self.addChannelTag()
+        AllCells = []
+        funcArgs = []
+        Kir,TWIK,NMDAR = x
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "Glu": True,
+                "kir2": Kir,
+                "twik":TWIK,
+                "clleak": 0,
+                "naleak": self.leak,
+                "dt": self.dt,
+                "seed": self.seed,
+                "multiple": NMDAR,
+                "GluTrans": self.optGluT,
+            }
+        )
+        if funcArgs[-1]['kir2'] > 300:
+            funcArgs[-1]['dt'] *= 0.1
+        cells = PAPModel(**funcArgs[-1])
+        cells.setTstop(500)
+        cells.initialize()
+        cells.multiSpike(number=10, freq=100, Ko=0.5)
+        cells.run()
+        print(x)
+        df = pd.read_csv("./Data/depolarTime.csv")
+        stimIndex = 31
+        # calibrate to relative point from stimulus onset
+        for c in df.columns:
+            if c == "V":
+                avgV = df[c][:stimIndex].mean()
+                df[c] = df[c] - avgV
+            else:
+                df[c] = df[c] - df[c][stimIndex]
+        # Match stim initialization with model
+        df["t"] = df["t"] + (cells.initTstop + cells.stimdelay) * ms
+        fluorTrace = np.array(list(cells.fluorVPAP)) - cells.RMP
+        plt.cla()
+        plt.clf()
+        # extract corresponding indexes in df and sim
+        indexConvert = [(i,int(t/cells.dt)) for i,t in enumerate(df["t"]) if 0 <= t < max(cells.time)]
+        expT = []
+        expV = []
+        simV = []
+        for j,k in indexConvert:
+            expT.append(df["t"][j])
+            expV.append(df["V"][j])
+            simV.append(fluorTrace[k])
+        expV = np.array(expV)
+        if showFig:
+            plt.scatter(expT,simV)
+            plt.scatter(expT,expV)
+            plt.show()
+        # MLS
+        loss = sum((expV - simV)**2)
+        return loss
+
+    
+
     def optPotassiumSearch(self, x, optmV=19.2):
         self.addChannelTag()
         # print(self.tag)
