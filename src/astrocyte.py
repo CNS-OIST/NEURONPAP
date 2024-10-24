@@ -141,7 +141,7 @@ class PAPModel(ResultsPAPModel):
                 if self.getPeriphery:
                     h.PAP = h.get_randomfinalSection(h.soma)
                     self.PAP = h.PAP.sec
-                    print(self.PAP)
+                    # print(self.PAP)
                 else:
                     # get chunk of section as PAP
                     h.PAP = h.get_randomSection(h.soma,0.3)
