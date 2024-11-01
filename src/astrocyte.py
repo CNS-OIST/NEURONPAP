@@ -38,6 +38,9 @@ class PAPModel(ResultsPAPModel):
     # video option
     varMorph = ["v", "ko"]
 
+    # Morphology
+    Node = True
+
     def __init__(
         self,
         readHoc=True,
@@ -87,6 +90,7 @@ class PAPModel(ResultsPAPModel):
 
         # set NMDA
         self.multiple = multiple
+            
 
         # set clamp parms
         self.mode = mode
@@ -138,11 +142,16 @@ class PAPModel(ResultsPAPModel):
             self.seed = seed
             h.setSeed(seed)
             # print(self.PAPLen)
+            if self.Node:
+                PAPCount = 3
             for i in range(PAPCount):
                 if self.getPeriphery:
                     h.PAP = h.get_randomfinalSection(h.soma)
                     self.PAP = h.PAP.sec
                     # print(self.PAP)
+                elif self.Node:
+                    h.PAP = h.get_NodeSection(h.soma,0)
+                    self.PAP = h.PAP.sec
                 else:
                     # get chunk of section as PAP
                     h.PAP = h.get_randomSection(h.soma,0.3)
@@ -152,6 +161,8 @@ class PAPModel(ResultsPAPModel):
                     self.PAPs = [h.slPAP]
                 else:
                     self.PAPs.append(h.slPAP)
+
+                    
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
