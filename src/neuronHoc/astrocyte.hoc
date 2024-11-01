@@ -16,7 +16,8 @@ lenUnits = 0.3
     
     // load morphology file
     //xopen("./Geometry/threeCompartmentGeom.hoc")
-    {xopen("./Geometry/GeometryAstrocyteCA1.hoc")}
+    xopen("./Geometry/NodeMod.hoc")
+    // {xopen("./Geometry/GeometryAstrocyteCA1.hoc")}
     
     // inserting membrane mechanisms
     forall {
@@ -46,7 +47,7 @@ lenUnits = 0.3
         }
     }
 }
-psection()
+// psection()
 
 objref r
 
@@ -165,6 +166,27 @@ obfunc get_randomSection() {local lenThr,rloc,rint localobj current_section, chi
         current_section.child[rint] current_section = new SectionRef()            
     }
     return current_section    
+}
+
+
+
+
+
+obfunc get_NodeSection() {local ID,skipCount localobj current_section,strobj
+    ID = $2
+    skipCount = 0
+    strobj = new StringFunctions()
+    forall {
+        if (strobj.substr(secname(),"Node") >= 0) {
+            if (ID == skipCount) {
+                current_section = new SectionRef()
+                return current_section
+            } else {
+                skipCount += 1
+            }
+        }
+    }
+    return
 }
 
 // Function to get parent sections

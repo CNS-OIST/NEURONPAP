@@ -117,6 +117,54 @@ class plotFigures:
                 )
             )
 
+    def GABANMDARTrace(self,AllCells,NMDARCount,GABACount,fName='NMDAR_GABAR_TraceComp'):
+        plt.cla()
+        plt.clf()
+        fig, ax = plt.subplots()
+
+        for cells in AllCells:
+            for cell in cells:
+                initStep = int((cell.initTstop - 10) / cell.dt)
+                if NMDARCount == cell.multiple and cell.GABACount == 0:
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.vPAP)[initStep:],
+                        label=f"NMDAR Vm({cell.multiple})",
+                        color=self.returnColor("NMDAR"),
+                    )
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.fluorVPAP)[initStep:],
+                        label="NMDAR fluor",
+                        color=self.returnColor("NMDAR"),
+                        linestyle='-.',
+                    )
+                if GABACount == cell.GABACount and cell.multiple == 0:
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.vPAP)[initStep:],
+                        label=f"GABAR Vm({int(cell.GABADensity)})",
+                        color=self.returnColor("GABAR"),
+                    )
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.fluorVPAP)[initStep:],
+                        label="GABAR fluor",
+                        color=self.returnColor("GABAR"),
+                        linestyle='-.',
+                    )
+        ax.legend()
+        plt.savefig(
+            os.path.join(
+                "../results/paperRes",
+                f"{fName}{self.tag}.pdf",
+            )
+        )
+        if 'OPT_' not in fName:
+            self.GABANMDARTrace(AllCells,10,40,fName=f'OPT_{fName}')
+
+                
+
     def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False):
         for cells in AllCells:
             for cell in cells:
@@ -391,6 +439,13 @@ class plotFigures:
                     int(self.channelCompareMax / self.channelCompareStep) + 1,
                 )
             )
+        elif self.GABAR:
+            imArray = np.zeros(
+                (
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                )
+            )
         else:
             imArray = np.zeros((5,5))
 
@@ -402,6 +457,14 @@ class plotFigures:
                 ] += (
                     max(res[0].vPAP) - res[0].RMP
                 )
+            elif self.GABAR:
+                imArray[
+                    int(res[0].GABACount / self.channelCompareStep),
+                    int(res[0].comparecount / self.channelCompareStep),
+                ] += (
+                    max(res[0].vPAP) - res[0].RMP
+                )
+                
             else:
                 imArray[
                     int(res[0].PAPLen / 0.3) - 1,
@@ -420,7 +483,7 @@ class plotFigures:
             interpolation="nearest",
             aspect="equal",
         )
-        if Kir:
+        if Kir or self.GABAR:
             chanStart = 0
             addChan = 1
         else:
@@ -437,6 +500,13 @@ class plotFigures:
                 np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
             )
             plt.ylabel("# of Kir Channels")
+        elif self.GABAR:
+            plt.yticks(
+                range(0,int(self.channelCompareMax / self.channelCompareStep) + addChan),
+                np.arange(chanStart, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+                * self.channelCompareStep,
+            )
+            plt.ylabel("# of GABA Channels / um2")
         else:
             plt.yticks(
                 range(0,5),
@@ -552,6 +622,7 @@ class procedure(plotFigures):
     GABAR = True
     GluT = False
     GluStim = True
+    GabaStim=False
     KStim = True
     stimdelay = 0
     dt = 0.1
@@ -577,6 +648,8 @@ class procedure(plotFigures):
             self.tag += "_NMDAR"
         if not self.GluStim:
             self.tag += "_NoGlu"
+        if self.GabaStim:
+            self.tag += "_GABA"
         if not self.KStim:
             self.tag += "_NoK"
         if self.stimdelay > 0:
@@ -1656,22 +1729,11 @@ class procedure(plotFigures):
                 plt.plot(
                     list(results.time),
                     np.array(list(results.fluorVPAP)) - results.RMP,
-                    label="PAP fluor",
-                    color='forestgreen',
                     linestyle='-.',
+                    color=self.returnColor('fluor'),
+                    label="fluor",
                 )
-
-                df = pd.read_csv("./Data/depolarTime.csv")
-                stimIndex = 31
-                # calibrate to relative point from stimulus onset
-                for c in df.columns:
-                    if c == "V":
-                        avgV = df[c][:stimIndex].mean()
-                        df[c] = df[c] - avgV
-                    else:
-                        df[c] = df[c] - df[c][stimIndex]
-                # Match stim initialization with model
-                df["t"] = df["t"] + (results.initTstop + results.stimdelay) * ms
+                df = self.readExpRawData(results)
                 plt.scatter(df["t"], df["V"], label="experiment", c="black")
                 initStep = results.initTstop - 50
                 plt.xlim((initStep, 500))
@@ -1697,6 +1759,80 @@ class procedure(plotFigures):
                 plt.xlabel('time (ms)')
                 plt.ylabel('Ratio of states')
                 plt.savefig(os.path.join("../results/paperRes", f'GluTstates{self.tag}.pdf'))
+
+
+    def GABANMDARCompare(self):
+        self.addChannelTag()
+        # Calculate the number of iterations for all parm sets
+        iterations = comm.bcast(
+            get_iter(
+                self.channelCompareMax,
+                self.channelCompareStep,
+                self.channelCompareMax,
+                self.channelCompareStep,
+            ),
+            root=0,
+        )
+        # # Adjust the range for the last process
+
+        comm.Barrier()
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "readHoc": True,
+                "Glu": True,
+                "GABA":True,
+                "ComplexMorph": True,
+                "naleak": self.leak,
+                "clleak": 0,
+                "dt": self.dt,
+                "seed": self.seed,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+                "GluTrans":self.optGluT,
+                "kir2":self.optKir,
+            }
+        )
+        ccList = ["multiple","GABACount"]
+        # make sure that funcParms is in the correct order of whatever iterations spits out
+        # results are collected only on rank 0
+        callMethods = [[]]
+        callArgs = [[]]
+        if self.KStim and self.stimCount == 1:
+            callMethods[0] += ["initialize", "setK", "run"]
+            callArgs[0] += [{}, {"Ko": self.ko}, {}]
+        elif self.stimCount > 1:
+            callMethods[0] += ["initialize", "multiSpike", "run"]
+            callArgs[0] += [
+                {},
+                {"number": self.stimCount, "Ko": self.ko, "freq": self.freq},
+                {},
+            ]
+
+        else:
+            callMethods[0] += ["initialize", "run"]
+            callArgs[0] += [{}, {}]
+
+        if self.ek != None:
+            self.ko = self.nernstINV(ek, 80)  # 80 defined in neuron astrocyte.hoc
+            rIndex = callMethods[0].index("run")
+            callArgs[0][rIndex]["ko"] = self.ko
+
+        results = parallizeFor(
+            iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs
+        )
+
+        comm.Barrier()
+
+        if rank == 0:
+            with open(
+                os.path.join("intermediaryData", f"resultsParallel{self.tag}.pickle"),
+                "wb",
+            ) as handle:
+                pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self.plotHeatmap(results, tag=self.tag,Kir=False)
+            self.GABANMDARTrace(results,self.channelCompareMax,self.channelCompareMax)
 
     def channelComparison(self):
         self.addChannelTag()
@@ -1979,6 +2115,7 @@ class procedure(plotFigures):
                 "mode": 0,
                 "readHoc": True,
                 "Glu": self.GluStim,
+                "GABA": self.GabaStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
@@ -2135,6 +2272,78 @@ class procedure(plotFigures):
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
+    def readExpRawData(self,results):
+        df = pd.read_csv("./Data/depolarTime.csv")
+        stimIndex = 6
+        # calibrate to relative point from stimulus onset
+        for c in df.columns:
+            if c == "V":
+                avgV = df[c][:stimIndex].mean()
+                df[c] = df[c] - avgV
+            else:
+                df[c] = df[c] - df[c][stimIndex]
+        # Match stim initialization with model
+        df["V"]*=10
+        df["t"] = df["t"] + (results.initTstop + results.stimdelay) * ms
+        return df
+        
+        
+
+    def fitExpDepolarization(self, x,showFig=False):
+        self.addChannelTag()
+        AllCells = []
+        funcArgs = []
+        Kir,TWIK,NMDAR,leak = x
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "Glu": True,
+                "kir2": Kir,
+                "twik":TWIK,
+                "clleak": 0,
+                "naleak": leak,
+                "dt": self.dt,
+                "seed": self.seed,
+                "multiple": NMDAR,
+                "GluTrans": self.optGluT,
+            }
+        )
+        if funcArgs[-1]['kir2'] >= 200:
+            funcArgs[-1]['dt'] *= 0.1
+        cells = PAPModel(**funcArgs[-1])
+        cells.setTstop(500)
+        cells.initialize()
+        cells.multiSpike(number=10, freq=100, Ko=0.5)
+        cells.run()
+        print(x)
+        df = self.readExpRawData(cells)
+        fluorTrace = np.array(list(cells.fluorVPAP)) - cells.RMP
+        plt.cla()
+        plt.clf()
+        # extract corresponding indexes in df and sim
+        indexConvert = [(i,int(t/cells.dt)) for i,t in enumerate(df["t"]) if 0 <= t < max(cells.time)]
+        expT = []
+        expV = []
+        simV = []
+        for j,k in indexConvert:
+            expT.append(df["t"][j])
+            expV.append(df["V"][j])
+            simV.append(fluorTrace[k])
+        expV = np.array(expV)
+        if showFig:
+            plt.scatter(expT,simV)
+            plt.scatter(expT,expV)
+            plt.show()
+        # MLS
+        loss = sum((expV - simV)**2)
+        # lossRMP = self.optRMPSearch((leak,Kir))
+        return loss #+ lossRMP
+
+    
+
     def optPotassiumSearch(self, x, optmV=19.2):
         self.addChannelTag()
         # print(self.tag)
@@ -2272,13 +2481,14 @@ class procedure(plotFigures):
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value
-        x = int(x)
+        leak,kir = x
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
         # single run
         funcArgs = []
+        print(x)
         funcArgs.append(
             {
                 "mode": 0,
@@ -2287,7 +2497,7 @@ class procedure(plotFigures):
                 "readHoc": True,
                 "kir2": 0,
                 "clleak": 0,
-                "naleak": x,
+                "naleak": leak,
                 "dt": self.dt,
                 "seed": self.seed,
                 "Glu":False,
@@ -2297,9 +2507,30 @@ class procedure(plotFigures):
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
-        print(x)
         print(abs(cells.RMP - optmV))
-        return abs(cells.RMP - optmV)
+        lossKO = (cells.RMP - optmV) ** 2
+        print(x)
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "kir2": kir,
+                "clleak": 0,
+                "naleak": x,
+                "dt": self.dt,
+                "seed": self.seed,
+                "Glu":False,
+                "multiple": 0,
+                "GluTrans": 0,
+            }
+        )
+        cellsRMP = PAPModel(**funcArgs[-1])
+        cellsRMP.initialize()
+        print(abs(cellsRMP.RMP + 80))
+        loss = (cellsRMP.RMP + 80) ** 2
+        return lossKO + loss
     
 
     def freqComparison(self):
@@ -2405,5 +2636,4 @@ class procedure(plotFigures):
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
             plt.clim((0, 50))
             plt.savefig(os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf"))
-
 

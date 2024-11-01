@@ -38,6 +38,9 @@ class PAPModel(ResultsPAPModel):
     # video option
     varMorph = ["v", "ko"]
 
+    # Morphology
+    Node = True
+
     def __init__(
         self,
         readHoc=True,
@@ -54,6 +57,7 @@ class PAPModel(ResultsPAPModel):
         ComplexMorph=True,
         Glu=False,
         GABA=False,
+        GABACount = None,
         Ko=2.5,
         stimdelay=0,
         initTstop=150,
@@ -86,6 +90,7 @@ class PAPModel(ResultsPAPModel):
 
         # set NMDA
         self.multiple = multiple
+            
 
         # set clamp parms
         self.mode = mode
@@ -137,11 +142,16 @@ class PAPModel(ResultsPAPModel):
             self.seed = seed
             h.setSeed(seed)
             # print(self.PAPLen)
+            if self.Node:
+                PAPCount = 3
             for i in range(PAPCount):
                 if self.getPeriphery:
                     h.PAP = h.get_randomfinalSection(h.soma)
                     self.PAP = h.PAP.sec
-                    print(self.PAP)
+                    # print(self.PAP)
+                elif self.Node:
+                    h.PAP = h.get_NodeSection(h.soma,0)
+                    self.PAP = h.PAP.sec
                 else:
                     # get chunk of section as PAP
                     h.PAP = h.get_randomSection(h.soma,0.3)
@@ -151,6 +161,8 @@ class PAPModel(ResultsPAPModel):
                     self.PAPs = [h.slPAP]
                 else:
                     self.PAPs.append(h.slPAP)
+
+                    
             self.soma = h.soma
             if not self.ComplexMorph:
                 self.branch = h.branch
@@ -182,6 +194,12 @@ class PAPModel(ResultsPAPModel):
 
         # GABA setup
         self.GABA = GABA
+        if GABA:
+            if GABACount == None:
+                self.GABACount = 48 * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
+            else:
+                self.GABACount = GABACount
+                self.GABADensity = self.GABACount * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
 
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
@@ -309,15 +327,14 @@ class PAPModel(ResultsPAPModel):
             # sys.stdout.flush()
             self.NCs += list(h.ncGABAaList)
             for i, sGABAa in enumerate(self.GABAas):
-                GABACount = 48 * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
                 if self.GABA:
                     # distribute the total num of GABAa equally among all patches with remainder clustered at tip
                     totGABAa = len(self.GABAas)
-                    if i > (totGABAa - GABACount % totGABAa):
-                        sGABAa.multiple = 1 + GABACount // totGABAa
+                    if i > (totGABAa - self.GABADensity % totGABAa):
+                        sGABAa.multiple = 1 + self.GABADensity // totGABAa
                         sGABAa.isOn = 1
                     else:
-                        sGABAa.multiple = GABACount // totGABAa
+                        sGABAa.multiple = self.GABADensity // totGABAa
                         sGABAa.isOn = 1
                 else:
                     sGABAa.multiple = 0

@@ -17,8 +17,8 @@ NEURON {
         fluor (mV/ms)
     }
     PARAMETER {
-        tON = 55 (ms)
-        tOFF = 48 (ms)
+        tON = 58 (ms)
+        tOFF = 44 (ms)
     }
     INITIAL {
         dF = v
