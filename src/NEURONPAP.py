@@ -73,6 +73,10 @@ def callExperimentMode(**kwargs):
     if "channel" in kwargs.keys() and kwargs["channel"]:
         # Plot for various channel counts
         exp.channelComparison()
+        
+    if "gabacomp" in kwargs.keys() and kwargs["gabacomp"]:
+        # Plot for various channel counts
+        exp.GABANMDARCompare()
 
     if "length" in kwargs.keys() and kwargs["length"]:
         # Plot for various length
@@ -81,6 +85,7 @@ def callExperimentMode(**kwargs):
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
+        exp.GabaStim = kwargs["gabastim"]
         exp.potassiumComparison()
 
     if "video" in kwargs.keys() and kwargs["video"]:

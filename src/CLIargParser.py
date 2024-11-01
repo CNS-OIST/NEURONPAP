@@ -69,6 +69,13 @@ def argParser(rangeInt=100):
         help="Used to run simulations for various channel counts",
     )
     parser.add_argument(
+        "--GABAComp",
+        dest="gabacomp",
+        action="store_true",
+        default=False,
+        help="Used to run simulations for various GABA/NMDAR counts",
+    )
+    parser.add_argument(
         "--freqComp",
         dest="freqComp",
         action="store_true",
@@ -247,6 +254,13 @@ def argParser(rangeInt=100):
         action="store_true",
         default=False,
         help="Works with --kComp, --branch to turn on/off glutamate stim. (With option --stimGlu it is turned on.)",
+    )
+    parser.add_argument(
+        "--stimGaba",
+        dest="gabastim",
+        action="store_true",
+        default=False,
+        help="Works with --kComp",
     )
     parser.add_argument(
         "--stimK",
