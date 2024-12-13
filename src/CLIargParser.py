@@ -284,6 +284,13 @@ def argParser(rangeInt=100):
         default=1,
         help="Used to set NMDAR; 1 True; 0 False",
     )
+    parser.add_argument(
+        "--GABAR",
+        type=int,
+        dest="gabar",
+        default=0,
+        help="Used to set NMDAR; 1 True; 0 False",
+    )
     
     parser.add_argument(
         "--OE",

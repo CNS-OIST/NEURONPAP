@@ -30,6 +30,7 @@ def callExperimentMode(**kwargs):
 
     exp.parallel = kwargs["parallel"]
     exp.NMDAR = bool(kwargs["nmdar"])
+    exp.GABAR = bool(kwargs["gabar"])
     exp.GluT = bool(kwargs["glut"])
     exp.PAPCount = kwargs["papcount"]
     exp.stimCount = kwargs["stimcount"]
@@ -72,6 +73,14 @@ def callExperimentMode(**kwargs):
 
     if "channel" in kwargs.keys() and kwargs["channel"]:
         # Plot for various channel counts
+        exp.GluStim = kwargs["glustim"]
+        if exp.GluStim:
+            exp.NMDAR = True
+            exp.GABAR = False
+        exp.GabaStim = kwargs["gabastim"]
+        if exp.GabaStim:
+            exp.NMDAR = False
+            exp.GABAR = True
         exp.channelComparison()
         
     if "gabacomp" in kwargs.keys() and kwargs["gabacomp"]:
@@ -95,6 +104,7 @@ def callExperimentMode(**kwargs):
     if "branch" in kwargs.keys() and kwargs["branch"]:
         # Plot branch atten
         exp.GluStim = kwargs["glustim"]
+        exp.GabaStim = kwargs["gabastim"]
         exp.branchAttenuation()
 
     if "stim" in kwargs.keys() and kwargs["stim"]:

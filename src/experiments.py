@@ -165,7 +165,7 @@ class plotFigures:
 
                 
 
-    def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False):
+    def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False,showFluor=False,initStep=None):
         for cells in AllCells:
             for cell in cells:
                 if (
@@ -178,7 +178,8 @@ class plotFigures:
                     self.plotIKSeries([[cell]], zoom=True)
                     self.tag = tmpTag
 
-                initStep = int((cell.initTstop - 10) / cell.dt)
+                if initStep == None:
+                    initStep = int((cell.initTstop - 10) / cell.dt)
                 fig, ax = plt.subplots()
                 ax.plot(
                     list(cell.time)[initStep:],
@@ -266,13 +267,14 @@ class plotFigures:
                     color=self.returnColor("PAP"),
                     linestyle="--",
                 )
-                ax.plot(
-                    list(cell.time)[initStep:],
-                    list(cell.fluorVPAP)[initStep:],
-                    label="PAP fluor",
-                    color=self.returnColor("fluor"),
-                    linestyle='-.',
-                )
+                if showFluor:
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.fluorVPAP)[initStep:],
+                        label="PAP fluor",
+                        color=self.returnColor("fluor"),
+                        linestyle='-.',
+                    )
                 if not zoom:
                     ax.plot(
                         list(cell.time)[initStep:],
@@ -336,6 +338,7 @@ class plotFigures:
                         label="iNMDA",
                         color=self.returnColor("NMDAR"),
                     )
+                print(hasattr(cell,"iGABA"))
                 if hasattr(cell, "iGABA") and self.GABAR:
                     ax.plot(
                         list(cell.time)[initStep:],
@@ -458,6 +461,7 @@ class plotFigures:
                     max(res[0].vPAP) - res[0].RMP
                 )
             elif self.GABAR:
+                # if not Kir and GABA i.e. GABA vs. NMDAR do this 
                 imArray[
                     int(res[0].GABACount / self.channelCompareStep),
                     int(res[0].comparecount / self.channelCompareStep),
@@ -517,6 +521,8 @@ class plotFigures:
             plt.xlabel("# of NMDAR Channels")
         elif self.GluT:
             plt.xlabel("Multiple of estimated GluT density")
+        elif self.GABAR and Kir:
+            plt.xlabel("# of GABAR channels / um2")            
         plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
         plt.clim((0, 50))
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
@@ -562,7 +568,7 @@ class plotFigures:
             plt.savefig(os.path.join("../results/paperRes", f"FullRMP{tag}.pdf"))
             plt.cla()
             plt.clf()
-
+            print('Soma Comparison')
             imArray = np.zeros(
                 (
                     int(self.KirMax / self.KirStep) + 1,
@@ -571,11 +577,12 @@ class plotFigures:
             )
 
             for res in results:
+                initStep = int(res[0].initTstop / res[0].dt)
                 imArray[
                     int(res[0].GENEDict["kir2"] / self.KirStep),
                     int(res[0].comparecount / self.channelCompareStep),
                 ] += (
-                    max(res[0].vSoma) - res[0].RMP
+                    max(list(res[0].vSoma)[initStep:]) - res[0].RMP
                 )
             imArray /= divedend
             plt.imshow(
@@ -599,9 +606,11 @@ class plotFigures:
                 plt.xlabel("# of NMDAR Channels")
             elif self.GluT:
                 plt.xlabel("GluT Channels")
+            elif self.GABAR and Kir:
+                plt.xlabel("# of GABAR channels / um2")            
+                
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 1), extend="max")
             plt.clim((0, 10))
-
             plt.savefig(os.path.join("../results/paperRes", f"FullSoma{tag}.pdf"))
 
 
@@ -646,6 +655,8 @@ class procedure(plotFigures):
             self.tag += "_Glu"
         if self.NMDAR:
             self.tag += "_NMDAR"
+        if self.GABAR:
+            self.tag += "_GABAR"
         if not self.GluStim:
             self.tag += "_NoGlu"
         if self.GabaStim:
@@ -961,6 +972,7 @@ class procedure(plotFigures):
                 "ComplexMorph": True,
                 "readHoc": True,
                 "Glu": self.GluStim,
+                "GABA":self.GabaStim,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "naleak": self.leak,
@@ -972,6 +984,15 @@ class procedure(plotFigures):
                 "PAPCount": self.PAPCount,
             }
         )
+        if self.GluStim:
+            funcArgs[-1]['multiple'] = self.optNMDAR
+        else:
+            funcArgs[-1]['multiple'] = 0
+        if self.GabaStim:
+            funcArgs[-1]['GABACount'] = None
+        else:
+            funcArgs[-1]['GABACount'] = 0
+            
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
         if self.stimCount > 1:
@@ -1070,15 +1091,14 @@ class procedure(plotFigures):
         self.addChannelTag()
         AllCells = []
         for kircount in [self.optKir, 400]:
-            for chanCount in [self.optNMDAR, 25]:
+            for chanCount in [self.optNMDAR, 25, 45]:
                 funcArgs = []
                 funcArgs.append(
                     {
                         "mode": 0,
                         "ComplexMorph": True,
                         "bNum": 1,
-                        "readHoc": True,
-                        "Glu": True,
+                        "readHoc": True,               
                         "dt": 0.01,
                         "naleak": self.leak,
                         "clleak": 0,
@@ -1088,23 +1108,42 @@ class procedure(plotFigures):
                 )
                 if self.GluT:
                     if self.NMDAR:
+                        funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = chanCount
                         funcArgs[-1]["GluTrans"] = 1
                         chanName = "GluT_NMDAR"
+                    elif self.GABAR:
+                        funcArgs[-1]["GABACount"] = chanCount
+                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["GluTrans"] = 1
+                        chanName = "GABAR"                        
                     else:
+                        funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = 0
                         funcArgs[-1]["GluTrans"] = 1
                         chanName = "GluTrans"
                 else:
                     if self.NMDAR:
+                        funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = chanCount
                         funcArgs[-1]["GluTrans"] = 0
                         chanName = "NMDAR"
+                    elif self.GABAR:
+                        funcArgs[-1]["GABACount"] = chanCount
+                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["GluTrans"] = 0
+                        chanName = "GABAR"                        
                     else:
+                        funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = 0
                         funcArgs[-1]["GluTrans"] = 0
                         chanName = ""
 
+                if funcArgs[-1]["multiple"] > 0 or funcArgs[-1]["GluTrans"] > 0:
+                    funcArgs[-1]['Glu'] = True
+                if funcArgs[-1]["GABACount"] > 0:
+                    funcArgs[-1]["GABA"] = True
+                    
                 iterations = comm.bcast(
                     [
                         (kircount, conc)
@@ -1668,8 +1707,6 @@ class procedure(plotFigures):
                 "ComplexMorph": True,
                 "bNum": 1,
                 "readHoc": True,
-                "Glu": True,
-                "GABA":False,
                 "kir2": self.optKir,
                 "clleak": 0,
                 "naleak": self.leak,
@@ -1677,7 +1714,6 @@ class procedure(plotFigures):
                 "seed": self.seed,
             }
         )
-
         if self.OE:
             funcArgs[-1]["kir2"] = 400
             
@@ -1685,8 +1721,16 @@ class procedure(plotFigures):
             funcArgs[-1]['dt'] *= 0.2
         if self.NMDAR:
             funcArgs[-1]["multiple"] = self.optNMDAR
+            funcArgs[-1]["Glu"] = True
         else:
             funcArgs[-1]["multiple"] = 0
+            funcArgs[-1]["Glu"] = False
+        if self.GABAR:
+            funcArgs[-1]["GABACount"] = None
+            funcArgs[-1]["GABA"] = True            
+        else:
+            funcArgs[-1]["GABACount"] = 0
+            funcArgs[-1]["GABA"] = False
         if self.GluT:
             funcArgs[-1]["GluTrans"] = self.optGluT
 
@@ -1694,7 +1738,7 @@ class procedure(plotFigures):
         cells.setTstop(500)
         cells.initialize()
         if self.stimCount > 1:
-            cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko)
+            cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko,video=True)
         else:
             cells.setK(Ko=self.ko, delay=0)
 
@@ -1716,7 +1760,7 @@ class procedure(plotFigures):
             #     setKoylim = True
             # else:
             #     setKoylim = False
-            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-90,5])
+            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-90,5],initStep=0)
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
@@ -1811,8 +1855,8 @@ class procedure(plotFigures):
             ]
 
         else:
-            callMethods[0] += ["initialize", "run"]
-            callArgs[0] += [{}, {}]
+            callMethods[0] += ["setTstop","initialize", "run"]
+            callArgs[0] += [{},{}, {}]
 
         if self.ek != None:
             self.ko = self.nernstINV(ek, 80)  # 80 defined in neuron astrocyte.hoc
@@ -1855,6 +1899,7 @@ class procedure(plotFigures):
                 "mode": 0,
                 "readHoc": True,
                 "Glu": self.GluStim,
+                "GABA":self.GabaStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
@@ -1865,7 +1910,10 @@ class procedure(plotFigures):
             }
         )
         ccList = ["kir2"]
-        if self.NMDAR:
+        if self.GABAR:
+            funcArgs[-1]["multiple"] = 0
+            ccList.append("GABACount")
+        elif self.NMDAR:
             ccList.append("multiple")
             if self.GluT:
                 funcArgs[-1]["GluTrans"] = self.optGluT
@@ -2274,7 +2322,7 @@ class procedure(plotFigures):
 
     def readExpRawData(self,results):
         df = pd.read_csv("./Data/depolarTime.csv")
-        stimIndex = 6
+        stimIndex = 5
         # calibrate to relative point from stimulus onset
         for c in df.columns:
             if c == "V":

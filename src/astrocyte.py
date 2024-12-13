@@ -39,7 +39,7 @@ class PAPModel(ResultsPAPModel):
     varMorph = ["v", "ko"]
 
     # Morphology
-    Node = True
+    Node = False
 
     def __init__(
         self,
@@ -196,10 +196,11 @@ class PAPModel(ResultsPAPModel):
         self.GABA = GABA
         if GABA:
             if GABACount == None:
-                self.GABACount = 48 * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
+                self.GABACount = 48 
             else:
                 self.GABACount = GABACount
-                self.GABADensity = self.GABACount * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
+            self.GABADensity = self.GABACount * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
+
 
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
@@ -208,9 +209,15 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         # print(self.GENEDict)
-        if self.multiple == 0 and "GluTrans" in self.GENEDict.keys():
-            # Can be buggy
-            self.comparecount = self.GENEDict["GluTrans"]
+        if self.multiple == 0:
+            if "GluTrans" in self.GENEDict.keys():
+                # Can be buggy
+                self.comparecount = self.GENEDict["GluTrans"]
+            elif GABA:
+                self.comparecount = self.GABACount
+            else:
+                self.comparecount = self.multiple
+            
         else:
             # print('NMDAR selected')
             self.comparecount = self.multiple
@@ -265,6 +272,7 @@ class PAPModel(ResultsPAPModel):
                         self.varMorph,
                         stop=ISI * ms + currTime,
                         interval=ISI / 2 / self.dt,  # sample at half ISI ms interval
+                        zoom=True,
                     )
                 else:
                     h.continuerun(ISI * ms + currTime)
@@ -425,19 +433,20 @@ class PAPModel(ResultsPAPModel):
         # print('setStim')
         # sys.stdout.flush()
         # self.checkNetCons()
+        PAPGluT = [
+            s.syn()
+            for s in list(h.ncGluList)
+            if s.postseg().sec in self.flattenPAP()
+        ]
+        # print(PAPGluT)
+        recordDictArgs = {}
+        if len(PAPGluT) > 0:
+            recordDictArgs['sGluT'] = PAPGluT[0]
         if self.Glu:
-            PAPGluT = [
-                s.syn()
-                for s in list(h.ncGluList)
-                if s.postseg().sec in self.flattenPAP()
-            ]
-            # print(PAPGluT)
-            if len(PAPGluT) > 0:
-                self.record(sNMDA=self.NMDAs[-1], sGABA=self.GABAas[-1],sGluT=PAPGluT[0])
-            else:
-                self.record(sNMDA=self.NMDAs[-1], sGABA=self.GABAas[-1])
-        else:
-            self.record()
+            recordDictArgs['sNMDA'] = self.NMDAs[-1]
+        if self.GABA:
+            recordDictArgs['sGABA'] = self.GABAas[-1]
+        self.record(**recordDictArgs)
         # print('setup Record')
         # sys.stdout.flush()
         h.finitialize(self.v_init)
@@ -714,7 +723,6 @@ class PAPModel(ResultsPAPModel):
 
     def nmda(self):
         sNMDA = h.Exp5NMDA(self.PAP(0.5))
-
         if self.readParms:
             # load files if parameters are read
             sNMDA.tau2_0 = self.Tau2_0
@@ -740,6 +748,7 @@ class PAPModel(ResultsPAPModel):
                 self.iFile.wopen("iFile.dat")
 
         if sGABA != None:
+            
             self.iGABA = h.Vector()
             self.iGABA.record(sGABA._ref_iGaba)
             if toFile:

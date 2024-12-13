@@ -9,6 +9,129 @@ from neuron import h
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+
+class fitModelCurve:
+    plotInterim = False
+    plotFinal = True
+    class cellDict:
+        def __init__(self,cellType):
+            self.Type = cellType
+            if cellType == 'GABA':
+                self.Name = 'inhSyn'
+                self.Parms = ['tau1','tau2']
+                self.File = './Data'
+                self.currName = '_ref_iGaba'
+
+            elif cellType == 'NMDA':
+                self.Name = 'Exp5NMDA'
+                self.Parms = ['tau1_0','tau2_0']
+                self.File = './Data'
+                self.currName = '_ref_iNMDA'
+
+    def __init__(self,cellType):
+        h.load_file("stdgui.hoc")
+        self.cellType = self.cellDict(cellType)
+        self.createCell()
+        self.createSynapse(self.cellType.Name)
+
+    def optimize(self):
+        res = minimize(
+            self.lossFunction,
+            self.cellType.initParms,
+            method='Nelder-Mead',
+            bounds=self.defbounds()
+        )
+        if self.plotFinal:
+            self.plotInterim = True
+            self.lossFunction(res.x)
+        with open(f'{self.cellType.Name}_res.txt','w') as f:
+            f.write(res)
+
+    def defbounds(self):
+        boundsList = []
+        for parm in self.cellType.Parms:
+            boundsList.append((0,None))
+        return boundsList
+
+    def lossFunction(self,x):
+        expData,expTime = np.array(self.readData())
+        self.adjustParms(x)
+        self.setupSim(max(expTime)+1)
+        self.runSim()
+        simData = np.array(self.adjustSimData(expTime))
+        if self.plotInterim:
+            self.plot(expTime,expData,simData)
+        return sum((simData - expData) ** 2)
+
+    def plot(self,t,exp,sim):
+        plt.cla()
+        plt.clf()
+        plt.scatter(t,exp)
+        plt.scatter(t,sim)
+        plt.show()
+
+    def adjustSimData(self,expTime):
+        simData = []
+        for t,current in zip(self.simTime,self.simData):
+            if int(t) is in expTime:
+                simData.append(current)
+
+        return simData
+
+    def setupSim(self,stimStart,tstop):
+        h.dt = 0.1
+        self.stim = stimStart
+        h.tstop = tstop
+        h.finitialize()
+        h.frecord_init()
+
+    def runSim(self):
+        h.run()
+
+    def readData(self):
+        expData = pd.read_csv(self.cellType.File)
+        return expData['i']/expData['i'].max(),expData['t']
+
+    def adjustParms(self,x):
+        for i,parm in enumerate(x):
+            setattr(
+                self.synSoma,
+                self.cellType.Parms[i],
+                parm
+            )
+
+    def createCell(self):
+        self.soma = h.Section(name="soma")
+        self.soma.insert('pas')
+
+    def createSynapse(self,synName):
+        self.synSoma = getattr(h,synName)(self.soma(0.5))
+        self.stim = h.NetStim()
+        self.stim.number = 1
+        self.stim.noise = 0
+        self.stim.interval = 1
+        self.nc = h.NetCon(self.stim,self.synSoma)
+        self.simData = h.Vector()
+        self.simData.record(
+            getattr(
+                self.synSoma,
+                self.cellType.currName
+            )
+        )
+        self.simTime = h.Vector()
+        self.simTime.record(h._ref_t)
+        self.readInitParms()
+
+    def readInitParms(self):
+        self.cellType.initParms = []
+        for parm in self.cellType.Parms:
+            initParm = getattr(
+                self.synSoma,
+                parm
+            )
+            self.cellType.initParms.append(initParm)
+
 
 class calibrateChannel:
     def __init__(self):
@@ -83,6 +206,9 @@ class calibrateChannel:
         curr = np.array(getattr(self,channel))
         time = np.array(self.time)
         return time,curr
+
+            
+            
 
     def getExpiCurve(self,channel):
         fName = self.expIVName(channel)

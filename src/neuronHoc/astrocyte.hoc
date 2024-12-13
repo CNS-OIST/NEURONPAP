@@ -16,8 +16,8 @@ lenUnits = 0.3
     
     // load morphology file
     //xopen("./Geometry/threeCompartmentGeom.hoc")
-    xopen("./Geometry/NodeMod.hoc")
-    // {xopen("./Geometry/GeometryAstrocyteCA1.hoc")}
+    // xopen("./Geometry/NodeMod.hoc")
+    {xopen("./Geometry/GeometryAstrocyteCA1.hoc")}
     
     // inserting membrane mechanisms
     forall {
