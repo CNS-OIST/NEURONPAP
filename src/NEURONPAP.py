@@ -14,7 +14,6 @@ astrocyte.hoc
 by RJ Nakatani
 """
 
-from mpi4py import MPI
 from scipy.optimize import minimize
 import time
 from CLIargParser import argParser
@@ -104,7 +103,13 @@ def callExperimentMode(**kwargs):
     if "branch" in kwargs.keys() and kwargs["branch"]:
         # Plot branch atten
         exp.GluStim = kwargs["glustim"]
+        if exp.GluStim:
+            exp.NMDAR = True
+            exp.GABAR = False
         exp.GabaStim = kwargs["gabastim"]
+        if exp.GabaStim:
+            exp.NMDAR = False
+            exp.GABAR = True
         exp.branchAttenuation()
 
     if "stim" in kwargs.keys() and kwargs["stim"]:
