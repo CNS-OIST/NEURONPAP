@@ -18,7 +18,12 @@ fn_exists () {
 }
 if fn_exists nproc;then
     np=`nproc`
-    np=`expr $np / 2` # Use only half of all processes
+    echo "$np processes found; Use half"
+    if read -q "choice?Press Y/y to continue."; then
+        np=`expr $np / 2` # Use only half of all processes
+    else
+        echo "Using All $np"
+    fi
 else
     np=4 # generic guess for processes
 fi
@@ -45,15 +50,17 @@ if [ ! -d "../results" ];then
     mkdir ../results
 fi
 
-rm -r ../results/paperRes
-mkdir ../results/paperRes
+# rm -r ../results/paperRes
+# mkdir ../results/paperRes
 
 for i in `seq 0 9`; do # for ten random PAPs
     for j in 0.5 10; do # for extracellular potassium condition 0.5 and 10
         echo "seed $i-Ko$j" >> $output
-        mpiexec -n $np python NEURONPAP.py -c --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGaba --ko $j $i # Fig 4a
         echo "Running multi Stim" >> $output
-        mpiexec -n $np python NEURONPAP.py -c --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
+        mpiexec -n $np python NEURONPAP.py -c --stimGaba --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
         {
             if (( $i == 1 )); then
                      echo "KO spillover Comparison"
@@ -65,11 +72,12 @@ for i in `seq 0 9`; do # for ten random PAPs
             python NEURONPAP.py -v --stimCount 10 --ko $j $i # Fig 1cd 2a
             python NEURONPAP.py -b --stimCount 10 --ko $j $i # Fig 1e
             python NEURONPAP.py -b --stimCount 10 --stimGlu --ko $j $i  # Fig 2b
+            python NEURONPAP.py -b --stimCount 10 --stimGaba --ko $j $i  # Fig 2b
         } >> $output
-        echo "Running KO experiments" >> $output
-        mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 $i 
-        mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 $i
-        mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 $i
+        # echo "Running KO experiments" >> $output
+        # mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu $i 
+        # mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu $i
+        # mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu $i
     done
     echo "Running K comparison experiments" >> $output
     mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i #Fig 1f
@@ -90,9 +98,9 @@ python NEURONPAP.py --vClamp $seed # Fig 1b
     echo "Phase Plot for multi stim"
     mpiexec -n 10 python NEURONPAP.py --phase --stimCount 10 $seed
     echo "Phase Plot for KO"
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --spillOver $seed
+    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed # Fig 4e
+    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 4e
+    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed # Fig 4e
+    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed
 } >> $output
 zip -r FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf
