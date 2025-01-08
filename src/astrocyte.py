@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import plotly
 import json
 import math
+from textSDIO import *
 
 
 class PAPModel(ResultsPAPModel):
@@ -316,6 +317,15 @@ class PAPModel(ResultsPAPModel):
                     sNMDA.multiple = 0
                     for nc in list(h.ncNMDAList):
                         nc.active(False)
+
+    def setNMDA_TC(self,tau1,tau2):
+        if not hasattr(self,'NMDAs'):
+            wMessage('NO NMDAs defined for setNMDA_TC')
+            return
+        if len(self.NMDAs) > 0:
+            for sNMDA in self.NMDAs:
+                sNMDA.tau1_0 = tau1
+                sNMDA.tau2_0 = tau2
 
     def initGABAas(self):
         if not hasattr(self, "GABAas"):

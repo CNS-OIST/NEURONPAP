@@ -31,9 +31,10 @@ class plotFigures:
         "iK": "orange",
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
-        "fluor": "red",
+        "fluor": "darkorange",
         "Na": "gold",
         "Cl": "chocolate",
+        "model":"royalblue",
     }
     def saveSourceData(self,dataDict):
         with open(
@@ -1737,8 +1738,9 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         cells.initialize()
+        cells.setNMDA_TC(0,1.07)
         if self.stimCount > 1:
-            cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko,video=True)
+            cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko)
         else:
             cells.setK(Ko=self.ko, delay=0)
 
@@ -1765,26 +1767,54 @@ class procedure(plotFigures):
             # print(max(list(results.vPAP)))
             if expOverlay:
                 results = AllCells[0][0]
-                plt.plot(
+                fig, ax1 = plt.subplots()
+                ax2 = ax1.twinx()
+                ax1.plot(
                     list(results.time),
                     np.array(list(results.vPAP)) - results.RMP,
                     label="model",
+                    color=self.returnColor('model')
                 )
-                plt.plot(
+                ax2.plot(
                     list(results.time),
-                    np.array(list(results.fluorVPAP)) - results.RMP,
+                    (np.array(list(results.fluorVPAP)) - results.RMP) * -1/10,
                     linestyle='-.',
                     color=self.returnColor('fluor'),
-                    label="fluor",
+                    label="sim fluor",
                 )
                 df = self.readExpRawData(results)
-                plt.scatter(df["t"], df["V"], label="experiment", c="black")
+                ax2.scatter(
+                    df["t"], df["V"]* -1/10,
+                    label="experiment",
+                    color=self.returnColor('fluor')
+                )
                 initStep = results.initTstop - 50
-                plt.xlim((initStep, 500))
-                plt.legend()
-                plt.xlabel("Time (ms)")
-                plt.ylabel("Membrane potential change (mV)")
+                ax1.set_xlim((initStep, 500))
+                ax1.legend(loc='upper left')
+                ax2.legend(loc='upper right')
+                ax1.set_xlabel("Time (ms)")
+                ax1.set_ylabel("Membrane potential change (mV)")
+                ax2.set_ylabel("$\Delta F/F_0$ (%)")
+                ylim_value = 40 #mv
+                ax2.set_ylim((0,ylim_value*-1/10))
+                ax1.set_ylim((0,ylim_value))
+                
+                for axObj,label in { ax1:'model', ax2:'fluor'}.items():
+                    axObj.tick_params(axis='y',colors=self.returnColor(label))
+                    axObj.yaxis.label.set_color(self.returnColor(label))
+
+                r,f = self.calcRiseFall(list(df["t"]),list(df["V"]),'exp')
+                titleString = 'Exp $T_{1/2}$' + f':{int(r)},{int(f)} ms '
+                r,f = self.calcRiseFall(
+                    list(results.time),
+                    (np.array(list(results.fluorVPAP)) - results.RMP),
+                    'sim'
+                )
+                titleString = titleString + 'Sim $T_{1/2}$' + f':{int(r)},{int(f)} ms'
+                plt.title(titleString)
                 plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
+
+                
             if self.GluT:
                 plt.xlim((150,300))
                 plt.xlabel('time (ms)')
@@ -1804,6 +1834,37 @@ class procedure(plotFigures):
                 plt.ylabel('Ratio of states')
                 plt.savefig(os.path.join("../results/paperRes", f'GluTstates{self.tag}.pdf'))
 
+    def calcRiseFall(self,t,V,label=None,stdout=False):
+        t = list(t)
+        V = list(V)
+        Thalf = []
+        if label != None and stdout:
+            print(label)
+        maxInd = list(V).index(max(V)) 
+        for i,voltageRF in enumerate([ V[:maxInd], V[maxInd:] ]):
+            if i == 0:
+                origin = 150
+            else:
+                origin = t[maxInd]
+            for j,v in enumerate(voltageRF):
+                if i == 0 and v > max(V)/2:
+                    if stdout:
+                        print('rise')
+                    break
+                elif i == 1 and v < max(V)/2:
+                    if stdout:
+                        print('fall')
+                    j += maxInd
+                    break
+            
+            if stdout:
+                print(v,max(V))
+                print(f'Half T: {abs(t[j]-origin)}')
+            Thalf.append(abs(t[j]-origin))
+
+        return Thalf
+        
+            
 
     def GABANMDARCompare(self):
         self.addChannelTag()
@@ -2341,7 +2402,10 @@ class procedure(plotFigures):
         self.addChannelTag()
         AllCells = []
         funcArgs = []
-        Kir,TWIK,NMDAR,leak = x
+        NMDAR,tau1,tau2 = x
+        Kir = 120
+        TWIK = 1
+        leak = 17375
         funcArgs.append(
             {
                 "mode": 0,
@@ -2364,6 +2428,7 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         cells.initialize()
+        cells.setNMDA_TC(tau1,tau2)
         cells.multiSpike(number=10, freq=100, Ko=0.5)
         cells.run()
         print(x)
@@ -2388,6 +2453,7 @@ class procedure(plotFigures):
         # MLS
         loss = sum((expV - simV)**2)
         # lossRMP = self.optRMPSearch((leak,Kir))
+        print(f'Loss:{loss}')
         return loss #+ lossRMP
 
     
