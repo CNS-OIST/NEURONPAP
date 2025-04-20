@@ -397,6 +397,12 @@ proc setK(){local tmp localobj sref
     // printf("%g\n",getPAPK(sref))
 }
 
+obfunc getWholetree(){localobj sl
+    sl = new SectionList()
+    soma { sl.wholetree() }
+    return sl
+}
+
 proc setkin(){
     forall {
         ki = $1

@@ -22,7 +22,7 @@ ENDCOMMENT
 NEURON {
 	POINT_PROCESS Exp5NMDA
 	NONSPECIFIC_CURRENT iNMDA
-	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple
+	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple, shift
 	THREADSAFE
 }
 
@@ -89,6 +89,7 @@ b1 = 0.03 (1/mV)
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
+        shift = 0             (1) : theoretical shift from 0 mV Mg block
 	delta = 0.01 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
@@ -230,7 +231,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
-	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
+	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(z)*delta*F*(-v+shift)/R/(T+celsius)))
     }
     
     PROCEDURE rates(v (mV)) {

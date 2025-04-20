@@ -20,7 +20,7 @@ class fitModelCurve:
             if cellType == 'GABA':
                 self.Name = 'inhSyn'
                 self.Parms = ['tau1','tau2']
-                self.File = './Data'
+                self.File = './Data/curTimeGABA.csv'
                 self.currName = '_ref_iGaba'
 
             elif cellType == 'NMDA':
@@ -57,7 +57,7 @@ class fitModelCurve:
     def lossFunction(self,x):
         expData,expTime = np.array(self.readData())
         self.adjustParms(x)
-        self.setupSim(max(expTime)+1)
+        self.setupSim(max(expTime)+1,max(expTime))
         self.runSim()
         simData = np.array(self.adjustSimData(expTime))
         if self.plotInterim:
@@ -74,7 +74,8 @@ class fitModelCurve:
     def adjustSimData(self,expTime):
         simData = []
         for t,current in zip(self.simTime,self.simData):
-            if int(t) is in expTime:
+            if int(t) in expTime:
+                print(t)
                 simData.append(current)
 
         return simData
@@ -284,9 +285,12 @@ class calibrateChannel:
         return expVolt,expCurr,mdlCurr
 
 if __name__ == "__main__":
-    chans = calibrateChannel()
-    for channel in chans.channelName:
-        chans.index = 0
-        resSet = chans.IVCurve(channel)
-        chans.plotIVCurve(channel,*resSet)
+    gabaMdl = fitModelCurve('GABA')
+    gabaMdl.optimize()
+    
+    # chans = calibrateChannel()
+    # for channel in chans.channelName:
+    #     chans.index = 0
+    #     resSet = chans.IVCurve(channel)
+    #     chans.plotIVCurve(channel,*resSet)
     

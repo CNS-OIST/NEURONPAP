@@ -14,7 +14,6 @@ astrocyte.hoc
 by RJ Nakatani
 """
 
-from scipy.optimize import minimize
 import time
 from CLIargParser import argParser
 from experiments import procedure

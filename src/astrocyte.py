@@ -7,6 +7,7 @@ from geneManip import GENExpression
 import matplotlib.pyplot as plt
 import plotly
 import json
+import pandas as pd
 import math
 from textSDIO import *
 
@@ -326,6 +327,16 @@ class PAPModel(ResultsPAPModel):
             for sNMDA in self.NMDAs:
                 sNMDA.tau1_0 = tau1
                 sNMDA.tau2_0 = tau2
+
+    def setNMDA_Mgblock(self,K0,delta,shift):
+        if not hasattr(self,'NMDAs'):
+            wMessage('NO NMDAs defined for setNMDA_Mgblock')
+            return
+        if len(self.NMDAs) > 0:
+            for sNMDA in self.NMDAs:
+                sNMDA.K0 = K0
+                sNMDA.delta = delta
+                sNMDA.shift = shift
 
     def initGABAas(self):
         if not hasattr(self, "GABAas"):
@@ -988,6 +999,38 @@ class PAPModel(ResultsPAPModel):
                 h.setK(self.flattenPAP(), 0, restKo, 0)
             self.Ko = Ko
 
+    def setKBath(self, Ko,dur=100, delay=0):
+        if self.readHoc:
+            h.continuerun(delay * ms + h.t)
+            papk = self.getPAPK()
+            h.setK(h.getWholetree(), Ko-papk, Ko,2)
+            h.fcurrent()
+            h.continuerun(dur * ms + h.t)
+            self.Ko = Ko
+
+    def replayK(self,fileName,isolate=False):
+        df = pd.read_csv(fileName)
+        baselineK = self.getPAPK()
+        df['k'] += baselineK
+        df['t'] += h.t
+        # self.dt = 10*math.floor(math.log(max(df['t']),10) - 2)
+        h.dt = self.dt
+        print(f'{self.dt=}')
+        for i,(_,row) in enumerate(df.iterrows()):
+            t = int(row['t'])
+            t -= (t % self.dt)
+            k = row['k']
+            
+            print(t,k)
+            h.continuerun(t*ms)
+            h.fcurrent()
+            papK = self.getPAPK()
+            if isolate:
+                h.setK(self.flattenPAP(),k-papK,k,2)
+            else:
+                h.setK(h.getWholetree(),k-papK,k,2)
+            h.fcurrent()
+            
     def LambdaEq(self, ra, rm, d):
         return (rm * d / ra / 4) ** 0.5  # um
 

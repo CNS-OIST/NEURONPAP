@@ -15,6 +15,7 @@ from math import floor
 import glob
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import f_oneway, ttest_rel
+from scipy.optimize import minimize
 import json
 import pandas as pd
 
@@ -206,10 +207,10 @@ class plotFigures:
                         head_length=0.2,
                         length_includes_head=True,
                     )
-                if setKoylim:
-                    ax.set_ylim((0, 50))
-                else:
-                    ax.set_ylim((0, 9))
+                # if setKoylim:
+                #     ax.set_ylim((0, 50))
+                # else:
+                #     ax.set_ylim((0, 9))
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("extracellular [K] (mM)")
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -1696,7 +1697,7 @@ class procedure(plotFigures):
         
 
             
-    def singleRun(self, expOverlay=False,GluTime=True):
+    def singleRun(self, expOverlay=True,GluTime=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -1721,7 +1722,8 @@ class procedure(plotFigures):
         if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
             funcArgs[-1]['dt'] *= 0.2
         if self.NMDAR:
-            funcArgs[-1]["multiple"] = self.optNMDAR
+            # funcArgs[-1]["multiple"] = self.optNMDAR
+            funcArgs[-1]["multiple"] = 5
             funcArgs[-1]["Glu"] = True
         else:
             funcArgs[-1]["multiple"] = 0
@@ -1738,7 +1740,8 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         cells.initialize()
-        cells.setNMDA_TC(0,1.07)
+        cells.setNMDA_Mgblock(500,5,-80)
+        # 6.12418747    5.40398865    0.42320213 -100.
         if self.stimCount > 1:
             cells.multiSpike(number=self.stimCount, freq=self.freq, Ko=self.ko)
         else:
@@ -1803,15 +1806,15 @@ class procedure(plotFigures):
                     axObj.tick_params(axis='y',colors=self.returnColor(label))
                     axObj.yaxis.label.set_color(self.returnColor(label))
 
-                r,f = self.calcRiseFall(list(df["t"]),list(df["V"]),'exp')
-                titleString = 'Exp $T_{1/2}$' + f':{int(r)},{int(f)} ms '
-                r,f = self.calcRiseFall(
-                    list(results.time),
-                    (np.array(list(results.fluorVPAP)) - results.RMP),
-                    'sim'
-                )
-                titleString = titleString + 'Sim $T_{1/2}$' + f':{int(r)},{int(f)} ms'
-                plt.title(titleString)
+                # r,f = self.calcRiseFall(list(df["t"]),list(df["V"]),'exp')
+                # titleString = 'Exp $T_{1/2}$' + f':{int(r)},{int(f)} ms '
+                # r,f = self.calcRiseFall(
+                #     list(results.time),
+                #     (np.array(list(results.fluorVPAP)) - results.RMP),
+                #     'sim'
+                # )
+                # titleString = titleString + 'Sim $T_{1/2}$' + f':{int(r)},{int(f)} ms'
+                # plt.title(titleString)
                 plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
 
                 
@@ -1834,6 +1837,66 @@ class procedure(plotFigures):
                 plt.ylabel('Ratio of states')
                 plt.savefig(os.path.join("../results/paperRes", f'GluTstates{self.tag}.pdf'))
 
+
+    def bathExperiment(self,invivo=True,isolate=True):
+        # add multispike ek clamp
+        self.addChannelTag()
+        # print(self.tag)
+        AllCells = []
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "readHoc": True,
+                "kir2": 120,
+                "clleak": 0,
+                "naleak": self.leak,
+                "dt": self.dt,
+                "seed": self.seed,
+            }
+        )
+        if self.OE:
+            funcArgs[-1]["kir2"] = 400
+            
+        if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
+            funcArgs[-1]['dt'] *= 0.2
+        funcArgs[-1]["multiple"] = 0
+        funcArgs[-1]["Glu"] = False
+        funcArgs[-1]["GABACount"] = 0
+        funcArgs[-1]["GABA"] = False
+        funcArgs[-1]["GluTrans"] = self.optGluT
+
+        cells = PAPModel(**funcArgs[-1])
+        if invivo:
+            cells.setTstop(123200)
+            cells.initialize()
+            cells.replayK('./Data/invivo_K.csv',isolate=isolate)
+            cells.run()
+
+        else:
+            cells.setTstop(500)
+            cells.initialize()
+            cells.setKBath(8,dur=500)
+            cells.run()
+
+        cells = cells.copyAttr()
+
+        if size > 1:
+            AllCells = comm.gather(cells, root=0)
+        else:
+            AllCells.append([cells])
+        if rank == 0:
+            setKoylim = True
+            # if self.ko > 10:
+            #     setKoylim = True
+            # else:
+            #     setKoylim = False
+            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-90,5],initStep=0)
+            results = AllCells[0][0]
+            # print(max(list(results.vPAP)))
+                
     def calcRiseFall(self,t,V,label=None,stdout=False):
         t = list(t)
         V = list(V)
@@ -1936,7 +1999,7 @@ class procedure(plotFigures):
                 "wb",
             ) as handle:
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            self.plotHeatmap(results, tag=self.tag,Kir=False)
+            # self.plotHeatmap(results, tag=self.tag,Kir=False)
             self.GABANMDARTrace(results,self.channelCompareMax,self.channelCompareMax)
 
     def channelComparison(self):
@@ -2402,7 +2465,8 @@ class procedure(plotFigures):
         self.addChannelTag()
         AllCells = []
         funcArgs = []
-        NMDAR,tau1,tau2 = x
+        NMDAR,d,s = x
+        k = 500
         Kir = 120
         TWIK = 1
         leak = 17375
@@ -2428,12 +2492,12 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         cells.initialize()
-        cells.setNMDA_TC(tau1,tau2)
+        cells.setNMDA_Mgblock(k,d,s)
         cells.multiSpike(number=10, freq=100, Ko=0.5)
         cells.run()
         print(x)
         df = self.readExpRawData(cells)
-        fluorTrace = np.array(list(cells.fluorVPAP)) - cells.RMP
+        fluorTrace = np.array(list(cells.vPAP)) - cells.RMP
         plt.cla()
         plt.clf()
         # extract corresponding indexes in df and sim
@@ -2442,6 +2506,8 @@ class procedure(plotFigures):
         expV = []
         simV = []
         for j,k in indexConvert:
+            if max(df["V"]) == df["V"][j]:
+                maxIndex = j + 1
             expT.append(df["t"][j])
             expV.append(df["V"][j])
             simV.append(fluorTrace[k])
@@ -2451,7 +2517,7 @@ class procedure(plotFigures):
             plt.scatter(expT,expV)
             plt.show()
         # MLS
-        loss = sum((expV - simV)**2)
+        loss = sum((expV[:j] - simV[:j])**2)
         # lossRMP = self.optRMPSearch((leak,Kir))
         print(f'Loss:{loss}')
         return loss #+ lossRMP
@@ -2751,3 +2817,15 @@ class procedure(plotFigures):
             plt.clim((0, 50))
             plt.savefig(os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf"))
 
+
+if __name__ == '__main__':
+    exp = procedure(0,0)
+    # exp.bathExperiment()
+    print(
+        minimize(
+            exp.fitExpDepolarization,
+            (5,100,-70),
+            method="Nelder-Mead",
+            bounds=[(5, 10),(5,100),(-80,-60)]
+        )
+    )

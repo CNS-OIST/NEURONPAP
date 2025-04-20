@@ -170,13 +170,13 @@ KINETIC kstates {
     CONSERVE C1+C2+C3+C4+C5+C6= 1
 }
 
-
 PROCEDURE gluDiff(maxGlu (mM/liter),tSyn(ms)){
     Gluout = Gluout_0 + maxGlu*(tau2/(tau2-tau1)*(-exp(-(t-tSyn)/tau1) + exp(-(t- tSyn)/tau2)))
     : if (maxGlu > 0){
     :     printf("%g,%g\n",maxGlu,Gluout)
     : }
 }
+
 
 FUNCTION u(x(mV), th) {
     : printf("%g,%g\n",x,exp(th*x/(2*(26.7 (mV)))))
