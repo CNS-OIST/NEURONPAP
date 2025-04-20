@@ -63,18 +63,20 @@ BREAKPOINT {
 }
 PROCEDURE kbathRate(){
     UNITSOFF
-    flux = (1e8)*ik /(fhspace*F) 
-    if (flag > 1){
-        kbath = -1 * flux
+    if (flag > 0){
+        flux = 0
+        kbath = 0
         ko = ko0
-        } else if (flag > 0){
-            kbath = (ko0-ko) 
-            : instantaneous free bath mode for one step
-            flag = 0
-            : printf("%g\n",kbath)
-        } else {
-            kbath =  (ko0 - ko)/tauk
-        }
-        UNITSON
-        }
+        : printf("%g\n",kbath)
+    } else {
+        flux = (1e8)*ik /(fhspace*F) 
+        kbath =  (ko0 - ko)/tauk
+    }
+    
+    if (flag == 1) {
+        : instantaneous free bath mode for one step
+        flag = 0   
+    }
+    UNITSON
+}
     

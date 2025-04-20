@@ -1014,8 +1014,16 @@ class PAPModel(ResultsPAPModel):
         df['k'] += baselineK
         df['t'] += h.t
         # self.dt = 10*math.floor(math.log(max(df['t']),10) - 2)
-        h.dt = self.dt
+        # h.dt = self.dt
         print(f'{self.dt=}')
+        # get Max
+        maxT = max(df['t'])
+        maxT -= maxT % self.dt
+        # remove remainder
+        maxT += self.dt * 6
+        # add 6 timesteps
+        self.setTstop(maxT)
+        
         for i,(_,row) in enumerate(df.iterrows()):
             t = int(row['t'])
             t -= (t % self.dt)

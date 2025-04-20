@@ -1870,9 +1870,8 @@ class procedure(plotFigures):
 
         cells = PAPModel(**funcArgs[-1])
         if invivo:
-            cells.setTstop(123200)
             cells.initialize()
-            cells.replayK('./Data/invivo_K.csv',isolate=isolate)
+            cells.replayK('./Data/invivo_test.csv',isolate=isolate)
             cells.run()
 
         else:
@@ -2820,12 +2819,12 @@ class procedure(plotFigures):
 
 if __name__ == '__main__':
     exp = procedure(0,0)
-    # exp.bathExperiment()
-    print(
-        minimize(
-            exp.fitExpDepolarization,
-            (5,100,-70),
-            method="Nelder-Mead",
-            bounds=[(5, 10),(5,100),(-80,-60)]
-        )
-    )
+    exp.bathExperiment()
+    # print(
+    #     minimize(
+    #         exp.fitExpDepolarization,
+    #         (5,100,-70),
+    #         method="Nelder-Mead",
+    #         bounds=[(5, 10),(5,100),(-80,-60)]
+    #     )
+    # )
