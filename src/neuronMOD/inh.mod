@@ -68,7 +68,7 @@ PARAMETER {
 	npy=0
 	pv=0
 	xEff=-1
-	isOn=0
+	isOn=1
         multiple=1
     V50=-52 (mV)
     slope_factor=3 (mV)

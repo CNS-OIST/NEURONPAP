@@ -30,7 +30,7 @@ UNITS {
 	T = 300	(degC)
  	R        = 8.3145   (J/degC) 	
         z = -1
-        }
+    }
     
     INITIAL {
         calcECL()
@@ -40,7 +40,7 @@ UNITS {
 PARAMETER {
     gleak = 5.57e-6 (uS) : ratio from Kalia et al. (2021) * Janic et al K leak
     :    cli = 7.6 (mM) : Thapaliya P et al 2023
-    cli = 30 (mM): Verkhratsky A. review Adv Exp Med Biol 2019
+    cli_0 = 30 (mM): Verkhratsky A. review Adv Exp Med Biol 2019
     clo_0 = 130 (mM): Untiet V. Nat Comm. 14, Article number: 1871 (2023) 
 }
 
@@ -65,9 +65,7 @@ BREAKPOINT {
     }
     
     PROCEDURE calcECL(){
-        clo = clo_0
-        ecl = NERNST(clo, cli, z)
-        
+        ecl = NERNST(clo_0, cli_0, z)
     }
     FUNCTION NERNST (co (mM), ci (mM), zion (1)) (mV) {
         NERNST = (1e3) * R*T/F/zion * log(co/ci)

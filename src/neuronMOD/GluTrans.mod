@@ -25,11 +25,11 @@ ENDCOMMENT
 
 NEURON {
     POINT_PROCESS  GluTrans
-    USEION k READ ki,ko
-    USEION na READ nao,nai
+    USEION k READ ki,ko WRITE ik
+    USEION na READ nao,nai WRITE ina
+    USEION GluT WRITE iGluT VALENCE 1
     RANGE part, C1, C2, C3, C4, C5, C6
     RANGE  iGluT, Gluout, density, itransLog,multiple
-    NONSPECIFIC_CURRENT iGluT
 
 
 }
@@ -79,6 +79,8 @@ PARAMETER {
 ASSIGNED {
     v	   (mV)		:  voltage
     iGluT (nA)            : 
+    ina (nA)            : 
+    ik (nA)            : 
     surf   (cm2)
     volin  (liter)
     volout (liter)
@@ -119,8 +121,8 @@ INITIAL {
     volin = 1
     volout = 1
     surf = 1
-    koi(ki,ko)
-    naoi(nai,nao)
+    get_k(ki,ko)
+    get_na(nai,nao)
     Gluout = Gluout_0
     tSyn = 0
     maxGlu = 0 
@@ -134,13 +136,17 @@ NET_RECEIVE(weight) {
 
 BREAKPOINT {
     : printf("%g\n",ko)
-    koi(ki,ko)
-    naoi(nai,nao)
-    SOLVE kstates METHOD sparse
- 
+    get_k(ki,ko)
+    get_na(nai,nao)
     gluDiff(maxGlu,tSyn)
+    SOLVE kstates METHOD sparse
+    : set_k(ki,ko)
+    : set_na(nai,nao)
     
-    iGluT=-charge*(1e+004)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) -0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.5*(C2*k23*Naout*u(v,0.5)-C3*k32)+0.4*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * density
+    ina = -charge*(1e+004)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * multiple * area * density
+    ik = -charge*(1e+004)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * multiple * area * density
+    
+    iGluT=-charge*(1e+004)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * density + ina + ik
     : printf("tSyn:%g\n",tSyn)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
@@ -184,12 +190,13 @@ FUNCTION u(x(mV), th) {
 }
 
 
-PROCEDURE koi(ki(mM),ko(mM)){
+PROCEDURE get_k(ki(mM),ko(mM)){
     Kin = ki/1 (liter)
     Kout = ko/1(liter)
 }
 
-PROCEDURE naoi(nai(mM),nao(mM)){
+PROCEDURE get_na(nai(mM),nao(mM)){
     Nain = nai/1 (liter)
     Naout = nao/1(liter)
 }
+

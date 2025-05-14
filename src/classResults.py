@@ -24,12 +24,20 @@ class ResultsPAPModel:
         "iKPAP",
         "iClPAP",
         "iNaPAP",
-        "iMemPAP" "iKSoma",
+        "iMemPAP",
+        "iKSoma",
         "iClSoma",
         "iNaSoma",
         "iMemSoma",
+        "iNCXPAP"
+        # "iNMDA"
     ]
-    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma","iGABA"]
+    ppcurrents = [
+        # "iGluT",
+        #"iNMDA",
+        # "iGluTSoma",
+        "iGABA"
+    ]
 
     def copyAttr(self):
         # print("copying to result class")

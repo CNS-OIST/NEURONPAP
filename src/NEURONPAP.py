@@ -36,6 +36,9 @@ def callExperimentMode(**kwargs):
     exp.ek = kwargs["ek"]
     exp.OE = bool(kwargs["overexpress"])
 
+    if exp.GABAR:
+        channelCompareMax = 50
+
     if "spill" in kwargs.keys() and kwargs["spill"]:
         exp.PAPLen = 2
 
@@ -65,10 +68,6 @@ def callExperimentMode(**kwargs):
         # Plot for vatious distnace channel counts
         exp.multiDistance((10, 10, 2, 1.3, 1))
 
-    if "nonhoc" in kwargs.keys() and kwargs["nonhoc"]:
-        # Run without hoc
-        exp.singleRun(readHoc=False)
-
     if "channel" in kwargs.keys() and kwargs["channel"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
@@ -92,7 +91,6 @@ def callExperimentMode(**kwargs):
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
-        exp.GabaStim = kwargs["gabastim"]
         exp.potassiumComparison()
 
     if "video" in kwargs.keys() and kwargs["video"]:
@@ -128,6 +126,8 @@ def callExperimentMode(**kwargs):
         exp.SomaVC()
 
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
+        exp.GluStim = kwargs["glustim"]
+        exp.KStim = kwargs["kstim"]
         # run before kocomp for automatic peak identification
         exp.glutamateSpillOver()
 

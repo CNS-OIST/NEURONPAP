@@ -26,8 +26,10 @@ lenUnits = 0.3
         insert pas
         e_pas = -85
         g_pas = 1 /  11150
-
+        
         insert kir2
+        // insert ncx
+        // imax_ncx = 10
         insert twik
         insert kleak
         insert naleak
@@ -36,8 +38,10 @@ lenUnits = 0.3
         
         insert k_acc
         insert na_acc
+        // insert nai_acc
+        insert ca_acc
         insert GEVI
-        // insert kdrglia
+        insert kdrglia
         // insert GluTrans
         // insert kdifl
         // ki0_kdifl = 110
@@ -47,7 +51,7 @@ lenUnits = 0.3
         }
     }
 }
-// psection()
+//psection()
 
 objref r
 
@@ -363,10 +367,13 @@ proc initIon(){local iki,inai
     // set initial Ko Ki
     forall {
         nao = 140
-        ko = 2.5
-        clo = nao + ko
-        ki = iki
         nai = inai
+        ko = 2
+        ki = iki
+        clo = 130
+        cli = 30
+        cao = 2
+        cai = 50e-6 // 50 nM
     }
 }
 
@@ -416,6 +423,12 @@ proc setGEVI(){
     forall {
         tON_GEVI = $1
         tOFF_GEVI = $2
+    }
+}
+
+proc setSlowing(){
+    forall {
+        slowing_k_acc = $1
     }
 }
 
@@ -612,16 +625,22 @@ proc getAllRi() {localobj all_sections
 
 proc kbath_off() {
     forall {
-        tauk_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
+        tauk_0_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
     }
 }
 proc kbath_on() {
     forall {
-        tauk_k_acc = 3/6 // esenntially quickeruptake
+        tauk_0_k_acc = 3 // reset
     }
 }
 proc kbath_rule() {
     forall {
-        tauk_k_acc = 3 / $1 // esenntially decide tauk
+        tauk_0_k_acc = $1 // esenntially decide tauk
     }
 }
+
+proc set_ko0(){
+    forall {
+        ko0_k_acc = $1
+    }
+    }

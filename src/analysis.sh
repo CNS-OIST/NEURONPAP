@@ -53,7 +53,10 @@ fi
 # rm -r ../results/paperRes
 # mkdir ../results/paperRes
 
-for i in `seq 0 9`; do # for ten random PAPs
+# of paps - 1
+total=0
+
+for i in `seq 0 $total`; do # for ten random PAPs
     for j in 0.5 10; do # for extracellular potassium condition 0.5 and 10
         echo "seed $i-Ko$j" >> $output
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --ko $j $i # Fig 4a
@@ -64,7 +67,11 @@ for i in `seq 0 9`; do # for ten random PAPs
         {
             if (( $i == 1 )); then
                      echo "KO spillover Comparison"
-                     mpiexec -n $np python NEURONPAP.py --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     mpiexec -n $np python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     echo "K spillover Comparison"
+                     mpiexec -n $np python NEURONPAP.py --stimK --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     echo "Glu spillover Comparison"
+                     mpiexec -n $np python NEURONPAP.py --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "eK Clamp"
                      python NEURONPAP.py --ekComp $i # Fig 2d
             fi
@@ -103,4 +110,6 @@ python NEURONPAP.py --vClamp $seed # Fig 1b
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed # Fig 4e
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed
 } >> $output
+# mpiexec -n 2 python experiments.py
+# mpiexec -n 1 python experiments.py
 zip -r FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf

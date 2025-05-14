@@ -1,19 +1,11 @@
 TITLE Potassium ion accumulation
-: Intracellular potassium ion accumulation
-COMMENT
-To Do
-Check with Halnes chapter 9 parameters if they are sufficient,
-Yamada Methods in Neuronal Modeling may be more suitable.
-
-Look Up Armstrong units to double check.
-
-
-ENDCOMMENT
 
 NEURON {
 	SUFFIX k_acc
 	USEION k READ ko, ik WRITE ko
-        RANGE tauk, ko0, flag, kbath, flux
+        USEION NMDA READ iNMDA
+        USEION GluT READ iGluT
+        RANGE tauk_0, ko0, flag, kbath, flux, slowing
 	THREADSAFE
 }
 
@@ -22,21 +14,28 @@ UNITS {
 	(mV) = (millivolt)
 	(mM) = (milli/liter)
 	(mA) = (milliamp)
+        (nA) = (nanoamp)
 	F = (faraday) (coulombs)
 }
 
 PARAMETER {    
     ko0 = 2.5 (mM)
     fhspace = 100 (angstrom) : effective thickness 
-    tauk = 3 (ms) : Halnes chapter 9 the NEURON book  of Halnes
+    tauk_0 = 4.0 (ms) :Ransom C.B. (2000) Journal of Physiology
     flag  = 0 (1)
+    slowing = 2 (1)
+    startFlag = 0 (1)
+    tstart = 0 (1)
 }
 
 ASSIGNED {
+    tauk (ms)
     ik 	(mA/cm2)
     kbath (mM/ms)
     flux (mM/ms)
     dt (ms)
+    iNMDA (mA/cm2)
+    iGluT (mA/cm2)
 }
 
 STATE {
@@ -45,6 +44,7 @@ STATE {
 
 INITIAL {
     ko = ko0
+    tauk = tauk_0
     kbathRate()
     
 }
@@ -66,12 +66,22 @@ PROCEDURE kbathRate(){
     if (flag > 0){
         flux = 0
         kbath = 0
-        ko = ko0
+        ko = ko0 
         : printf("%g\n",kbath)
     } else {
-        flux = (1e8)*ik /(fhspace*F) 
+        flux = (1e8)*ik /(fhspace*F)
+        if (iNMDA < 0) {
+            tauk = 2 * tauk_0: slowing based on neuronal activity
+        }
         kbath =  (ko0 - ko)/tauk
     }
+    : if ((iNMDA != 0 || iGluT < 0) && t > 150) {
+    :     : printf("%g\n",iNMDA)
+    :     : tauk = tauk_0 * slowing
+    :     tauk = tauk_0 * ((slowing - 1) * exp((t-500)/100) - slowing)
+    
+    
+
     
     if (flag == 1) {
         : instantaneous free bath mode for one step
