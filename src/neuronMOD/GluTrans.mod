@@ -30,7 +30,6 @@ NEURON {
     USEION GluT WRITE iGluT VALENCE 1
     RANGE part, C1, C2, C3, C4, C5, C6
     RANGE  iGluT, Gluout, density, itransLog,multiple
-    RANGE StimLen
 }
 
 UNITS {
@@ -127,6 +126,7 @@ INITIAL {
     Gluout = Gluout_0
     : printf("max,glu\n")
     tSpike = exp(700)
+    maxGlu = 0
 }
 NET_RECEIVE(weight,tsyn,maxG,GluRes) {
     INITIAL{
@@ -134,12 +134,12 @@ NET_RECEIVE(weight,tsyn,maxG,GluRes) {
         maxG = 0
         GluRes = 0
     }
+    GluRes = maxG*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
+    maxG = weight * 1 (mM) / 1 (liter) + GluRes
     tsyn = t
     tSpike = tsyn
-    GluRes = maxGlu*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
-    maxG = weight * 1 (mM) / 1 (liter) + GluRes
     maxGlu = maxG
-    : printf("%g,%g,%g\n",tsyn,maxGlu,GluRes)
+    : printf("%g,%g,%g\n",tSpike,maxGlu,GluRes)
 }
 
 
@@ -192,14 +192,12 @@ KINETIC kstates {
 }
 
 PROCEDURE gluDiff(maxG (mM/liter),tSpike(ms)){
-    LOCAL tStim
-    if (tSpike < t && t< (stimLen*10+tSpike)) {
-        tStim = t - fmod(t,10)
+    if (maxG > 0) {
+        Gluout = Gluout_0 + maxG*(tau2/(tau2-tau1)*(-exp(-(t-tSpike)/tau1) + exp(-(t- tSpike)/tau2)))
+        : printf("%g,%g\n",maxG,Gluout)        
+    } else {
+        Gluout = 0   
     }
-    Gluout = Gluout_0 + maxG*(tau2/(tau2-tau1)*(-exp(-(t-tStim)/tau1) + exp(-(t- tStim)/tau2)))
-    : if (tSpike < t && t< (stimLen*10+tSpike)) {
-    :     printf("%g,%g\n",maxG,Gluout)
-    : }
 }
 
 
