@@ -30,8 +30,7 @@ NEURON {
     USEION GluT WRITE iGluT VALENCE 1
     RANGE part, C1, C2, C3, C4, C5, C6
     RANGE  iGluT, Gluout, density, itransLog,multiple
-
-
+    RANGE StimLen
 }
 
 UNITS {
@@ -74,6 +73,7 @@ PARAMETER {
     tau1 = 0.61 (ms) : Rise of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
     tau2 = 5.8 (ms) : Fall of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
     multiple = 1 : Count of GluT
+    stimLen = 10 (1) : number of spikes
 }
 
 ASSIGNED {
@@ -95,8 +95,9 @@ ASSIGNED {
     Nain (mM/liter)
     area (um2)
     Gluout (mM/liter)
-    tSyn (ms)
+    : GluRes (mM/liter)
     flag
+    tSpike (ms)
     maxGlu (mM/liter)
 }
 
@@ -124,13 +125,21 @@ INITIAL {
     get_k(ki,ko)
     get_na(nai,nao)
     Gluout = Gluout_0
-    tSyn = 0
-    maxGlu = 0 
+    : printf("max,glu\n")
+    tSpike = exp(700)
 }
-NET_RECEIVE(weight) {
-    tSyn = t
-    maxGlu = weight * 1 (mM) / 1 (liter) + Gluout - Gluout_0
-    : printf("Glu:%g\n",maxGlu)
+NET_RECEIVE(weight,tsyn,maxG,GluRes) {
+    INITIAL{
+        tsyn = 0
+        maxG = 0
+        GluRes = 0
+    }
+    tsyn = t
+    tSpike = tsyn
+    GluRes = maxGlu*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
+    maxG = weight * 1 (mM) / 1 (liter) + GluRes
+    maxGlu = maxG
+    : printf("%g,%g,%g\n",tsyn,maxGlu,GluRes)
 }
 
 
@@ -138,8 +147,14 @@ BREAKPOINT {
     : printf("%g\n",ko)
     get_k(ki,ko)
     get_na(nai,nao)
-    gluDiff(maxGlu,tSyn)
+    : if (tSpike == 150) {
+    :     printf("%g,%g\n",tSpike,maxGlu)
+    : }
+    gluDiff(maxGlu,tSpike)
+    : printf("%g\n",tSpike)
+
     SOLVE kstates METHOD sparse
+
     : set_k(ki,ko)
     : set_na(nai,nao)
     
@@ -147,7 +162,7 @@ BREAKPOINT {
     ik = -charge*(1e+004)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * multiple * area * density
     
     iGluT=-charge*(1e+004)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * density + ina + ik
-    : printf("tSyn:%g\n",tSyn)
+    : printf("tsyn:%g\n",tsyn)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
     : printf("%g,%g,%g,%g,%g\n",C1,C2,C3,C4,C5)
@@ -176,10 +191,14 @@ KINETIC kstates {
     CONSERVE C1+C2+C3+C4+C5+C6= 1
 }
 
-PROCEDURE gluDiff(maxGlu (mM/liter),tSyn(ms)){
-    Gluout = Gluout_0 + maxGlu*(tau2/(tau2-tau1)*(-exp(-(t-tSyn)/tau1) + exp(-(t- tSyn)/tau2)))
-    : if (maxGlu > 0){
-    :     printf("%g,%g\n",maxGlu,Gluout)
+PROCEDURE gluDiff(maxG (mM/liter),tSpike(ms)){
+    LOCAL tStim
+    if (tSpike < t && t< (stimLen*10+tSpike)) {
+        tStim = t - fmod(t,10)
+    }
+    Gluout = Gluout_0 + maxG*(tau2/(tau2-tau1)*(-exp(-(t-tStim)/tau1) + exp(-(t- tStim)/tau2)))
+    : if (tSpike < t && t< (stimLen*10+tSpike)) {
+    :     printf("%g,%g\n",maxG,Gluout)
     : }
 }
 

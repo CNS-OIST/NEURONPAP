@@ -66,12 +66,12 @@ for i in `seq 0 $total`; do # for ten random PAPs
         mpiexec -n $np python NEURONPAP.py -c --stimGaba --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
         {
             if (( $i == 1 )); then
-                     echo "KO spillover Comparison"
-                     mpiexec -n $np python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     # echo "KO spillover Comparison"
+                     # mpiexec -n $np python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "K spillover Comparison"
-                     mpiexec -n $np python NEURONPAP.py --stimK --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     mpiexec -n $np python NEURONPAP.py --stimK --gluSpill --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "Glu spillover Comparison"
-                     mpiexec -n $np python NEURONPAP.py --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     mpiexec -n $np python NEURONPAP.py --stimGlu --gluSpill --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "eK Clamp"
                      python NEURONPAP.py --ekComp $i # Fig 2d
             fi

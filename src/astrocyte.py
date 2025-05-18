@@ -262,6 +262,7 @@ class PAPModel(ResultsPAPModel):
         if hasattr(h, "stim") and number > 0:
             h.stim.number = number
             h.stim.interval = ISI * ms
+            print(h.stim.number,h.stim.interval)
         if koclamp:
             while h.t < ISI * number:
                 self.koClamp(self.Ko)
@@ -972,12 +973,21 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), 0, restKo, 0)
         self.KoSize = KoSize
 
-    def setKBath(self, Ko,dur=100, delay=0):
+    def setKBath(self, Ko,dur=100, delay=0,video=False):
         h.continuerun(delay * ms + h.t)
         papk = self.getPAPK()
         h.setK(h.getWholetree(), Ko-papk, Ko,2)
         h.fcurrent()
-        h.continuerun(dur * ms + h.t)
+        if video:
+            self.makeVideo(
+                self.varMorph,
+                stop=dur * ms + h.t,
+                interval= 100 / self.dt,  # sample at 100 ms interval
+                zoom=False,
+            )
+
+        else:
+            h.continuerun(dur * ms + h.t)
         self.Ko = Ko
 
     def setKClearance(self,mode):

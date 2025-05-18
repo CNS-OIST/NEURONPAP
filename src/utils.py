@@ -85,11 +85,11 @@ def get_iter(parmA, parmASteps, parmB, parmBSteps):
     # Update to get dynamic loops
     iterations = []
     for i in range(0, parmA + 1, parmASteps):
-        if type(parmB) == int and type(parmBSteps):
+        if type(parmB) == int and type(parmBSteps) == int:
             for j in range(0, parmB + 1, parmBSteps):
                 iterations.append((i, j))
         else:
-            for j in np.arange(0, parmB + parmBSteps, parmBSteps):
+            for j in np.arange(0, parmB + parmBSteps/2, parmBSteps):
                 iterations.append((i, j))
             
 

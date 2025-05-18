@@ -220,6 +220,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	wf = synWeight*factor*D1*hillGluc(weight*1 (mM)) 
         : printf("%g,%g,%g,%g,%g\n",weight,factor,D1,wf,hillGluc(glu))
         : printf("%g\n",weight)
+        : printf("%g",tsyn)
         
 	A = A + wf
 	B = B + wf

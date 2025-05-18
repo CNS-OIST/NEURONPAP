@@ -252,10 +252,10 @@ NMDAs = new List()
 ncNMDAList = new List()
 
 stim = new NetStim(.5)
-stim.interval = 1
-stim.number = 1
-stim.start = 50
-stim.noise = 0
+// stim.interval = 1
+// stim.number = 1
+// stim.start = 50
+// stim.noise = 0
 
 // slPAP.printnames()
 // print(lenPAP)
@@ -518,9 +518,9 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     ps = new PlotShape(sref)
     ps.variable($s1) // plot variable 2
     if (strcmp($s1,"v")==0){
-        ps.scale(-80,-60)
+        ps.scale(-80,-50)
     } else if (strcmp($s1,"ko")==0) {
-        ps.scale(3.5,5)
+        ps.scale(3,10)
     } else if (strcmp($s1,"Ri_inputRes")==0) {
         ps.scale(0,1500)
     } else if (strcmp($s1,"diam")==0) {
