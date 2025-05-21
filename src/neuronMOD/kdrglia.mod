@@ -51,7 +51,11 @@ ASSIGNED {
     L (um)
 }
 
-STATE { n c qk }
+STATE {
+    n
+    c
+    qk (mM)
+}
 
 BREAKPOINT {
     SOLVE kstate METHOD sparse
@@ -77,9 +81,10 @@ KINETIC kstate {
     CONSERVE n + c = 1
     COMPARTMENT d*d*PI/4 { qk }
 
-    ~ qk << (-ik*d*PI*(1e4)/FARADAY )
+    ~ qk << (-ik*d*PI*(1e4)/(FARADAY ))
 }
 
+UNITSOFF
 FUNCTION a_n(v(mV)) (1/ms){
     TABLE DEPEND scaletaun, shiftn FROM -150 TO 150 WITH 200
     a_n = scaletaun*0.016*(35.1-v-shiftn-70)/(exp((35.1-v-shiftn-70)/5)-1)
@@ -87,13 +92,15 @@ FUNCTION a_n(v(mV)) (1/ms){
 
 FUNCTION a_c(v(mV)) (1/ms){
     TABLE DEPEND scaletaun, shiftn FROM -150 TO 150 WITH 200
-    a_c = scaletaun*0.25*exp((20-v-shiftn-70)/40)
+    a_c = scaletaun*0.25*exp((20-v-shiftn-70)/40 (mV))
 }
 
 FUNCTION n_inf(v(mV)) {
     n_inf = a_n(v) / ( a_n(v) + a_c(v) )
 }
 
-FUNCTION window(v(mV)) {
+FUNCTION window (v(mV)) {
     window=gkbar*n_inf(v)^4*(v-ek)
 }
+UNITSON
+

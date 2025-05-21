@@ -26,7 +26,7 @@ ENDCOMMENT
 NEURON {
     POINT_PROCESS  GluTrans
     USEION k READ ki,ko WRITE ik
-    USEION na READ nao,nai WRITE ina
+    USEION na READ nao,nai
     USEION GluT WRITE iGluT VALENCE 1
     RANGE part, C1, C2, C3, C4, C5, C6
     RANGE  iGluT, Gluout, density, itransLog,multiple
@@ -64,21 +64,20 @@ PARAMETER {
     
     Gluin = 0.3      (mM/l)
     Gluout_0 = 20e-6	(mM/l)
-
-    density =1e12  : (/cm2) : 10000 per um2
+    
+    density =1.2e13  (/cm2) : at tip for GLT-1
+    :Estimating the glutamate transporter surface density in distinct sub-cellular compartments of mouse hippocampal astrocytes Radulescu 2022 PLOS Comp.Bio
     charge = 1.6e-19 (coulombs)
     synCleftSpace = 1.41e-15 (liter)
     : PSD 200 nm Cleft Height 20 nm
     tau1 = 0.61 (ms) : Rise of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
     tau2 = 5.8 (ms) : Fall of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
     multiple = 1 : Count of GluT
-    stimLen = 10 (1) : number of spikes
 }
 
 ASSIGNED {
     v	   (mV)		:  voltage
     iGluT (nA)            : 
-    ina (nA)            : 
     ik (nA)            : 
     surf   (cm2)
     volin  (liter)
@@ -98,17 +97,18 @@ ASSIGNED {
     flag
     tSpike (ms)
     maxGlu (mM/liter)
+    count (1)
 }
 
 STATE {
     : Transporter  states (all fractions)
             : 
-    C1	(/cm2)	:  
-    C2	(/cm2)	:  
-    C3	(/cm2)	: 
-    C4	(/cm2)	: 
-    C5	(/cm2)	: 
-    C6  (/cm2)
+    C1	(/um2)	:  
+    C2	(/um2)	:  
+    C3	(/um2)	: 
+    C4	(/um2)	: 
+    C5	(/um2)	: 
+    C6  (/um2)
 }
 
 INITIAL {
@@ -125,20 +125,29 @@ INITIAL {
     get_na(nai,nao)
     Gluout = Gluout_0
     : printf("max,glu\n")
-    tSpike = exp(700)
+    tSpike = 0
     maxGlu = 0
+    count = (1e-08) * area * density
 }
-NET_RECEIVE(weight,tsyn,maxG,GluRes) {
+NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     INITIAL{
         tsyn = 0
         maxG = 0
         GluRes = 0
     }
+    UNITSOFF
     GluRes = maxG*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
-    maxG = weight * 1 (mM) / 1 (liter) + GluRes
+    maxG = weight + GluRes
     tsyn = t
     tSpike = tsyn
     maxGlu = maxG
+    C1= 0.9074    
+    C2= 0.0199    
+    C3= 0.0435    
+    C4= 0.0103    
+    C5= 0.0142    
+    C6= 0.0047
+    UNITSON
     : printf("%g,%g,%g\n",tSpike,maxGlu,GluRes)
 }
 
@@ -158,10 +167,9 @@ BREAKPOINT {
     : set_k(ki,ko)
     : set_na(nai,nao)
     
-    ina = -charge*(1e+004)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * multiple * area * density
-    ik = -charge*(1e+004)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * multiple * area * density
+    ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * multiple * area *count
     
-    iGluT=-charge*(1e+004)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * density + ina + ik
+    iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * count -charge*(1e12)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * multiple * area * count + ik
     : printf("tsyn:%g\n",tsyn)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
@@ -196,7 +204,7 @@ PROCEDURE gluDiff(maxG (mM/liter),tSpike(ms)){
         Gluout = Gluout_0 + maxG*(tau2/(tau2-tau1)*(-exp(-(t-tSpike)/tau1) + exp(-(t- tSpike)/tau2)))
         : printf("%g,%g\n",maxG,Gluout)        
     } else {
-        Gluout = 0   
+        Gluout = Gluout_0
     }
 }
 

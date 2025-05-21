@@ -90,9 +90,9 @@ tau2_0 = 19 (ms)
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
 	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-        K0 = 500
+        K0 = 500               (mM)
         : shift = 0             (1) : theoretical shift from 0 mV Mg block
-        shift = -72.5 (1)
+        shift = -72.5 (mV)
         delta = 10
 	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
