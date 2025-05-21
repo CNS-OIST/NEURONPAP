@@ -203,9 +203,11 @@ obfunc get_parent_sections() {local totalLen, lenThr localobj parent_sections, c
     totalLen = 0
     lenThr = $2 // micron
     // Iterate through parent sections
-    current_section.sec {
-        // psection()
-        parent_sections.append()
+    if (lenThr > 0) {
+        current_section.sec {
+            // psection()
+            parent_sections.append()
+        }
     }
     while (current_section.has_parent && totalLen < lenThr) {
         totalLen = totalLen + current_section.sec.L
@@ -246,19 +248,31 @@ obfunc getLeaf() {localobj sec,leaf
 }
 
 // inserting NMDARs
-objref sNMDA, NMDAs, stim, nc, ncNMDAList
+objref sNMDA, NMDAs, nc, ncNMDAList,stim
 
 NMDAs = new List()
 ncNMDAList = new List()
 
-stim = new NetStim(.5)
-// stim.interval = 1
-// stim.number = 1
-// stim.start = 50
-// stim.noise = 0
+// Below calls were buggy so direct call from python h() interface
+// proc initStim() {
+//     stim = new NetStim(.5)
+//     stim.start = $1
+//     stim.number = 1
+//     stim.interval = 1
+//     stim.noise = 0
+// }
 
+// proc setStimParms() {
+//     stim.number = $1
+//     if ($2 > 0) {
+//         stim.interval = $2
+//     } else {
+//         stim.interval = tstop
+//     }
+// }
 // slPAP.printnames()
 // print(lenPAP)
+
 proc setNMDAs(){local lenPAP
     lenPAP = 0
     // $o1.printnames()
