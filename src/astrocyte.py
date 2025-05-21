@@ -252,16 +252,20 @@ class PAPModel(ResultsPAPModel):
         if freq == 0:
             if number > 0:
                 number = 1
-            ISI = self.tstop
+            ISI = 0
         else:
             ISI = 1 / freq * 1e3  # change to ms
+        if number == 1:
+            freq = 0
+            ISI = 0
+            
         if KoSize == None:
             KoSize = self.KoSize
         if dur == None:
             dur = self.durStim
         if hasattr(h, "stim") and number > 0:
-            h.stim.number = number
-            h.stim.interval = ISI * ms
+            h(f'stim.number = {number}')
+            h(f'stim.interval = {ISI}')
             print(h.stim.number,h.stim.interval)
         if koclamp:
             while h.t < ISI * number:
@@ -386,7 +390,6 @@ class PAPModel(ResultsPAPModel):
         self.GluTs = list(h.GluTs)
         # print(self.NMDAs)
         self.NCs += list(h.ncGluList)
-        # h.stim.number = 1
         if "GluTrans" in self.GENEDict.keys():
             # print(self.GENEDict)
             # print(len(self.GluTs))
@@ -407,9 +410,12 @@ class PAPModel(ResultsPAPModel):
                 nc.active(False)
 
     def setStimStart(self):
-        # h.stim.number = 1
-        # h.stim.interval = 10 * ms
-        h.stim.start = (self.initTstop + self.stimdelay) * ms  # Mutual Setup
+        h('objref stim')
+        h('stim = new NetStim(.5)')
+        h(f'stim.start = {(self.initTstop + self.stimdelay) * ms}')
+        h('stim.noise = 0')
+        h('stim.number = 1')
+        h('stim.interval = 0')
 
     def setTstop(self, tstop):
         h.tstop = tstop
@@ -434,6 +440,9 @@ class PAPModel(ResultsPAPModel):
                 krule = 1/math.exp(700)
             h.kbath_rule(krule)
 
+        self.setStimStart()
+        # print('setStim')
+        # sys.stdout.flush()
         # print('placing GluChannel')
         # sys.stdout.flush()
         self.setNMDAs()
@@ -445,9 +454,6 @@ class PAPModel(ResultsPAPModel):
         self.setGABAas()
         # print('placed GluT')
         # sys.stdout.flush()
-        self.setStimStart()
-        # print('setStim')
-        # sys.stdout.flush()
         # self.checkNetCons()
         PAPGluT = [
             s.syn()
@@ -458,9 +464,9 @@ class PAPModel(ResultsPAPModel):
         recordDictArgs = {}
         if len(PAPGluT) > 0:
             recordDictArgs['sGluT'] = PAPGluT[0]
-        if self.Glu:
+        if self.Glu and len(self.NMDAs) > 0:
             recordDictArgs['sNMDA'] = self.NMDAs[-1]
-        if self.GABA:
+        if self.GABA and len(self.GABAas) > 0:
             recordDictArgs['sGABA'] = self.GABAas[-1]
         self.record(**recordDictArgs)
         # print('setup Record')
@@ -950,6 +956,8 @@ class PAPModel(ResultsPAPModel):
         h.setSlowing(slow)
 
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
+        if dur == 0:
+            return
         restKo = self.Ko
         if KoSize == None:
             KoSize = self.KoSize
@@ -1000,7 +1008,7 @@ class PAPModel(ResultsPAPModel):
             h.kbath_rule(mode)
             
 
-    def replayK(self,fileName,isolate=False):
+    def replayK(self,fileName,isolate=False,video=False):
         df = pd.read_csv(fileName)
         baselineK = self.getPAPK()
         df['k'] += baselineK
@@ -1021,8 +1029,17 @@ class PAPModel(ResultsPAPModel):
             t -= (t % self.dt)
             k = row['k']
             
-            print(t,k)
-            h.continuerun(t*ms)
+            # print(t,k)
+            if video:
+                self.makeVideo(
+                    self.varMorph,
+                    stop=t*ms + h.t,
+                    interval= 10000 / self.dt,  # sample at 10 ms interval
+                    zoom=True,
+                )
+
+            else:
+                h.continuerun(t*ms)
             h.fcurrent()
             papK = self.getPAPK()
             if isolate:

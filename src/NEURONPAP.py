@@ -40,7 +40,7 @@ def callExperimentMode(**kwargs):
         channelCompareMax = 50
 
     if "spill" in kwargs.keys() and kwargs["spill"]:
-        exp.PAPLen = 2
+        exp.PAPLen = 5
 
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
@@ -128,6 +128,14 @@ def callExperimentMode(**kwargs):
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
         exp.GluStim = kwargs["glustim"]
         exp.KStim = kwargs["kstim"]
+        exp.GabaStim = kwargs["gabastim"]
+        if exp.GluStim:
+            exp.GluT = True
+            exp.GABAR = False
+        elif exp.GabaStim:
+            exp.GABAR = True
+            exp.GluT = False
+            
         # run before kocomp for automatic peak identification
         exp.glutamateSpillOver()
 

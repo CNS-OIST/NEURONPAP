@@ -66,8 +66,8 @@ for i in `seq 0 $total`; do # for ten random PAPs
         mpiexec -n $np python NEURONPAP.py -c --stimGaba --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
         {
             if (( $i == 1 )); then
-                     # echo "KO spillover Comparison"
-                     # mpiexec -n $np python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
+                     echo "KO spillover Comparison"
+                     mpiexec -n $np python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "K spillover Comparison"
                      mpiexec -n $np python NEURONPAP.py --stimK --gluSpill --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "Glu spillover Comparison"
@@ -106,7 +106,7 @@ python NEURONPAP.py --vClamp $seed # Fig 1b
     mpiexec -n 10 python NEURONPAP.py --phase --stimCount 10 $seed
     echo "Phase Plot for KO"
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 4e
+    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed # Fig 4e
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed # Fig 4e
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed
 } >> $output
