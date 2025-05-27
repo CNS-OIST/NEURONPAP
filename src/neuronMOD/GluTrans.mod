@@ -30,6 +30,7 @@ NEURON {
     USEION GluT WRITE iGluT VALENCE 1
     RANGE part, C1, C2, C3, C4, C5, C6
     RANGE  iGluT, Gluout, density, itransLog,multiple
+    RANGE count,count_std
 }
 
 UNITS {
@@ -65,7 +66,8 @@ PARAMETER {
     Gluin = 0.3      (mM/l)
     Gluout_0 = 20e-6	(mM/l)
     
-    density =1.2e13  (/cm2) : at tip for GLT-1
+    density = 14248e8  (/cm2) : at tip for GLT-1
+    density_std = 812e8  (/cm2) : at tip for GLT-1
     :Estimating the glutamate transporter surface density in distinct sub-cellular compartments of mouse hippocampal astrocytes Radulescu 2022 PLOS Comp.Bio
     charge = 1.6e-19 (coulombs)
     synCleftSpace = 1.41e-15 (liter)
@@ -98,6 +100,7 @@ ASSIGNED {
     tSpike (ms)
     maxGlu (mM/liter)
     count (1)
+    count_std (1)
 }
 
 STATE {
@@ -128,6 +131,7 @@ INITIAL {
     tSpike = 0
     maxGlu = 0
     count = (1e-08) * area * density
+    count_std = (1e-08) * area * density_std / 2
 }
 NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     INITIAL{
@@ -153,6 +157,7 @@ NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
 
 
 BREAKPOINT {
+    LOCAL updatedCount
     : printf("%g\n",ko)
     get_k(ki,ko)
     get_na(nai,nao)
@@ -166,10 +171,10 @@ BREAKPOINT {
 
     : set_k(ki,ko)
     : set_na(nai,nao)
+    updatedCount = (count + multiple * count_std)
+    ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * area * updatedCount
     
-    ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * multiple * area *count
-    
-    iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * multiple * area * count -charge*(1e12)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * multiple * area * count + ik
+    iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) ) * area * updatedCount -charge*(1e12)*(0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * area * updatedCount + ik
     : printf("tsyn:%g\n",tsyn)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)

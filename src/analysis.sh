@@ -59,10 +59,12 @@ total=0
 for i in `seq 0 $total`; do # for ten random PAPs
     for j in 0.5 10; do # for extracellular potassium condition 0.5 and 10
         echo "seed $i-Ko$j" >> $output
-        mpiexec -n $np python NEURONPAP.py -c --stimGlu --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --ko $j $i # Fig 4a
         mpiexec -n $np python NEURONPAP.py -c --stimGaba --ko $j $i # Fig 4a
         echo "Running multi Stim" >> $output
-        mpiexec -n $np python NEURONPAP.py -c --stimGlu --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount 10 --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --stimCount 10 --ko $j $i # Fig 4a
         mpiexec -n $np python NEURONPAP.py -c --stimGaba --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
         {
             if (( $i == 1 )); then
@@ -99,16 +101,28 @@ for i in 10; do
 done
 python NEURONPAP.py --vClamp $seed # Fig 1b
 {
-    echo "Phase Plot for default"
-    mpiexec -n 10 python NEURONPAP.py --phase $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --spillOver $seed
-    echo "Phase Plot for multi stim"
-    mpiexec -n 10 python NEURONPAP.py --phase --stimCount 10 $seed
-    echo "Phase Plot for KO"
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed # Fig 4e
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed
+    if (( $np >= 20 )); then
+           echo "Phase Plot for default"
+           mpiexec -n 10 python NEURONPAP.py --phase $seed & # Fig 4e
+           mpiexec -n 10 python NEURONPAP.py --phase --spillOver $seed
+           wait
+           echo "Phase Plot for multi stim"
+           mpiexec -n 10 python NEURONPAP.py --phase --stimCount 10 $seed &
+           echo "Phase Plot for KO"
+           mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed # Fig 4e
+           wait
+           mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed & # Fig 4e
+           mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed # Fig 4e
+           wait
+           mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed &
+           echo "bath experiments"
+           mpiexec -n 3 python NEURONPAP.py --bathExperiment $seed
+           wait
+    else
+        echo "Skipped Phase plane analysees and bath experiments"
+        echo "They take quite long so run them individually or with more processes"
+    fi
+
 } >> $output
 # mpiexec -n 2 python experiments.py
 # mpiexec -n 1 python experiments.py

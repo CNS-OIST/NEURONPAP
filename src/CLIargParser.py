@@ -299,6 +299,14 @@ def argParser(rangeInt=100):
         default=0,
         help="Used to set overexpression; 1 True; 0 False",
     )
+    
+    parser.add_argument(
+        "--bathExperiment",
+        dest="bathcomp",
+        action="store_true",
+        default=False,
+        help="Used to run all bath experiments"
+    )
 
     parser.add_argument(
         "seed",

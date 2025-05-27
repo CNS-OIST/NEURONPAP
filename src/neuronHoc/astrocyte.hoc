@@ -128,6 +128,16 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
     return current_section
 }
 
+//get last section fitting criteria
+obfunc get_midAstrocytePAP() {localobj candidate
+    soma { distance(0,0.5) } // set origin at root
+    forall {if (diam < $1 && distance(0.5) < $2) {
+        candidate = new SectionRef()
+    }}
+    return candidate
+}
+
+
 obfunc get_randomSection() {local lenThr,rloc,rint localobj current_section, child_sections
     lenThr = $2
     child_sections = new SectionList()
@@ -278,7 +288,6 @@ proc setNMDAs(){local lenPAP
     // $o1.printnames()
     forsec $o1 {
         sNMDA = new Exp5NMDA(0.5)
-        // sNMDA = new SimpleNMDA(0.5)
         NMDAs.append(sNMDA)
         nc = new NetCon(stim,NMDAs.o(lenPAP))
         ncNMDAList.append(nc)
@@ -653,8 +662,8 @@ proc kbath_rule() {
     }
 }
 
-proc set_ko0(){
+proc set_kobase(){
     forall {
         ko0_k_acc = $1
     }
-    }
+}

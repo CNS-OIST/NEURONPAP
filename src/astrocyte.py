@@ -136,7 +136,7 @@ class PAPModel(ResultsPAPModel):
         self.KoSize = KoSize
 
         self.Ko = Ko
-        h.set_ko0(self.Ko)
+        h.set_kobase(self.Ko)
 
         self.durStim = durStim
 
@@ -175,7 +175,9 @@ class PAPModel(ResultsPAPModel):
         self.PAParea = 0
         for sec in self.flattenPAP():
             self.PAParea += h.area(0.5, sec=sec) * sec.nseg
-        self.PAParea /= len(self.PAPs)
+        if len(list(self.flattenPAP())) > 0 and len(self.PAPs) > 0:
+            self.PAParea /= len(list(self.flattenPAP()))
+            self.PAParea /= len(self.PAPs)
         # print(self.PAParea)
         self.somaArea = h.area(0.5, sec=self.soma)
 
@@ -192,10 +194,9 @@ class PAPModel(ResultsPAPModel):
         self.GABA = GABA
         if GABA:
             if GABACount == None:
-                self.GABACount = 48 
+                self.GABACount = 50
             else:
                 self.GABACount = GABACount
-            self.GABADensity = self.GABACount * self.PAParea # /um2 * um2 # kwak H. Neuron Volume 108, Issue 4, 25 November 2020
 
         # if 'kir2' in kwargs.keys():
         #     if kwargs['kir2'] > 200:
@@ -362,11 +363,11 @@ class PAPModel(ResultsPAPModel):
             if self.GABA:
                 # distribute the total num of GABAa equally among all patches with remainder clustered at tip
                 totGABAa = len(self.GABAas)
-                if i > (totGABAa - self.GABADensity % totGABAa):
-                    sGABAa.multiple = 1 + self.GABADensity // totGABAa
+                if i > (totGABAa - self.GABACount % totGABAa):
+                    sGABAa.multiple = 1 + self.GABACount // totGABAa
                     sGABAa.isOn = 1
                 else:
-                    sGABAa.multiple = self.GABADensity // totGABAa
+                    sGABAa.multiple = self.GABACount // totGABAa
                     sGABAa.isOn = 1
             else:
                 sGABAa.multiple = 0
@@ -390,6 +391,7 @@ class PAPModel(ResultsPAPModel):
         self.GluTs = list(h.GluTs)
         # print(self.NMDAs)
         self.NCs += list(h.ncGluList)
+        self.getGLTCountPAP()
         if "GluTrans" in self.GENEDict.keys():
             # print(self.GENEDict)
             # print(len(self.GluTs))
@@ -408,6 +410,17 @@ class PAPModel(ResultsPAPModel):
         if not self.Glu:
             for nc in list(h.ncGluList):
                 nc.active(False)
+
+    def getGLTCountPAP(self):
+        self.PAPGluTCount = 0
+        self.PAPGluTCount_std = 0
+        
+        for nc in list(h.ncGluList):
+            sGLT = nc.syn()
+            self.PAPGluTCount += int(sGLT.count)
+            self.PAPGluTCount_std += int(sGLT.count_std)
+        # print(self.PAPGluTCount,self.PAPGluTCount_std)
+    
 
     def setStimStart(self):
         h('objref stim')
@@ -463,7 +476,7 @@ class PAPModel(ResultsPAPModel):
         # print(PAPGluT)
         recordDictArgs = {}
         if len(PAPGluT) > 0:
-            recordDictArgs['sGluT'] = PAPGluT[0]
+            recordDictArgs['sGluT'] = PAPGluT[-1]
         if self.Glu and len(self.NMDAs) > 0:
             recordDictArgs['sNMDA'] = self.NMDAs[-1]
         if self.GABA and len(self.GABAas) > 0:
@@ -997,7 +1010,23 @@ class PAPModel(ResultsPAPModel):
         else:
             h.continuerun(dur * ms + h.t)
         self.Ko = Ko
+        
+    def GABABath(self,number,freq,KoSize,video=False):
+        self.setStimStart()
+        h.slPAP = self.soma.wholetree()
+        self.setGABAas()
+        self.KoSize = 0
 
+        recordDictArgs = {}
+        recordDictArgs['sGABA'] = self.GABAas[-1]
+        self.record(**recordDictArgs)
+        h.finitialize(self.v_init)
+        h.fcurrent()
+        self.getkin()
+        h.fcurrent()
+        
+        self.multiSpike(number=number,freq=freq,KoSize=KoSize,video=video)
+        
     def setKClearance(self,mode):
         if type(mode) == bool:
             if not mode:

@@ -72,11 +72,11 @@ def callExperimentMode(**kwargs):
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
         if exp.GluStim:
-            exp.NMDAR = True
             exp.GABAR = False
         exp.GabaStim = kwargs["gabastim"]
         if exp.GabaStim:
             exp.NMDAR = False
+            exp.GluT = False
             exp.GABAR = True
         exp.channelComparison()
         
@@ -145,6 +145,9 @@ def callExperimentMode(**kwargs):
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
 
+    if "bathcomp" in kwargs.keys() and kwargs["bathcomp"]:
+        exp.bathExperiment()
+        
     if "optVm" in kwargs.keys() and kwargs["optVm"]:
         print(
             minimize(
