@@ -5,7 +5,6 @@ from classResults import ResultsPAPModel
 from utils import *
 from geneManip import GENExpression
 import matplotlib.pyplot as plt
-import plotly
 import json
 import pandas as pd
 import math

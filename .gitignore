@@ -1,5 +1,6 @@
 #compile
 arm64
+x86_64
 
 # data
 *.dat
