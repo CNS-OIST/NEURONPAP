@@ -21,8 +21,8 @@ ENDCOMMENT
 
 NEURON {
 	POINT_PROCESS Exp5NMDA
-	NONSPECIFIC_CURRENT iNMDA
-	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple
+        USEION NMDA WRITE iNMDA VALENCE 1
+	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple, shift
 	THREADSAFE
 }
 
@@ -44,7 +44,8 @@ tau1_0 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be 
 a1 = 0.09 (ms)
 b1 = 0.03 (1/mV)
 : parameters control exponential rise to a maximum of tau2
-	tau2_0 = 3.97	(ms)
+: tau2_0 = 3.97	(ms)
+tau2_0 = 19 (ms)
 	a2 = 0.70		(ms)
 	b2 = 0.0243		(1/mV)
 	wtau2= 0.95		<1e-9,1> : Hestrin90 0.65
@@ -88,8 +89,12 @@ b1 = 0.03 (1/mV)
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
 : Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
-	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.01 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
+	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
+        K0 = 500               (mM)
+        : shift = 0             (1) : theoretical shift from 0 mV Mg block
+        shift = -72.5 (mV)
+        delta = 10
+	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
         multiple = 1 (1)
@@ -215,6 +220,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	wf = synWeight*factor*D1*hillGluc(weight*1 (mM)) 
         : printf("%g,%g,%g,%g,%g\n",weight,factor,D1,wf,hillGluc(glu))
         : printf("%g\n",weight)
+        : printf("%g",tsyn)
         
 	A = A + wf
 	B = B + wf
@@ -230,7 +236,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
-	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
+	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(z)*delta*F*(-v+shift)/R/(T+celsius)))
     }
     
     PROCEDURE rates(v (mV)) {

@@ -14,7 +14,6 @@ astrocyte.hoc
 by RJ Nakatani
 """
 
-from scipy.optimize import minimize
 import time
 from CLIargParser import argParser
 from experiments import procedure
@@ -37,8 +36,11 @@ def callExperimentMode(**kwargs):
     exp.ek = kwargs["ek"]
     exp.OE = bool(kwargs["overexpress"])
 
+    if exp.GABAR:
+        channelCompareMax = 50
+
     if "spill" in kwargs.keys() and kwargs["spill"]:
-        exp.PAPLen = 2
+        exp.PAPLen = 5
 
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
@@ -66,19 +68,15 @@ def callExperimentMode(**kwargs):
         # Plot for vatious distnace channel counts
         exp.multiDistance((10, 10, 2, 1.3, 1))
 
-    if "nonhoc" in kwargs.keys() and kwargs["nonhoc"]:
-        # Run without hoc
-        exp.singleRun(readHoc=False)
-
     if "channel" in kwargs.keys() and kwargs["channel"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
         if exp.GluStim:
-            exp.NMDAR = True
             exp.GABAR = False
         exp.GabaStim = kwargs["gabastim"]
         if exp.GabaStim:
             exp.NMDAR = False
+            exp.GluT = False
             exp.GABAR = True
         exp.channelComparison()
         
@@ -93,7 +91,6 @@ def callExperimentMode(**kwargs):
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
-        exp.GabaStim = kwargs["gabastim"]
         exp.potassiumComparison()
 
     if "video" in kwargs.keys() and kwargs["video"]:
@@ -124,11 +121,20 @@ def callExperimentMode(**kwargs):
         # plot phase plot
         exp.kvPhasePlane()
 
-    if "vclamp" in kwargs.keys() and kwargs["vclamp"]:
-        # plot phase plot
+    if "somavclamp" in kwargs.keys() and kwargs["somavclamp"]:
         exp.SomaVC()
 
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
+        exp.GluStim = kwargs["glustim"]
+        exp.KStim = kwargs["kstim"]
+        exp.GabaStim = kwargs["gabastim"]
+        if exp.GluStim:
+            exp.GluT = True
+            exp.GABAR = False
+        elif exp.GabaStim:
+            exp.GABAR = True
+            exp.GluT = False
+            
         # run before kocomp for automatic peak identification
         exp.glutamateSpillOver()
 
@@ -138,6 +144,9 @@ def callExperimentMode(**kwargs):
     if "ekcomp" in kwargs.keys() and kwargs["ekcomp"]:
         exp.ekComp()
 
+    if "bathcomp" in kwargs.keys() and kwargs["bathcomp"]:
+        exp.bathExperiment()
+        
     if "optVm" in kwargs.keys() and kwargs["optVm"]:
         print(
             minimize(

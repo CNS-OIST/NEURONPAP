@@ -150,8 +150,8 @@ def argParser(rangeInt=100):
         help="Used to run simulations for phase plot",
     )
     parser.add_argument(
-        "--vClamp",
-        dest="vclamp",
+        "--somaVC",
+        dest="somavclamp",
         action="store_true",
         default=False,
         help="Used to run v clamp simulations",
@@ -298,6 +298,14 @@ def argParser(rangeInt=100):
         dest="overexpress",
         default=0,
         help="Used to set overexpression; 1 True; 0 False",
+    )
+    
+    parser.add_argument(
+        "--bathExperiment",
+        dest="bathcomp",
+        action="store_true",
+        default=False,
+        help="Used to run all bath experiments"
     )
 
     parser.add_argument(

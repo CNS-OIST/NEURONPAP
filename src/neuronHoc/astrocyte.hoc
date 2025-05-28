@@ -26,8 +26,10 @@ lenUnits = 0.3
         insert pas
         e_pas = -85
         g_pas = 1 /  11150
-
+        
         insert kir2
+        // insert ncx
+        // imax_ncx = 10
         insert twik
         insert kleak
         insert naleak
@@ -36,8 +38,10 @@ lenUnits = 0.3
         
         insert k_acc
         insert na_acc
+        // insert nai_acc
+        insert ca_acc
         insert GEVI
-        // insert kdrglia
+        insert kdrglia
         // insert GluTrans
         // insert kdifl
         // ki0_kdifl = 110
@@ -47,7 +51,7 @@ lenUnits = 0.3
         }
     }
 }
-// psection()
+//psection()
 
 objref r
 
@@ -124,6 +128,16 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
     return current_section
 }
 
+//get last section fitting criteria
+obfunc get_midAstrocytePAP() {localobj candidate
+    soma { distance(0,0.5) } // set origin at root
+    forall {if (diam < $1 && distance(0.5) < $2) {
+        candidate = new SectionRef()
+    }}
+    return candidate
+}
+
+
 obfunc get_randomSection() {local lenThr,rloc,rint localobj current_section, child_sections
     lenThr = $2
     child_sections = new SectionList()
@@ -199,9 +213,11 @@ obfunc get_parent_sections() {local totalLen, lenThr localobj parent_sections, c
     totalLen = 0
     lenThr = $2 // micron
     // Iterate through parent sections
-    current_section.sec {
-        // psection()
-        parent_sections.append()
+    if (lenThr > 0) {
+        current_section.sec {
+            // psection()
+            parent_sections.append()
+        }
     }
     while (current_section.has_parent && totalLen < lenThr) {
         totalLen = totalLen + current_section.sec.L
@@ -242,25 +258,36 @@ obfunc getLeaf() {localobj sec,leaf
 }
 
 // inserting NMDARs
-objref sNMDA, NMDAs, stim, nc, ncNMDAList
+objref sNMDA, NMDAs, nc, ncNMDAList,stim
 
 NMDAs = new List()
 ncNMDAList = new List()
 
-stim = new NetStim(.5)
-stim.interval = 1
-stim.number = 1
-stim.start = 50
-stim.noise = 0
+// Below calls were buggy so direct call from python h() interface
+// proc initStim() {
+//     stim = new NetStim(.5)
+//     stim.start = $1
+//     stim.number = 1
+//     stim.interval = 1
+//     stim.noise = 0
+// }
 
+// proc setStimParms() {
+//     stim.number = $1
+//     if ($2 > 0) {
+//         stim.interval = $2
+//     } else {
+//         stim.interval = tstop
+//     }
+// }
 // slPAP.printnames()
 // print(lenPAP)
+
 proc setNMDAs(){local lenPAP
     lenPAP = 0
     // $o1.printnames()
     forsec $o1 {
         sNMDA = new Exp5NMDA(0.5)
-        // sNMDA = new SimpleNMDA(0.5)
         NMDAs.append(sNMDA)
         nc = new NetCon(stim,NMDAs.o(lenPAP))
         ncNMDAList.append(nc)
@@ -363,10 +390,13 @@ proc initIon(){local iki,inai
     // set initial Ko Ki
     forall {
         nao = 140
-        ko = 2.5
-        clo = nao + ko
-        ki = iki
         nai = inai
+        ko = 2
+        ki = iki
+        clo = 130
+        cli = 30
+        cao = 2
+        cai = 50e-6 // 50 nM
     }
 }
 
@@ -379,15 +409,18 @@ proc setK(){local tmp localobj sref
     // $o1.printnames()
     forsec $o1 {
         sref = new SectionRef()
-        flag_k_acc = 1
-        // print(getPAPK(sref))
-        ko = $2 + getPAPK(sref)
-        // print(getPAPK(sref))
-        if ($4 == 1){ //instantaneous switch of bath
-            flag_k_acc = 1
+        if ($4 > 0){
+            //instantaneous switch of bath if flag 1
+            flag_k_acc = $4
+            //relative change of bath
             ko0_k_acc = $2 + getPAPK(sref)
+            //relative change of ko
+            ko = $2 + getPAPK(sref)
         } else {
+            //relative change of ko
+            ko = $2 + getPAPK(sref)
             flag_k_acc = 0
+            //change of ko
             ko0_k_acc = $3
         }
         // psection()
@@ -395,6 +428,12 @@ proc setK(){local tmp localobj sref
     }
     soma sref = new SectionRef()
     // printf("%g\n",getPAPK(sref))
+}
+
+obfunc getWholetree(){localobj sl
+    sl = new SectionList()
+    soma { sl.wholetree() }
+    return sl
 }
 
 proc setkin(){
@@ -407,6 +446,12 @@ proc setGEVI(){
     forall {
         tON_GEVI = $1
         tOFF_GEVI = $2
+    }
+}
+
+proc setSlowing(){
+    forall {
+        slowing_k_acc = $1
     }
 }
 
@@ -496,9 +541,9 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     ps = new PlotShape(sref)
     ps.variable($s1) // plot variable 2
     if (strcmp($s1,"v")==0){
-        ps.scale(-80,-60)
+        ps.scale(-80,-50)
     } else if (strcmp($s1,"ko")==0) {
-        ps.scale(3.5,5)
+        ps.scale(3,10)
     } else if (strcmp($s1,"Ri_inputRes")==0) {
         ps.scale(0,1500)
     } else if (strcmp($s1,"diam")==0) {
@@ -603,16 +648,22 @@ proc getAllRi() {localobj all_sections
 
 proc kbath_off() {
     forall {
-        tauk_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
+        tauk_0_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
     }
 }
 proc kbath_on() {
     forall {
-        tauk_k_acc = 3/6 // esenntially quickeruptake
+        tauk_0_k_acc = 3 // reset
     }
 }
 proc kbath_rule() {
     forall {
-        tauk_k_acc = 3 / $1 // esenntially decide tauk
+        tauk_0_k_acc = $1 // esenntially decide tauk
+    }
+}
+
+proc set_kobase(){
+    forall {
+        ko0_k_acc = $1
     }
 }

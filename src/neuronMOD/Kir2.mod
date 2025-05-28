@@ -113,8 +113,8 @@ DERIVATIVE states {
 }
 
 PROCEDURE rate(v (mV)) { :callable from hoc
-    LOCAL qt
-    qt=q10^((celsius-33)/10)
+    LOCAL qt 
+    qt=q10^((celsius-33)/10(degC))
         linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
  	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }
