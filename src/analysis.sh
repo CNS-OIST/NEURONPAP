@@ -57,6 +57,10 @@ fi
 total=0
 
 for i in `seq 0 $total`; do # for ten random PAPs
+    echo "Running K comparison experiments" >> $output
+    mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i #Fig 1f
+    mpiexec -n $np python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i # Fig 2c
+    
     for j in 0.5 10; do # for extracellular potassium condition 0.5 and 10
         echo "seed $i-Ko$j" >> $output
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --ko $j $i # Fig 4a
@@ -88,9 +92,6 @@ for i in `seq 0 $total`; do # for ten random PAPs
         # mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu $i
         # mpiexec -n $np python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu $i
     done
-    echo "Running K comparison experiments" >> $output
-    mpiexec -n $np python NEURONPAP.py --kComp --stimCount 10 $i #Fig 1f
-    mpiexec -n $np python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i # Fig 2c
 done
 
 seed=1
@@ -126,4 +127,4 @@ python NEURONPAP.py --vClamp $seed # Fig 1b
 } >> $output
 # mpiexec -n 2 python experiments.py
 # mpiexec -n 1 python experiments.py
-zip -r FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf
+zip -rqFullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf

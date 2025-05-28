@@ -150,8 +150,8 @@ def argParser(rangeInt=100):
         help="Used to run simulations for phase plot",
     )
     parser.add_argument(
-        "--vClamp",
-        dest="vclamp",
+        "--somaVC",
+        dest="somavclamp",
         action="store_true",
         default=False,
         help="Used to run v clamp simulations",

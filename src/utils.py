@@ -81,15 +81,15 @@ def plot(dir, zoom=False, ext=False):
     return max(v.iloc[:, 0])
 
 
-def get_iter(parmA, parmASteps, parmB, parmBSteps):
+def get_iter(parmA, parmASteps, parmB, parmBSteps,starta=0,startb=0):
     # Update to get dynamic loops
     iterations = []
-    for i in range(0, parmA + 1, parmASteps):
+    for i in range(starta, parmA + 1, parmASteps):
         if type(parmB) == int and type(parmBSteps) == int:
-            for j in range(0, parmB + 1, parmBSteps):
+            for j in range(startb, parmB + 1, parmBSteps):
                 iterations.append((i, j))
         else:
-            for j in np.arange(0, parmB + parmBSteps/2, parmBSteps):
+            for j in np.arange(startb, parmB + parmBSteps/2, parmBSteps):
                 iterations.append((i, j))
             
 
@@ -140,8 +140,12 @@ def parallizeFor(
             # print(f'Thread {rank} is performing set {parmSet}')
             results.append([])
             for k, func in enumerate(functions):
-                for l, parameterName in enumerate(functionParms):
-                    functionArgs[k][parameterName] = parmSet[l]
+                if len(functionParms) > 1:                
+                    for l, parameterName in enumerate(functionParms):
+                        functionArgs[k][parameterName] = parmSet[l]
+                else:
+                    # print(parmSet)
+                    functionArgs[k][functionParms[0]] = parmSet
                 tmpInstance = functions[k](**functionArgs[k])
 
                 for l, method in enumerate(callmethods[k]):
@@ -160,7 +164,7 @@ def parallizeFor(
             methodArgsTmp = copy.deepcopy(methodArgs)
             # print(methodArgs)
             # print(f'Thread {rank} is performing set {parmSet}')
-            # sys.stdout.flush()
+            sys.stdout.flush()
             results.append([])
             for k, func in enumerate(functions):
                 tmpInstance = functions[k](**functionArgs[k])

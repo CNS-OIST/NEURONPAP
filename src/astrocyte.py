@@ -212,7 +212,7 @@ class PAPModel(ResultsPAPModel):
 
         # print(self.GENEDict)
         if self.multiple == 0:
-            if "GluTrans" in self.GENEDict.keys():
+            if "GluTrans" in self.GENEDict.keys() and self.GENEDict["GluTrans"] != None:
                 # Can be buggy
                 self.comparecount = self.GENEDict["GluTrans"]
             elif GABA:
@@ -238,6 +238,20 @@ class PAPModel(ResultsPAPModel):
         for channel, xfold in channelDict.items():
             # print(channel,xfold)
             self.GENEobj.alterDistribution(channel, ratioToPAP=xfold)
+
+    def cleanMorphology(self):
+        # Used for removing morphology
+        # python interface
+        # print('cleaning')
+
+        for sec in h.allsec():
+            h.delete_section(sec=sec)
+        # print('Remove attr')
+        self.branches = []
+        delattr(self, "soma")
+        delattr(self, "PAP")
+        # if hasattr(self,"GENEDict"):
+        #     delattr(self, "GENEDict")            
 
     def koClamp(self, ko=None):
         h.koclamp(ko)
@@ -396,12 +410,12 @@ class PAPModel(ResultsPAPModel):
             # print(self.GENEDict)
             # print(len(self.GluTs))
             for sGluT in self.GluTs:
-                if self.GENEDict["GluTrans"] > 0:
+                if self.GENEDict["GluTrans"] != None:
                     sGluT.multiple = self.GENEDict[
                         "GluTrans"
                     ]  # Manipulation at this stage not in geneManip.py
                 else:
-                    sGluT.multiple = 0
+                    # sGluT.multiple = 0
                     # print(sGluT.multiple)
                     # print(sGluT.has_loc())
                     for nc in list(h.ncGluList):
@@ -430,7 +444,7 @@ class PAPModel(ResultsPAPModel):
         h('stim.number = 1')
         h('stim.interval = 0')
 
-    def setTstop(self, tstop):
+    def setTstop(self, tstop=500):
         h.tstop = tstop
         self.tstop = tstop
 
@@ -626,40 +640,6 @@ class PAPModel(ResultsPAPModel):
                     self.flattenPAP(),
                 )
 
-    def cleanMorphology(self):
-        # Used for removing morphology
-        # use when morphology is built within
-        # python interface
-        # print('cleaning')
-
-        for sec in h.allsec():
-            h.delete_section(sec=sec)
-        # print('Remove attr')
-        self.branches = []
-        delattr(self, "soma")
-        delattr(self, "PAP")
-        # if hasattr(self,"GENEDict"):
-        #     delattr(self, "GENEDict")
-
-    def astroMem(self, compartment):
-        # add astrocyte properties
-        # used only when model constructed within
-        # python interface
-        compartment.Ra = 100
-        compartment.cm = 0.8
-        compartment.insert("pas")
-        compartment.e_pas = self.v_init
-        compartment.g_pas = 1 / 11150
-        self.channels(compartment)
-
-    def channels(self, compartment):
-        # insert relevant channels
-        # used only when model constructed within
-        # python interface
-        compartment.insert("kir2")
-        compartment.insert("twik")
-        compartment.insert("k_acc")
-        compartment.insert("kdifl")
 
     def plotMorphParms(self):
         h.plot_varMorph("diam", "DiamMap.psf")
@@ -994,10 +974,13 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), 0, restKo, 0)
         self.KoSize = KoSize
 
-    def setKBath(self, Ko,dur=100, delay=0,video=False):
+    def setKBath(self, Ko,dur=100, delay=0,isolate=False,video=False):
         h.continuerun(delay * ms + h.t)
         papk = self.getPAPK()
-        h.setK(h.getWholetree(), Ko-papk, Ko,2)
+        if isolate:
+            h.setK(self.flattenPAP(), Ko-papk, Ko,2)
+        else:
+            h.setK(h.getWholetree(), Ko-papk, Ko,2)
         h.fcurrent()
         if video:
             self.makeVideo(
@@ -1013,7 +996,7 @@ class PAPModel(ResultsPAPModel):
         
     def GABABath(self,number,freq,KoSize,video=False):
         self.setStimStart()
-        h.slPAP = self.soma.wholetree()
+        h.slPAP = h.SectionList(self.soma.wholetree())
         self.setGABAas()
         self.KoSize = 0
 
@@ -1024,6 +1007,7 @@ class PAPModel(ResultsPAPModel):
         h.fcurrent()
         self.getkin()
         h.fcurrent()
+        h.continuerun(self.initTstop*ms)
         
         self.multiSpike(number=number,freq=freq,KoSize=KoSize,video=video)
         

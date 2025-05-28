@@ -121,8 +121,7 @@ def callExperimentMode(**kwargs):
         # plot phase plot
         exp.kvPhasePlane()
 
-    if "vclamp" in kwargs.keys() and kwargs["vclamp"]:
-        # plot phase plot
+    if "somavclamp" in kwargs.keys() and kwargs["somavclamp"]:
         exp.SomaVC()
 
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:
