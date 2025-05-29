@@ -3156,7 +3156,7 @@ class procedure(plotFigures):
             
         stdList = [ np.nan if val == 0 or val is None else val for val in stdList]
         zeroPoint = tList.index(min(tList,key=abs))
-        print(zeroPoint,fList)
+        # print(zeroPoint,fList)
         fList = np.array(fList) - fList[zeroPoint]
 
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
@@ -3168,7 +3168,7 @@ class procedure(plotFigures):
         indexConvert = [(i,int(t/cells.dt)) for i,t in enumerate(tList) if 0 <= t < max(cells.time)]
         
         expT = []
-        expV = []
+        expF = []
         expSTD = []
         simV = []
         simF = []
@@ -3178,13 +3178,14 @@ class procedure(plotFigures):
             # if max(df["V"]) == df["V"][j]:
             #     maxIndex = j + 1
             expT.append(tList[j])
-            expV.append(fList[j]) # f to mV
+            expF.append(fList[j]*-10) # f to mV
             expSTD.append(stdList[j])
+            
             simV.append(voltTrace[k])
             simF.append(fluorTrace[k]*-1/10) # V to mV
-        expV = np.array(expV)
+        expF = np.array(expF)
         expSTD = np.absolute(expSTD)
-        loss = np.absolute(expV - simV)
+        loss = np.absolute(expF - simF)
 
         stdComp = loss - expSTD
         loss = sum(loss[stdComp > 0] **2)
@@ -3193,13 +3194,13 @@ class procedure(plotFigures):
             loss = np.inf
         
         # MLS
-        # trueloss = sum((expV - simV)**2)
+        # trueloss = sum((expF - simV)**2)
         # lossRMP = self.optRMPSearch((leak,Kir))
         if not np.isnan(loss) and verbose:
             print(f'Loss:{loss}@rank{rank}')
         loss = comm.gather(loss,root=0)
         if showFig:
-            expV = comm.gather(expV,root=0)
+            expF = comm.gather(expF,root=0)
             expT = comm.gather(expT,root=0)
             expSTD = comm.gather(expSTD,root=0)
             simV = comm.gather(simV,root=0)
@@ -3209,7 +3210,7 @@ class procedure(plotFigures):
         total = 0
         comm.Barrier()
         if rank == 0 and showFig:
-            fig, ax1 = plt.subplots(figsize=(8,6))
+            fig, ax1 = plt.subplots(figsize=(9,6))
             ax2 = ax1.twinx()
 
             for l in loss:
@@ -3219,11 +3220,11 @@ class procedure(plotFigures):
                 5:'tab:orange',
                 1:'tab:green'
             }
-            for i,t,v,yerr,s,f in zip(stim,expT,expV,expSTD,simV,simF):
-                ax1.plot(t,s,label=f'{i} stim sim',linestyle='-',color=color[i])
-                ax2.plot(t,f,label=f'{i} stim sim',linestyle='--',color=color[i])
-                ax2.errorbar(t,v,yerr=yerr,fmt='none',color=color[i])
-                ax2.scatter(t,v,label=f'{i} stim exp',color=color[i])
+            for i,t,f,yerr,sim_v,sim_f in zip(stim,expT,expF,expSTD,simV,simF):
+                ax1.plot(t,sim_v,label=f'{i} stim simulation',linestyle='-',color=color[i],alpha=0.8)
+                ax2.plot(t,sim_f,label=f'{i} stim simulation',linestyle='--',color=color[i])
+                ax2.errorbar(t,f,yerr=yerr,fmt='none',color=color[i])
+                ax2.scatter(t,f,label=f'{i} stim experiment',color=color[i])
             ax1.set_xlim((100, 500))
             ax1.legend(loc='upper left',edgecolor=self.returnColor('model'))
             ax2.legend(loc='upper right',edgecolor=self.returnColor('fluor'))
@@ -3588,7 +3589,7 @@ if __name__ == '__main__':
                 bounds=[(1,10),(-80, -70),(10,50),(4,50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (0, 120, 1, 0.5)
+                initParms = (0, 120, 2, 0.5)
                 bounds=[(-50,50),(90, 150),(1.5,2.5),(0.5,10)]
 
             exp.fitExpDepolarization(initParms,showFig=True,PAP=False)

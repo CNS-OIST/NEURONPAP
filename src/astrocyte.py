@@ -280,7 +280,7 @@ class PAPModel(ResultsPAPModel):
         if hasattr(h, "stim") and number > 0:
             h(f'stim.number = {number}')
             h(f'stim.interval = {ISI}')
-            print(h.stim.number,h.stim.interval)
+            # print(h.stim.number,h.stim.interval)
         if koclamp:
             while h.t < ISI * number:
                 self.koClamp(self.Ko)
