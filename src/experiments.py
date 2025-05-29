@@ -2825,8 +2825,10 @@ class procedure(plotFigures):
         # else:
         funcArgs[-1]["multiple"] = 0
         if self.GluStim:
+            self.GluT = True
             funcArgs[-1]["GluTrans"] = self.optGluT
         else:
+            self.GluT = False
             funcArgs[-1]["GluTrans"] = None
 
         ccList = ['KoSize',comparison]
