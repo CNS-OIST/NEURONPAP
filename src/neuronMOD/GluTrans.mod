@@ -131,7 +131,7 @@ INITIAL {
     tSpike = 0
     maxGlu = 0
     count = (1e-08) * area * density
-    count_std = (1e-08) * area * density_std / 2
+    count_std = (1e-08) * area * density_std
 }
 NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     INITIAL{

@@ -2477,7 +2477,7 @@ class procedure(plotFigures):
             self.channelCompareMax *= 4
             self.channelCompareStep *= 4
         if not (self.GABAR or self.NMDAR) and self.GluT:
-            self.channelCnompareMax *= 100
+            self.channelCompareMax *= 100
             self.channelCompareStep *= 100
             iterations = [(i,j) for i in range(0, self.KirMax + 1, self.KirStep) for j in range(-self.channelCompareMax,self.channelCompareMax+1,self.channelCompareStep)]
             iterations = comm.bcast(iterations,root=0)
@@ -2810,6 +2810,8 @@ class procedure(plotFigures):
         funcArgs[-1]["multiple"] = 0
         if self.GluStim:
             funcArgs[-1]["GluTrans"] = self.optGluT
+        else:
+            funcArgs[-1]["GluTrans"] = None
 
         ccList = ['KoSize',comparison]
         # make sure that funcParms is in the correct order of whatever iterations spits out

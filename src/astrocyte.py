@@ -405,7 +405,7 @@ class PAPModel(ResultsPAPModel):
         # print(self.NMDAs)
         self.NCs += list(h.ncGluList)
         self.getGLTCountPAP()
-        if "GluTrans" in self.GENEDict.keys():
+        if "GluTrans" in self.GENEDict.keys() and self.Glu:
             # print(self.GENEDict)
             # print(len(self.GluTs))
             for sGluT in self.GluTs:
@@ -420,7 +420,7 @@ class PAPModel(ResultsPAPModel):
                     for nc in list(h.ncGluList):
                         nc.active(False)
 
-        if not self.Glu:
+        else:
             for nc in list(h.ncGluList):
                 nc.active(False)
 
