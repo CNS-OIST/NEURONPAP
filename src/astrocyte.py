@@ -726,7 +726,7 @@ class PAPModel(ResultsPAPModel):
         if sNMDA != None:
             self.iNMDA = h.Vector()
             # self.iNMDA.record(sNMDA._ref_iNMDA)
-            self.iNMDA.record(self.PAP(0.5)._ref_iNMDA)
+            self.iNMDA.record(sNMDA._ref_iNMDA)
 
             if toFile:
                 self.iFile = h.File("iFile.dat")
@@ -741,7 +741,7 @@ class PAPModel(ResultsPAPModel):
                 
         if sGluT != None:
             self.iGluT = h.Vector()
-            self.iGluT.record(self.PAP(0.5)._ref_iGluT)
+            self.iGluT.record(sGluT._ref_iGluT)
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
@@ -861,10 +861,8 @@ class PAPModel(ResultsPAPModel):
 
             if hasattr(self, "GluTs"):
                 self.iGluTSoma = h.Vector()
-                # somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][
-                #     0
-                # ]
-                self.iGluTSoma.record(self.soma(0.5)._ref_iGluT)
+                somaGluT = [s for s in self.GluTs if s.get_segment().sec == self.soma][0]
+                self.iGluTSoma.record(somaGluT._ref_iGluT)
 
             self.ekSoma = h.Vector()
             self.ekSoma.record(self.soma(0.5)._ref_ek)

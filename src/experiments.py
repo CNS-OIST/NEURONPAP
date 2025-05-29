@@ -462,13 +462,13 @@ class plotFigures:
                         label="iGABAa",
                         color=self.returnColor("GABAR"),
                     )
-                if hasattr(cell, "iGluT") and self.GluT:
-                    ax.plot(
-                        list(cell.time)[initStep:],
-                        list(cell.iGluT)[initStep:],
-                        label="iGluT",
-                        color=self.returnColor("GluT"),
-                    )
+                # if hasattr(cell, "iGluT") and self.GluT:
+                ax.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.iGluT)[initStep:],
+                    label="iGluT",
+                    color=self.returnColor("GluT"),
+                )
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Currents at PAP (pA)")
                 if setyLim != None:
@@ -3154,7 +3154,7 @@ class procedure(plotFigures):
             cells.setNMDA_Mgblock(k,d,s)
             cells.setNMDA_TC(tau1,tau2)
             # cells.setSlowing(slow)
-        cells.multiSpike(number=stim, freq=100, KoSize=0.5)
+        cells.multiSpike(number=stim, freq=100)
         cells.run()
         cells = cells.copyAttr()
 
@@ -3165,6 +3165,8 @@ class procedure(plotFigures):
     def plotExpFit(self,cells,stim=10,PAP=True,verbose=True,showFig=True,Fname='FitResult'):
         plt.cla()
         plt.clf()
+        AllCells = []
+        sim_time = None
         # get and tweak results
         tList,fList,stdList = procedure.getExpRes(f'./Data/{stim}stim.csv')
             
@@ -3176,7 +3178,7 @@ class procedure(plotFigures):
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
 
         fluorTrace = (np.array(list(cells.fluorVPAP)) - cells.RMP)* -1/10
-        voltTrace = np.array(list(cells.vPAP)) - cells.RMP
+        simV = np.array(list(cells.vPAP)) - cells.RMP # use raw sim data for plot
         
         # extract corresponding indexes in df and sim
         indexConvert = [(i,int(t/cells.dt)) for i,t in enumerate(tList) if 0 <= t < max(cells.time)]
@@ -3184,7 +3186,6 @@ class procedure(plotFigures):
         expT = []
         expF = []
         expSTD = []
-        simV = []
         simF = []
         for j,k in indexConvert:
             # print(j,k)
@@ -3192,11 +3193,11 @@ class procedure(plotFigures):
             # if max(df["V"]) == df["V"][j]:
             #     maxIndex = j + 1
             expT.append(tList[j])
-            expF.append(fList[j]*-10) # f to mV
+            expF.append(fList[j]) # f to mV
             expSTD.append(stdList[j])
-            
-            simV.append(voltTrace[k])
-            simF.append(fluorTrace[k]*-1/10) # V to mV
+            # simV.append(voltTrace[k])
+            simF.append(fluorTrace[k]) #V to mV
+            # print(simV,simF)
         expF = np.array(expF)
         expSTD = np.absolute(expSTD)
         loss = np.absolute(expF - simF)
@@ -3214,6 +3215,7 @@ class procedure(plotFigures):
             print(f'Loss:{loss}@rank{rank}')
         loss = comm.gather(loss,root=0)
         if showFig:
+            sim_time = cells.time
             expF = comm.gather(expF,root=0)
             expT = comm.gather(expT,root=0)
             expSTD = comm.gather(expSTD,root=0)
@@ -3221,7 +3223,7 @@ class procedure(plotFigures):
             simF = comm.gather(simF,root=0)
             stim = comm.gather(stim,root=0)
             fluorTrace = comm.gather(fluorTrace,root=0)
-            AllCells = com.gather(cells,root=0)
+            AllCells = comm.gather(cells,root=0)
         total = 0
         comm.Barrier()
         if rank == 0 and showFig:
@@ -3236,10 +3238,20 @@ class procedure(plotFigures):
                 1:'tab:green'
             }
             for i,t,f,yerr,sim_v,sim_f in zip(stim,expT,expF,expSTD,simV,simF):
-                ax1.plot(t,sim_v,label=f'{i} stim simulation',linestyle='-',color=color[i],alpha=0.8)
-                ax2.plot(t,sim_f,label=f'{i} stim simulation',linestyle='--',color=color[i])
-                ax2.errorbar(t,f,yerr=yerr,fmt='none',color=color[i])
-                ax2.scatter(t,f,label=f'{i} stim experiment',color=color[i])
+                ax1.plot(
+                    sim_time,
+                    sim_v,
+                    label=f'{i} stim simulation',
+                    linestyle='-',
+                    color=color[i],
+                    alpha=0.5,
+                    zorder=i
+                )
+                ax2.plot(t,sim_f,label=f'{i} stim simulation',linestyle='--',color=color[i],zorder=100+i
+)
+                ax2.errorbar(t,f,yerr=yerr,fmt='none',color=color[i],zorder=200+i)
+                
+                ax2.scatter(t,f,label=f'{i} stim experiment',color=color[i],zorder=201+i)
             ax1.set_xlim((100, 500))
             ax1.legend(loc='upper left',edgecolor=self.returnColor('model'))
             ax2.legend(loc='upper right',edgecolor=self.returnColor('fluor'))
@@ -3259,7 +3271,7 @@ class procedure(plotFigures):
             elif verbose:
                 print(f'{total=}')
 
-            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-5,5],initStep=0,tagReset=True)
+            self.plotIKSeries([AllCells],setKoylim=True,setekylim=True,setyLim=[-5,5],initStep=0,tagReset=True)
                 
         total = comm.bcast(total,root=0)
         sys.stdout.flush()
@@ -3607,8 +3619,8 @@ if __name__ == '__main__':
                 bounds=[(1,10),(-80, -70),(10,50),(4,50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (0, 120, 2, 0.5)
-                bounds=[(-50,50),(90, 150),(1.5,2.5),(0.5,10)]
+                initParms = (100, 120, 10, 0.5)
+                bounds=[(-100,100),(90, 150),(1,10),(0.5,30)]
 
             exp.fitExpDepolarization(initParms,showFig=True,PAP=False)
             func = lambda x: exp.fitExpDepolarization(x,**kwargs)
