@@ -14,7 +14,7 @@
 
 ## number of cores for your simulation,
 ## for parallel job array about 20
-#SBATCH --ntasks=80
+#SBATCH --ntasks=100
 #SBATCH --nodes=1
 
 
@@ -28,7 +28,7 @@
 #SBATCH --mem-per-cpu=3g
 
 ## maximum time for your simulation, in DAY-HOUR:MINUTE:SECOND
-#SBATCH --time=0-10:00:0
+#SBATCH --time=1-00:00:0
 
 
 
@@ -76,13 +76,13 @@ for i in `seq 0 $total`; do # for ten random PAPs
                      echo "Glu spillover Comparison"
                      srun --mpi=pmix  python NEURONPAP.py --stimGlu --gluSpill --stimCount 10 --ko $j $i # Fig 5abcd
                      echo "eK Clamp"
-                     python NEURONPAP.py --ekComp $i # Fig 2d
+                     srun python NEURONPAP.py --ekComp $i # Fig 2d
             fi
             echo "Making videos and branch attenuation"
-            python NEURONPAP.py -v --stimCount 10 --ko $j $i # Fig 1cd 2a
-            python NEURONPAP.py -b --stimCount 10 --ko $j $i # Fig 1e
-            python NEURONPAP.py -b --stimCount 10 --stimGlu --ko $j $i  # Fig 2b
-            python NEURONPAP.py -b --stimCount 10 --stimGaba --ko $j $i  # Fig 2b
+            # python NEURONPAP.py -v --stimCount 10 --ko $j $i # Fig 1cd 2a
+            srun python NEURONPAP.py -b --stimCount 10 --ko $j $i # Fig 1e
+            srun python NEURONPAP.py -b --stimCount 10 --stimGlu --ko $j $i  # Fig 2b
+            srun python NEURONPAP.py -b --stimCount 10 --stimGaba --ko $j $i  # Fig 2b
         } 
         # echo "Running KO experiments" 
         # srun --mpi=pmix  python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu $i 
@@ -97,20 +97,20 @@ seed=1
 for i in 10; do
     srun --mpi=pmix python NEURONPAP.py -c --PAPCount $i --stimCount 10 $seed
 done
-python NEURONPAP.py --vClamp $seed # Fig 1b
+srun python NEURONPAP.py --vClamp $seed # Fig 1b
 {
        echo "Phase Plot for default"
-       mpiexec -n 10 python NEURONPAP.py --phase $seed & # Fig 4e
-       mpiexec -n 10 python NEURONPAP.py --phase --spillOver $seed &
+       srun --mpi=pmix  python NEURONPAP.py --phase $seed & # Fig 4e
+       srun --mpi=pmix  python NEURONPAP.py --phase --spillOver $seed &
        echo "Phase Plot for multi stim"
-       mpiexec -n 10 python NEURONPAP.py --phase --stimCount 10 $seed &
+       srun --mpi=pmix  python NEURONPAP.py --phase --stimCount 10 $seed &
        echo "Phase Plot for KO"
-       mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed & # Fig 4e
-       mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed & # Fig 4e
-       mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed &# Fig 4e
-       mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed &
-       echo "bath experiments"
-       mpiexec -n 3 python NEURONPAP.py --bathExperiment $seed
+       srun --mpi=pmix  python NEURONPAP.py --phase --NMDAR 1 --GluT 0 --GABAR 0 $seed & # Fig 4e
+       srun --mpi=pmix  python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed & # Fig 4e
+       srun --mpi=pmix  python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed &# Fig 4e
+       srun --mpi=pmix  python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed &
+       # echo "bath experiments"
+       # mpiexec -n 3 python NEURONPAP.py --bathExperiment $seed
        wait
 
 } 
