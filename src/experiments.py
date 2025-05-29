@@ -2195,7 +2195,7 @@ class procedure(plotFigures):
                 # # )
                 # # titleString = titleString + 'Sim $T_{1/2}$' + f':{int(r)},{int(f)} ms'
                 # # plt.title(titleString)
-                plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
+                # plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
 
                 
             if self.GluT:
@@ -3207,6 +3207,7 @@ class procedure(plotFigures):
             simF = comm.gather(simF,root=0)
             stim = comm.gather(stim,root=0)
             fluorTrace = comm.gather(fluorTrace,root=0)
+            AllCells = com.gather(cells,root=0)
         total = 0
         comm.Barrier()
         if rank == 0 and showFig:
@@ -3243,6 +3244,9 @@ class procedure(plotFigures):
                 total = np.inf
             elif verbose:
                 print(f'{total=}')
+
+            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-5,5],initStep=0,tagReset=True)
+                
         total = comm.bcast(total,root=0)
         sys.stdout.flush()
         comm.Barrier()
