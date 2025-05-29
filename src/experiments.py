@@ -566,7 +566,6 @@ class plotFigures:
                     mean,std = stdChannelDict['GluT']
             _,labels = plt.yticks()
             for l in labels:
-                print(l)
                 if abs(float(l.get_text()) - mean) < std:
                     l.set_color('red')
 
