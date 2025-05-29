@@ -2048,7 +2048,7 @@ class procedure(plotFigures):
         
 
             
-    def singleRun(self, *args,expOverlay=True,GluTime=True,ROI=True):
+    def singleRun(self, *args,expOverlay=True,GluTime=True,PAP=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -2227,7 +2227,7 @@ class procedure(plotFigures):
 
             allConds = len(invivoRunConds)*2
             
-            if not size > allConds:
+            if not size >= allConds:
                 wMessage(f'bath experiment runAll only when there are more than {allConds} ranks')
                 return
             for i,bool_invivo in enumerate(invivoRunConds):
@@ -3075,13 +3075,13 @@ class procedure(plotFigures):
         
         
 
-    def fitExpDepolarization(self, x,showFig=False,ROI=True):
+    def fitExpDepolarization(self, x,showFig=False,PAP=True):
         self.addChannelTag()
         AllCells = []
         funcArgs = []
         TWIK = 1
         leak = 17375
-        if ROI:
+        if PAP:
             k = 500
             mprint(x)
             NMDAR,s,d,tau2 = x
@@ -3134,7 +3134,7 @@ class procedure(plotFigures):
         cells.setTstop(500)
         cells.initialize()
 
-        if ROI:
+        if PAP:
             cells.setNMDA_Mgblock(k,d,s)
             cells.setNMDA_TC(tau1,tau2)
             # cells.setSlowing(slow)
@@ -3142,22 +3142,19 @@ class procedure(plotFigures):
         cells.run()
         cells = cells.copyAttr()
 
-        return self.plotExpFit(cells,stim=stim,ROI=ROI,showFig=showFig,Fname=f'fit{ROI=}')
+        return self.plotExpFit(cells,stim=stim,PAP=PAP,showFig=showFig,Fname=f'fit{PAP=}')
 
         
 
-    def plotExpFit(self,cells,stim=10,ROI=True,verbose=True,showFig=True,Fname='FitResult'):
+    def plotExpFit(self,cells,stim=10,PAP=True,verbose=True,showFig=True,Fname='FitResult'):
         plt.cla()
         plt.clf()
         # get and tweak results
-        if ROI:
-            tList,fList,stdList = procedure.getExpRes(f'./Data/{stim}stim.csv')
-        else:
-            tList,fList,stdList = procedure.getExpRes(f'./Data/{stim}stim_nonroi.csv')
-            fList *= -1
+        tList,fList,stdList = procedure.getExpRes(f'./Data/{stim}stim.csv')
             
         stdList = [ np.nan if val == 0 or val is None else val for val in stdList]
         zeroPoint = tList.index(min(tList,key=abs))
+        print(zeroPoint,fList)
         fList = np.array(fList) - fList[zeroPoint]
 
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
@@ -3578,39 +3575,36 @@ class procedure(plotFigures):
 
 
 if __name__ == '__main__':
-    if size > 2:
+    if size == 3:
         mprint('exp fit')
-        ROI = False
-        exp = procedure(3,0)
-        kwargs = {'ROI':ROI,'showFig':False}
-        if ROI:
-            # initParms = (5, -72.5, 10, 19,0.5)
-            initParms = (5, -80, 10, 19)
-            bounds=[(1,10),(-80, -70),(10,50),(4,50)]
-        else:
-            # initParms = (5, -72.5, 10, 19,0.5)
-            initParms = (0, 120, 1, 0.5)
-            bounds=[(-50,50),(90, 150),(1.5,2.5),(0.5,10)]
-            
-        exp.fitExpDepolarization(initParms,showFig=True,ROI=False)
-        func = lambda x: exp.fitExpDepolarization(x,**kwargs)
-        res = minimize(
-            func,
-            initParms,
-            method="Nelder-Mead",
-            bounds=bounds
-        )
-        exp.fitExpDepolarization(res.x,showFig=True)
-    elif size == 2:
+        for PAP in [False,True]:
+            exp = procedure(3,0)
+            kwargs = {'PAP':PAP,'showFig':False}
+            if PAP:
+                # initParms = (5, -72.5, 10, 19,0.5)
+                initParms = (5, -80, 10, 19)
+                bounds=[(1,10),(-80, -70),(10,50),(4,50)]
+            else:
+                # initParms = (5, -72.5, 10, 19,0.5)
+                initParms = (0, 120, 1, 0.5)
+                bounds=[(-50,50),(90, 150),(1.5,2.5),(0.5,10)]
+
+            exp.fitExpDepolarization(initParms,showFig=True,PAP=False)
+            func = lambda x: exp.fitExpDepolarization(x,**kwargs)
+            res = minimize(
+                func,
+                initParms,
+                method="Nelder-Mead",
+                bounds=bounds
+            )
+            exp.fitExpDepolarization(res.x,showFig=True)
+    elif size == 4 or size == 2:
         mprint('running bathExp')
-        if rank == 0:
-            exp = procedure(4,0)
+        exp = procedure(4,0)
+        if size == 2:
             exp.bathExperiment()
+        else:
             exp.bathExperiment(invivo=True)
-        else:    
-            exp = procedure(5,0)
-            exp.bathExperiment(isolate=True)
-            exp.bathExperiment(invivo=True,isolate=True)
     else:
         # exp = procedure(6,0)
         # initParms = (5, -71, 10, 19)
