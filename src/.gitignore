@@ -4,3 +4,4 @@ video/
 *.log
 *.json
 Data/
+*.out
