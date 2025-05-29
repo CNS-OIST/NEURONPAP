@@ -20,8 +20,8 @@ TODO
 ENDCOMMENT
 
 NEURON {
-	POINT_PROCESS Exp5NMDA
-        USEION NMDA WRITE iNMDA VALENCE 1
+    POINT_PROCESS Exp5NMDA
+    NONSPECIFIC_CURRENT iNMDA
 	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple, shift
 	THREADSAFE
 }

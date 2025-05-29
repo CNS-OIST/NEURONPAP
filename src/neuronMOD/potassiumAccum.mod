@@ -3,8 +3,6 @@ TITLE Potassium ion accumulation
 NEURON {
 	SUFFIX k_acc
 	USEION k READ ko, ik WRITE ko
-        USEION NMDA READ iNMDA
-        USEION GluT READ iGluT
         RANGE tauk_0, ko0, flag, kbath, flux, slowing
 	THREADSAFE
 }
