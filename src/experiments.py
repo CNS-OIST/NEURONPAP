@@ -52,6 +52,25 @@ class plotFigures:
         'local':[pe.Stroke(linewidth=8.5,foreground='black'), pe.Normal()],
         'global':None
     }
+
+    def resetTag(self,cell):
+        # reset figure tag based on result parms
+        self.tag = f'_{cell.seed}_{cell.KoSize}'
+        for attr in ['GluTrans', 'kir2']:
+            if attr in cell.GENEDict.keys():
+                self.tag += f'{attr}{cell.GENEDict[attr]}'
+        for attr in ['multiple','GABACount','PAPLen','SpikeNum','durStim']:
+            if hasattr(cell,attr):
+                if attr == 'PAPLen':
+                    self.tag += f'{attr}{getattr(cell,attr):.2f}'
+                else:
+                    self.tag += f'{attr}{getattr(cell,attr)}'
+
+        if not cell.Glu:
+            self.tag += f'_NoGlu'
+        if cell.GABA:
+            self.tag += '_GABA'
+        
     def saveSourceData(self,dataDict):
         with open(
                 os.path.join("../results/paperRes", f"SourceData{self.tag}"),
@@ -184,9 +203,11 @@ class plotFigures:
 
                 
 
-    def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False,showFluor=False,initStep=None,bath=False):
+    def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False,showFluor=False,initStep=None,bath=False,tagReset=False):
         for cells in AllCells:
             for cell in cells:
+                if tagReset:
+                    self.resetTag(cell)
                 if (
                     not zoom
                     and cell.multiple == self.optNMDAR
@@ -2783,10 +2804,6 @@ class procedure(plotFigures):
 
 
     def runAmpLenComparison(self,comparison,iterations,maxStep,intermStep):
-        self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
-        self.addChannelTag()
-        self.tag += f'_compAmp{comparison}'
-
         comm.Barrier()
         funcArgs = []
         funcArgs.append(
@@ -2876,14 +2893,11 @@ class procedure(plotFigures):
                 os.path.join("../results/paperRes", f"FullPotassium{self.tag}.pdf")
             )
             if comparison == 'PAPLen':
-                self.plotIKSeries(results)
+                self.plotIKSeries(results,tagReset=True)
 
 
 
     def runPotassiumComparison(self,comparison,iterations,maxStep=10,intermStep=1):
-        self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
-        self.addChannelTag()
-        self.tag += f'_comp{comparison}'
 
         comm.Barrier()
         funcArgs = []
