@@ -142,7 +142,16 @@ NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     UNITSOFF
     GluRes = maxG*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
     maxG = weight + GluRes
-    tsyn = t
+    : calculate time skip
+    if (GluRes > 0) {
+        tsyn = t - tau1* log(maxG*tau2/(tau2-tau1)/GluRes)
+        : analytical answer for just rise time
+        : printf("%g\n",log(maxG*(tau2/(tau2-tau1)/GluRes))) : analytical answer for just rise time)
+    } else {
+        tsyn = t
+    }
+    : printf("t: %g,%g\n",tsyn,t)
+    : tsyn = t
     tSpike = tsyn
     maxGlu = maxG
     C1= 0.9074    
@@ -152,6 +161,7 @@ NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     C5= 0.0142    
     C6= 0.0047
     UNITSON
+    
     : printf("%g,%g,%g\n",tSpike,maxGlu,GluRes)
 }
 
@@ -161,7 +171,7 @@ BREAKPOINT {
     : printf("%g\n",ko)
     get_k(ki,ko)
     get_na(nai,nao)
-    : if (tSpike == 150) {
+    : if (tSpike > 150) {
     :     printf("%g,%g\n",tSpike,maxGlu)
     : }
     gluDiff(maxGlu,tSpike)
@@ -175,7 +185,7 @@ BREAKPOINT {
     ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * area * updatedCount
     
     iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) + 0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * area * updatedCount
-    : printf("tsyn:%g\n",tsyn)
+    : printf("iGluT:%g\n",iGluT)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
     : printf("%g,%g,%g,%g,%g\n",C1,C2,C3,C4,C5)
@@ -205,9 +215,9 @@ KINETIC kstates {
 }
 
 PROCEDURE gluDiff(maxG (mM/liter),tSpike(ms)){
-    if (maxG > 0) {
+    if (maxG > 0 && t > tSpike) {
         Gluout = Gluout_0 + maxG*(tau2/(tau2-tau1)*(-exp(-(t-tSpike)/tau1) + exp(-(t- tSpike)/tau2)))
-        : printf("%g,%g\n",maxG,Gluout)        
+        : printf("%g,%g,%g\n",maxG,Gluout,tSpike)        
     } else {
         Gluout = Gluout_0
     }

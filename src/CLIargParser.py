@@ -273,7 +273,7 @@ def argParser(rangeInt=100):
         "--GluT",
         type=int,
         dest="glut",
-        default=0,
+        default=1,
         help="Used to set Glutamate Transporters; 1 True; 0 False",
     )
 
@@ -281,7 +281,7 @@ def argParser(rangeInt=100):
         "--NMDAR",
         type=int,
         dest="nmdar",
-        default=1,
+        default=0,
         help="Used to set NMDAR; 1 True; 0 False",
     )
     parser.add_argument(

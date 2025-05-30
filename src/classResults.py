@@ -33,9 +33,9 @@ class ResultsPAPModel:
         # "iNMDA"
     ]
     ppcurrents = [
-        # "iGluT",
-        # "iNMDA",
-        # "iGluTSoma",
+        "iGluT",
+        "iNMDA",
+        "iGluTSoma",
         "iGABA"
     ]
 

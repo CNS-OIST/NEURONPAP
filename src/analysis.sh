@@ -100,7 +100,7 @@ seed=1
 for i in 10; do
     mpiexec -n $np python NEURONPAP.py -c --PAPCount $i --stimCount 10 $seed
 done
-python NEURONPAP.py --vClamp $seed # Fig 1b
+python NEURONPAP.py --somaVC $seed # Fig 1b
 {
     if (( $np >= 20 )); then
            echo "Phase Plot for default"

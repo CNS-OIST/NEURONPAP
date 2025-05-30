@@ -45,6 +45,9 @@ def callExperimentMode(**kwargs):
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
         print("single run")
+        exp.GluStim = kwargs["glustim"]
+        exp.GabaStim = kwargs["gabastim"]
+
         exp.singleRun()
     if "cond" in kwargs.keys() and kwargs["cond"]:
         # measureconductance

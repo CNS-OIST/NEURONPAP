@@ -827,7 +827,7 @@ class procedure(plotFigures):
     OE = False
     NMDAR = True
     GABAR = True
-    GluT = False
+    GluT = True
     GluStim = True
     GabaStim=False
     KStim = True
@@ -2090,6 +2090,8 @@ class procedure(plotFigures):
         funcArgs = []
         funcArgs.append(
             {
+                'Glu':self.GluStim,
+                'GABA':self.GabaStim,
                 "mode": 0,
                 "ComplexMorph": True,
                 "bNum": 1,
@@ -2107,21 +2109,20 @@ class procedure(plotFigures):
             
         if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
             funcArgs[-1]['dt'] *= 0.2
-        if self.NMDAR:
+            
+        if self.NMDAR and self.GluStim:
             # funcArgs[-1]["multiple"] = self.optNMDAR
             funcArgs[-1]["multiple"] = nmdaCount
-            funcArgs[-1]["Glu"] = True
         else:
             funcArgs[-1]["multiple"] = 0
-            funcArgs[-1]["Glu"] = False
-        if self.GABAR:
+        if self.GluT and self.GluStim:
+            funcArgs[-1]["GluTrans"] = self.optGluT
+        if self.GABAR and self.GabaStim:
             funcArgs[-1]["GABACount"] = self.optGABAR
-            funcArgs[-1]["GABA"] = True            
         else:
             funcArgs[-1]["GABACount"] = 0
-            funcArgs[-1]["GABA"] = False
-        if self.GluT:
-            funcArgs[-1]["GluTrans"] = self.optGluT
+
+        
 
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
@@ -2141,7 +2142,6 @@ class procedure(plotFigures):
                 stim = 10
         else:
             stim = self.stimCount
-
         cells.multiSpike(number=stim, freq=self.freq, KoSize=self.ko)
         # else:
         #     cells.setK(KoSize=self.ko, delay=0)
@@ -2168,7 +2168,7 @@ class procedure(plotFigures):
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
-                self.plotExpFit(cells,stim=stim,Fname='expOverlay')
+                self.plotExpFit(cells,stim=stim,Fname='expOverlay',correctArtifact=False)
                 # results = AllCells[0][0]
                 # fig, ax1 = plt.subplots()
                 # ax2 = ax1.twinx()
@@ -2502,6 +2502,7 @@ class procedure(plotFigures):
             iterations = [(i,j) for i in range(0, self.KirMax + 1, self.KirStep) for j in range(-self.channelCompareMax,self.channelCompareMax+1,self.channelCompareStep)]
             iterations = comm.bcast(iterations,root=0)
         else:
+            self.GluT = False
             # Calculate the number of iterations for all parm sets
             iterations = comm.bcast(
                 get_iter(
@@ -3161,9 +3162,21 @@ class procedure(plotFigures):
 
         return self.plotExpFit(cells,stim=stim,PAP=PAP,showFig=showFig,Fname=f'fit{PAP=}')
 
-        
 
-    def plotExpFit(self,cells,stim=10,PAP=True,verbose=True,showFig=True,Fname='FitResult'):
+    def artifactCurve(self,x,a,l,c):
+        return a * np.exp(-(x-150) / l) + c
+
+
+    def fitbaselineCurve(self,expData,tdata):
+        popt, pcov = curve_fit(
+            self.artifactCurve,
+            tdata,
+            expData,
+        )
+        return popt
+
+
+    def plotExpFit(self,cells,stim=10,PAP=True,verbose=True,showFig=True,Fname='FitResult',correctArtifact=True):
         plt.cla()
         plt.clf()
         AllCells = []
@@ -3201,7 +3214,17 @@ class procedure(plotFigures):
             # print(simV,simF)
         expF = np.array(expF)
         expSTD = np.absolute(expSTD)
-        loss = np.absolute(expF - simF)
+        if correctArtifact:
+            singleStimBaseline = comm.bcast(expF,root=2)
+            singleStimBaselineT = comm.bcast(expT,root=2)
+            if rank != 2:
+                parms = self.fitbaselineCurve(singleStimBaseline,singleStimBaselineT)
+                exp_singleF = [ self.artifactCurve(x,*parms) for x in expT ]
+            else:
+                exp_singleF = expF
+            loss = np.absolute(expF - exp_singleF - simF)
+        else:
+            loss = np.absolute(expF - simF)
 
         stdComp = loss - expSTD
         loss = sum(loss[stdComp > 0] **2)
@@ -3616,17 +3639,16 @@ if __name__ == '__main__':
             kwargs = {'PAP':PAP,'showFig':False}
             if PAP:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (5, -80, 10, 19)
+                initParms = (5, -72.5, 10, 19)
                 bounds=[(1,10),(-80, -70),(10,50),(4,50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (100, 120, 10, 0.5)
+                initParms = (100, 120, 10, 10)
                 bounds=[(-100,100),(90, 150),(1,10),(0.5,30)]
 
-            exp.fitExpDepolarization(initParms,showFig=True,PAP=False)
-            func = lambda x: exp.fitExpDepolarization(x,**kwargs)
+            exp.fitExpDepolarization(initParms,showFig=True,PAP=PAP)
             res = minimize(
-                func,
+                lambda x: exp.fitExpDepolarization(x,**kwargs),
                 initParms,
                 method="Nelder-Mead",
                 bounds=bounds
