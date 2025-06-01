@@ -65,11 +65,11 @@ for i in `seq 0 $total`; do # for ten random PAPs
         echo "seed $i-Ko$j" >> $output
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --ko $j $i # Fig 4a
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --ko $j $i # Fig 4a
-        mpiexec -n $np python NEURONPAP.py -c --stimGaba --ko $j $i # Fig 4a
+        mpiexec -n $np python NEURONPAP.py -c --stimGaba --GABAR 1 --ko $j $i # Fig 4a
         echo "Running multi Stim" >> $output
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount 10 --ko $j $i # Fig 4a
         mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --stimCount 10 --ko $j $i # Fig 4a
-        mpiexec -n $np python NEURONPAP.py -c --stimGaba --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
+        mpiexec -n $np python NEURONPAP.py -c --stimGaba --GABAR 1 --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
         {
             if (( $i == 1 )); then
                      echo "KO spillover Comparison"
@@ -127,4 +127,4 @@ python NEURONPAP.py --somaVC $seed # Fig 1b
 } >> $output
 # mpiexec -n 2 python experiments.py
 # mpiexec -n 1 python experiments.py
-zip -rqFullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf
+zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf

@@ -462,13 +462,13 @@ class plotFigures:
                         label="iGABAa",
                         color=self.returnColor("GABAR"),
                     )
-                # if hasattr(cell, "iGluT") and self.GluT:
-                ax.plot(
-                    list(cell.time)[initStep:],
-                    list(cell.iGluT)[initStep:],
-                    label="iGluT",
-                    color=self.returnColor("GluT"),
-                )
+                if hasattr(cell, "iGluT") and self.GluT:
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iGluT)[initStep:],
+                        label="iGluT",
+                        color=self.returnColor("GluT"),
+                    )
                 ax.set_xlabel("time (ms)")
                 ax.set_ylabel("Currents at PAP (pA)")
                 if setyLim != None:
@@ -627,6 +627,7 @@ class plotFigures:
                     )
 
                 else:
+                    # bug when stimulus but not GABAR
                     imArray[
                         int(res[0].GENEDict["kir2"] / self.KirStep),
                         int(res[0].comparecount / self.channelCompareStep),
