@@ -424,6 +424,16 @@ class PAPModel(ResultsPAPModel):
             for nc in list(h.ncGluList):
                 nc.active(False)
 
+    def setGLT_TC(self,tau1,tau2):
+        if "GluTrans" not in self.GENEDict.keys() or self.GENEDict["GluTrans"] == None:
+            wMessage('NO GluTs defined for setNMDA_TC')
+            return
+        if len(h.ncGluList) > 0:
+            for s in list(h.ncGluList):
+                sGLT = s.syn()
+                sGLT.tau1 = tau1
+                sGLT.tau2 = tau2
+                
     def getGLTCountPAP(self):
         self.PAPGluTCount = 0
         self.PAPGluTCount_std = 0

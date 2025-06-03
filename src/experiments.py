@@ -13,6 +13,7 @@ import glob
 from matplotlib.ticker import MaxNLocator
 from scipy.stats import f_oneway, ttest_rel
 from scipy.optimize import minimize
+from scipy.interpolate import CubicSpline as spline
 import json
 import pandas as pd
 
@@ -2169,7 +2170,7 @@ class procedure(plotFigures):
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
-                self.plotExpFit(cells,stim=stim,Fname='expOverlay',correctArtifact=False)
+                self.plotExpFit(cells,stim=stim,Fname='expOverlay',correctArtifact=True)
                 # results = AllCells[0][0]
                 # fig, ax1 = plt.subplots()
                 # ax2 = ax1.twinx()
@@ -2825,6 +2826,7 @@ class procedure(plotFigures):
         # if self.NMDAR:
         #     funcArgs[-1]["multiple"] = self.optNMDAR
         # else:
+        self.NMDAR = False
         funcArgs[-1]["multiple"] = 0
         if self.GluStim:
             self.GluT = True
@@ -3123,7 +3125,8 @@ class procedure(plotFigures):
                 }
             )
         else:
-            glt,kir,PAPLen,KoSize = x
+            mprint(x)
+            glt,kir,PAPLen,KoSize,tau1,tau2 = x
             funcArgs.append(
                 {
                     "mode": 0,
@@ -3131,7 +3134,7 @@ class procedure(plotFigures):
                     "kir2": kir,
                     "twik":TWIK,
                     "clleak": 0,
-                    "naleak": leak,
+                    "naleak": leak*10,
                     "dt": self.dt,
                     "seed": self.seed,
                     "multiple": 0,
@@ -3143,9 +3146,9 @@ class procedure(plotFigures):
             
         if funcArgs[-1]['kir2'] >= 200:
             funcArgs[-1]['dt'] *= 0.1
-        if rank == 2:
+        if rank%3== 2:
             stim = 1
-        elif rank == 1:
+        elif rank%3== 1:
             stim = 5
         else:
             stim = 10
@@ -3157,15 +3160,19 @@ class procedure(plotFigures):
             cells.setNMDA_Mgblock(k,d,s)
             cells.setNMDA_TC(tau1,tau2)
             # cells.setSlowing(slow)
+        else:
+            cells.setGLT_TC(tau1,tau2)
         cells.multiSpike(number=stim, freq=100)
         cells.run()
         cells = cells.copyAttr()
 
-        return self.plotExpFit(cells,stim=stim,PAP=PAP,showFig=showFig,Fname=f'fit{PAP=}')
+        return self.plotExpFit(cells,stim=stim,PAP=PAP,showFig=showFig,Fname=f'fit{PAP=}',correctArtifact=True)
 
 
     def artifactCurve(self,x,a,l,c):
-        return a * np.exp(-(x-150) / l) + c
+        x = np.array(x)
+        x[x < 150] = 150
+        return -a * np.exp(-(x-150) / l) + c
 
 
     def fitbaselineCurve(self,expData,tdata):
@@ -3218,17 +3225,12 @@ class procedure(plotFigures):
         if correctArtifact:
             singleStimBaseline = comm.bcast(expF,root=2)
             singleStimBaselineT = comm.bcast(expT,root=2)
-            if rank != 2:
-                parms = self.fitbaselineCurve(singleStimBaseline,singleStimBaselineT)
-                exp_singleF = [ self.artifactCurve(x,*parms) for x in expT ]
-            else:
-                exp_singleF = expF
-            loss = np.absolute(expF - exp_singleF - simF)
-        else:
-            loss = np.absolute(expF - simF)
+            spl = spline(singleStimBaselineT,singleStimBaseline)
+            simF += spl(expT)
+        loss = np.absolute(expF - simF)
 
         stdComp = loss - expSTD
-        loss = sum(loss[stdComp > 0] **2)
+        loss = sum(loss[(stdComp >= 0) | (stdComp == np.nan)] **2)
 
         if len(simV) < len(tList) and loss == 0:
             loss = np.inf
@@ -3262,7 +3264,7 @@ class procedure(plotFigures):
                 5:'tab:orange',
                 1:'tab:green'
             }
-            for i,t,f,yerr,sim_v,sim_f in zip(stim,expT,expF,expSTD,simV,simF):
+            for i,t,f,yerr,sim_v,sim_f in zip(stim,expT,expF,expSTD,simV,fluorTrace):
                 ax1.plot(
                     sim_time,
                     sim_v,
@@ -3272,7 +3274,12 @@ class procedure(plotFigures):
                     alpha=0.5,
                     zorder=i
                 )
-                ax2.plot(t,sim_f,label=f'{i} stim simulation',linestyle='--',color=color[i],zorder=100+i
+                if correctArtifact:
+                    sim_f += spl(sim_time)
+                    label = f'corrected\n{i} stim simulation'
+                else:
+                    label = f'{i} stim simulation'
+                ax2.plot(sim_time,sim_f,label=label,linestyle='--',color=color[i],zorder=100+i
 )
                 ax2.errorbar(t,f,yerr=yerr,fmt='none',color=color[i],zorder=200+i)
                 
@@ -3289,6 +3296,9 @@ class procedure(plotFigures):
             for axObj,label in { ax1:'model', ax2:'fluor'}.items():
                 axObj.tick_params(axis='y',colors=self.returnColor(label))
                 axObj.yaxis.label.set_color(self.returnColor(label))
+
+            if correctArtifact:
+                Fname += '_correctedArtifact'
 
             plt.savefig(f'../results/paperRes/{Fname}.pdf') 
             if np.isnan(total):
@@ -3635,17 +3645,19 @@ class procedure(plotFigures):
 if __name__ == '__main__':
     if size == 3:
         mprint('exp fit')
-        for PAP in [False,True]:
+        if size == 3:
+            testBools = [True,False]
+        for PAP in testBools:
             exp = procedure(3,0)
             kwargs = {'PAP':PAP,'showFig':False}
             if PAP:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (5, -72.5, 10, 19)
+                initParms = (8, -71.5, 10, 19)
                 bounds=[(1,10),(-80, -70),(10,50),(4,50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (100, 120, 10, 10)
-                bounds=[(-100,100),(90, 150),(1,10),(0.5,30)]
+                initParms = (200, 120, 10, 10, 5,20)
+                bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30),(0.61,10),(5.8,100)]
 
             exp.fitExpDepolarization(initParms,showFig=True,PAP=PAP)
             res = minimize(
@@ -3654,7 +3666,7 @@ if __name__ == '__main__':
                 method="Nelder-Mead",
                 bounds=bounds
             )
-            exp.fitExpDepolarization(res.x,showFig=True)
+            exp.fitExpDepolarization(res.x,showFig=True,PAP=PAP)
     elif size == 4 or size == 2:
         mprint('running bathExp')
         exp = procedure(4,0)

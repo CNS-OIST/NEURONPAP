@@ -28,7 +28,7 @@ NEURON {
     USEION k READ ki,ko WRITE ik
     USEION na READ nao,nai
     NONSPECIFIC_CURRENT iGluT
-    RANGE part, C1, C2, C3, C4, C5, C6
+    RANGE part, C1, C2, C3, C4, C5, C6,tau1,tau2
     RANGE  iGluT, Gluout, density, itransLog,multiple
     RANGE count,count_std
 }
@@ -74,6 +74,8 @@ PARAMETER {
     : PSD 200 nm Cleft Height 20 nm
     tau1 = 0.61 (ms) : Rise of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
     tau2 = 5.8 (ms) : Fall of Glutamate in cleft (From astrocyte POV) Diamnon J.S. 2005 J Neurosci
+    : tau1 = 1.55 (ms) :Romanos 2019 communication biology (barel cortex)
+    : tau2 = 3.15 (ms) :Romanos 2019 communication biology
     multiple = 1 : Count of GluT
 }
 
@@ -143,13 +145,9 @@ NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     GluRes = maxG*(tau2/(tau2-tau1)*(-exp(-(t-tsyn)/tau1) + exp(-(t- tsyn)/tau2))) : calculate residual glu
     maxG = weight + GluRes
     : calculate time skip
-    if (GluRes > 0) {
-        tsyn = t - tau1* log(maxG*tau2/(tau2-tau1)/GluRes)
-        : analytical answer for just rise time
-        : printf("%g\n",log(maxG*(tau2/(tau2-tau1)/GluRes))) : analytical answer for just rise time)
-    } else {
-        tsyn = t
-    }
+    tsyn = t - tau1* log(1/(1-(GluRes*(tau2-tau1)/maxG/tau2)))
+    : analytical answer for just rise time
+    : printf("%g\n",log(maxG*(tau2/(tau2-tau1)/GluRes))) : analytical answer for just rise time)
     : printf("t: %g,%g\n",tsyn,t)
     : tsyn = t
     tSpike = tsyn
@@ -184,7 +182,7 @@ BREAKPOINT {
     updatedCount = (count + multiple * count_std)
     ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * area * updatedCount
     
-    iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.2*( C3*k34*u(v,0.4)-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) + 0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.2*( C3*k34*u(v,0.4)-C4*k43)) * area * updatedCount
+    iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) + 0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.4*( C3*k34*u(v,0.4)-C4*k43)) * area * updatedCount
     : printf("iGluT:%g\n",iGluT)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
