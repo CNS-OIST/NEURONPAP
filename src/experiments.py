@@ -2070,7 +2070,7 @@ class procedure(plotFigures):
         
 
             
-    def singleRun(self, *args,expOverlay=True,GluTime=True,PAP=True):
+    def singleRun(self, *args,expOverlay=False,GluTime=True,nearSoma=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -2127,6 +2127,8 @@ class procedure(plotFigures):
         
 
         cells = PAPModel(**funcArgs[-1])
+        if nearSoma:
+            cells.setPAPNearSoma()
         cells.setTstop(500)
         cells.initialize()
         

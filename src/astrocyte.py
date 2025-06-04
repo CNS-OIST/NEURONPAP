@@ -231,6 +231,16 @@ class PAPModel(ResultsPAPModel):
             )
             # Density decreases in gaussian manner with units of PAPLen
 
+    def setPAPNearSoma(self,onSoma=True,diam=0.5,radius=2):
+        if onSoma:
+            self.PAP = self.soma
+        else:
+            h.PAP = h.get_midAstrocytePAP(diam,radius)
+            self.PAP = h.PAP.sec
+        h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
+
+
+        # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
 
     def channelDist(self, **channelDict):
         # change the density of a certain channel by xfold
@@ -917,6 +927,8 @@ class PAPModel(ResultsPAPModel):
 
     def getEquiDistSec(self, path, cutLen=10):
         totLen = h.distance(self.PAP(1), sec=self.soma)
+        if self.PAP == self.soma:
+            return []
         pathLenList = [totLen * i / cutLen for i in range(1, cutLen)]
         j = 0
         i = 0
