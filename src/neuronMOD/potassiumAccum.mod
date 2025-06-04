@@ -21,7 +21,7 @@ PARAMETER {
     fhspace = 100 (angstrom) : effective thickness 
     tauk_0 = 4.0 (ms) :Ransom C.B. (2000) Journal of Physiology
     flag  = 0 (1)
-    slowing = 2 (1)
+    slowing = 1 (1)
     startFlag = 0 (1)
     tstart = 0 (1)
 }
@@ -68,9 +68,7 @@ PROCEDURE kbathRate(){
         : printf("%g\n",kbath)
     } else {
         flux = (1e8)*ik /(fhspace*F)
-        if (iNMDA < 0) {
-            tauk = 2 * tauk_0: slowing based on neuronal activity
-        }
+        tauk = slowing * tauk_0: slowing 
         kbath =  (ko0 - ko)/tauk
     }
     : if ((iNMDA != 0 || iGluT < 0) && t > 150) {

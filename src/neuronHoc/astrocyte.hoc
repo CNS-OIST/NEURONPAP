@@ -318,7 +318,6 @@ proc setGABAas(){local lenPAP
     // $o1.printnames()
     forsec $o1 {
         sGABAa = new inhSyn(0.5)
-        // sGABAa = new SimpleGABAa(0.5)
         GABAas.append(sGABAa)
         nc = new NetCon(stim,GABAas.o(lenPAP))
         ncGABAaList.append(nc)
@@ -450,8 +449,8 @@ proc setGEVI(){
 }
 
 proc setSlowing(){
-    forall {
-        slowing_k_acc = $1
+    forsec $o1 {
+        slowing_k_acc = $2
     }
 }
 

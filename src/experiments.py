@@ -3137,7 +3137,7 @@ class procedure(plotFigures):
             )
         else:
             mprint(x)
-            glt,kir,PAPLen,KoSize,tau1,tau2 = x
+            glt,kir,PAPLen,KoSize,tau2,slowing = x
             funcArgs.append(
                 {
                     "mode": 0,
@@ -3165,6 +3165,8 @@ class procedure(plotFigures):
             stim = 10
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
+        if not PAP:
+            cells.setGLT_TC(0.61,tau2)
         cells.initialize()
 
         if PAP:
@@ -3172,8 +3174,12 @@ class procedure(plotFigures):
             cells.setNMDA_TC(tau1,tau2)
             # cells.setSlowing(slow)
         else:
-            cells.setGLT_TC(tau1,tau2)
+            cells.setSlowing(slowing)
         cells.multiSpike(number=stim, freq=100)
+        if not PAP:
+            cells.setGLT_TC(0.61,5.8)
+            cells.setSlowing(1) # return to normal after neuro activity
+
         cells.run()
         cells = cells.copyAttr()
 
@@ -3317,7 +3323,7 @@ class procedure(plotFigures):
             elif verbose:
                 print(f'{total=}')
 
-            self.plotIKSeries([AllCells],setKoylim=True,setekylim=True,setyLim=[-5,5],initStep=0,tagReset=True)
+            self.plotIKSeries([AllCells],setKoylim=True,setekylim=True,setyLim=[-15,1],initStep=0,tagReset=True)
                 
         total = comm.bcast(total,root=0)
         sys.stdout.flush()
@@ -3656,8 +3662,7 @@ class procedure(plotFigures):
 if __name__ == '__main__':
     if size == 3:
         mprint('exp fit')
-        if size == 3:
-            testBools = [True,False]
+        testBools = [False,True]
         for PAP in testBools:
             exp = procedure(3,0)
             kwargs = {'PAP':PAP,'showFig':False}
@@ -3667,8 +3672,8 @@ if __name__ == '__main__':
                 bounds=[(1,10),(-80, -70),(10,50),(4,50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (200, 120, 10, 10, 5,20)
-                bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30),(0.61,10),(5.8,100)]
+                initParms = (400, 120, 5, 10, 800, 10000)
+                bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30),(5.8,800),(0,10000)]
 
             exp.fitExpDepolarization(initParms,showFig=True,PAP=PAP)
             res = minimize(
@@ -3678,7 +3683,7 @@ if __name__ == '__main__':
                 bounds=bounds
             )
             exp.fitExpDepolarization(res.x,showFig=True,PAP=PAP)
-    elif size == 4 or size == 2:
+    elif size == 5 or size == 2 or size == 4:
         mprint('running bathExp')
         exp = procedure(4,0)
         if size == 2:

@@ -965,10 +965,11 @@ class PAPModel(ResultsPAPModel):
         return sl
     
     def setSlowing(self,slow):
-        h.setSlowing(slow)
+        h.setSlowing(self.flattenPAP(),slow)
+        
 
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
-        if dur == 0:
+        if dur == 0 or KoSize == 0:
             return
         restKo = self.Ko
         if KoSize == None:
