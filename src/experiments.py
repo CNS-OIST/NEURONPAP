@@ -2604,7 +2604,7 @@ class procedure(plotFigures):
         self.addChannelTag()
         if self.GluStim:
             iterations = np.concatenate(
-                (np.logspace(-0.5, 0.2, num=19), np.array([self.PAPLen]))
+                (np.logspace(-0.5, 1, num=19), np.array([self.PAPLen]))
             )
 
         else:
@@ -2768,7 +2768,7 @@ class procedure(plotFigures):
                 if maxIndex < (len(iterations) - 1):
                     ax.text(self.peakLen + 0.1, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm")
                 else:
-                    ax.text(self.peakLen - 1, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm")
+                    ax.text(self.peakLen - 0.3, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm")
             ax.legend()
             ax.set_ylim((0, maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -2797,9 +2797,9 @@ class procedure(plotFigures):
                 compStep = 3
                 startb=0
             elif comparison == 'PAPLen':
-                compMax = 2
-                compStep = 0.2
-                startb=0.2
+                compMax = 10
+                compStep = 1
+                startb=1
             elif comparison == 'durStim':
                 compMax = 9
                 compStep = 1
@@ -2809,7 +2809,7 @@ class procedure(plotFigures):
                 iterations = comm.bcast(get_iter(30,3, compMax, compStep,startb=startb), root=0)
                 self.runAmpLenComparison(comparison,iterations,compMax,compStep)
 
-            # Calculate the number of iterations for all parm sets
+             # Calculate the number of iterations for all parm sets
             iterations = comm.bcast(get_iter(self.KirMax, self.KirStep, compMax, compStep,startb=startb), root=0)
             # # Adjust the range for the last process
             self.runPotassiumComparison(comparison,iterations,maxStep=compMax,intermStep=compStep)
@@ -2906,10 +2906,10 @@ class procedure(plotFigures):
             plt.clim((0, 20))
 
             plt.savefig(
-                os.path.join("../results/paperRes", f"FullPotassium{self.tag}.pdf")
+                os.path.join("../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf")
             )
             if comparison == 'PAPLen':
-                self.plotIKSeries(results,tagReset=True)
+                self.plotIKSeries(results,tagReset=True,setKoylim=True)
 
 
 
