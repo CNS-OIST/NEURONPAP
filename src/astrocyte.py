@@ -1013,22 +1013,25 @@ class PAPModel(ResultsPAPModel):
             h.continuerun(dur * ms + h.t)
         self.Ko = Ko
         
-    def GABABath(self,number,freq,KoSize,video=False):
+    def GABABath(self,number,freq,video=False):
         self.setStimStart()
-        h.slPAP = h.SectionList(self.soma.wholetree())
+        # all section besides soma
+        h.slPAP = h.SectionList([sec for sec in self.soma.wholetree() if sec != self.soma])
+        # by default GABA count is uniformly distributed among all PAP sl.
+        # since the whole astrocyte is manipulated as PAP we convert to all slPAP having the initially defined GABACount
+        numSecs = len(list(h.slPAP))
+        self.GABACount *= numSecs
         self.setGABAas()
         self.KoSize = 0
 
-        recordDictArgs = {}
-        recordDictArgs['sGABA'] = self.GABAas[-1]
-        self.record(**recordDictArgs)
+        self.record()
         h.finitialize(self.v_init)
         h.fcurrent()
         self.getkin()
         h.fcurrent()
         h.continuerun(self.initTstop*ms)
         
-        self.multiSpike(number=number,freq=freq,KoSize=KoSize,video=video)
+        self.multiSpike(number=number,freq=freq,video=video)
         
     def setKClearance(self,mode):
         if type(mode) == bool:
