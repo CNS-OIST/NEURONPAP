@@ -56,11 +56,11 @@ def callExperimentMode(**kwargs):
     if "chan" in kwargs.keys() and kwargs["chan"]:
         # multiChannelEffects
         exp.multiChannel()
-        
+
     if "freqComp" in kwargs.keys() and kwargs["freqComp"]:
         # multiChannelEffects
         exp.freqComparison()
-        
+
     if "Ri" in kwargs.keys() and kwargs["Ri"]:
         # Optimal Ri
         # Soma 2.5836550239043317 MOhm
@@ -82,7 +82,7 @@ def callExperimentMode(**kwargs):
             exp.GluT = False
             exp.GABAR = True
         exp.channelComparison()
-        
+
     if "gabacomp" in kwargs.keys() and kwargs["gabacomp"]:
         # Plot for various channel counts
         exp.GABANMDARCompare()
@@ -139,7 +139,7 @@ def callExperimentMode(**kwargs):
         elif exp.GabaStim:
             exp.GABAR = True
             exp.GluT = False
-            
+
         # run before kocomp for automatic peak identification
         exp.glutamateSpillOver()
 
@@ -150,30 +150,27 @@ def callExperimentMode(**kwargs):
         exp.ekComp()
 
     if "bathcomp" in kwargs.keys() and kwargs["bathcomp"]:
-        mprint('running bathExp')
-        exp = procedure(4,0)
+        mprint("running bathExp")
+        exp = procedure(4, 0)
         if size == 3:
             exp.bathExperiment()
         elif size == 5:
             exp.bathExperiment(invivo=True)
- 
+
     if "optVm" in kwargs.keys() and kwargs["optVm"]:
         print(
             minimize(
                 exp.optDepolarizationSearch,
                 (5),
                 method="Nelder-Mead",
-                bounds=[(0, None)]
+                bounds=[(0, None)],
             )
         )
 
     if "expVm" in kwargs.keys() and kwargs["expVm"]:
         print(
             minimize(
-                exp.optPotassiumSearch,
-                (10),
-                method="Nelder-Mead",
-                bounds=[(0, None)]
+                exp.optPotassiumSearch, (10), method="Nelder-Mead", bounds=[(0, None)]
             )
         )
         # res = minimize(
@@ -183,7 +180,7 @@ def callExperimentMode(**kwargs):
         #     bounds=[(0, None), (0, None)],
         # )
         print(res)
-        
+
     if "expRMP" in kwargs.keys() and kwargs["expRMP"]:
         res = minimize(
             exp.optRMPSearch,

@@ -35,6 +35,12 @@ outputDir="../outlog/"
 output=$outputDir$output
 touch $output
 
+# if uv exists use uv environment
+if command -v uv &>/dev/null; then
+  echo "Found UV using uv environment"
+  source .venv/bin/activate
+fi
+
 # requires nrnivmodl installation
 if fn_exists nrnivmodl; then
   nrnivmodl neuronMOD
@@ -129,3 +135,9 @@ python NEURONPAP.py --somaVC $seed # Fig 1b
 # mpiexec -n 2 python experiments.py
 # mpiexec -n 1 python experiments.py
 zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf
+
+# if uv exists use uv environment
+if command -v uv &>/dev/null; then
+  echo "Found UV using uv environment"
+  deactivate
+fi

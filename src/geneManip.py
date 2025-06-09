@@ -36,7 +36,7 @@ class GENEManipulation:
         PAParea /= len(self.PAPs)
         if PAParea == 0:
             # Uniform distribution to standard pap area
-            PAParea = 0.3 * 0.05 **2 * math.pi
+            PAParea = 0.3 * 0.05 ** 2 * math.pi
         for sec in self.compartments:
             for seg in sec:
                 # print(sec)
@@ -50,10 +50,11 @@ class GENEManipulation:
 
     def GluTransChange(self, multiple):
         pass
+
     # No longer membrane mechanism
-        # for sec in self.compartments:
-        #     for seg in sec:
-        #         seg.GluTrans.count = multiple * seg.GluTrans.count_std
+    # for sec in self.compartments:
+    #     for seg in sec:
+    #         seg.GluTrans.count = multiple * seg.GluTrans.count_std
 
     def kleakChange(self, multiple):
         for sec in self.compartments:

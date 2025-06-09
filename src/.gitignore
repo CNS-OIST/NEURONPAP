@@ -6,3 +6,6 @@ video/
 Data/
 *.out
 flycheck*
+.python-version
+pyproject.toml
+uv.lock

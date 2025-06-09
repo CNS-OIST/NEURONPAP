@@ -7,7 +7,6 @@ Uses argparse module.
 
 import argparse
 import random
-from distutils.util import strtobool
 
 
 def randomGen(rangeInt):
@@ -196,9 +195,9 @@ def argParser(rangeInt=100):
         dest="freq",
         default=100,
         nargs=1,
-        help="Used to set the frequency in Hz"
+        help="Used to set the frequency in Hz",
     )  # end time arg
-    
+
     parser.add_argument(
         "--optVm",
         action="store_true",
@@ -291,7 +290,7 @@ def argParser(rangeInt=100):
         default=0,
         help="Used to set NMDAR; 1 True; 0 False",
     )
-    
+
     parser.add_argument(
         "--OE",
         type=int,
@@ -299,13 +298,13 @@ def argParser(rangeInt=100):
         default=0,
         help="Used to set overexpression; 1 True; 0 False",
     )
-    
+
     parser.add_argument(
         "--bathExperiment",
         dest="bathcomp",
         action="store_true",
         default=False,
-        help="Used to run all bath experiments"
+        help="Used to run all bath experiments",
     )
 
     parser.add_argument(

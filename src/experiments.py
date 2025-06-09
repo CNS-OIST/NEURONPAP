@@ -21,10 +21,11 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.patches as patches
 
-font = {'font.family' : 'sans-serif',
-        'font.size'   : 13,
-        'axes.labelsize': 15,
-        }
+font = {
+    "font.family": "sans-serif",
+    "font.size": 13,
+    "axes.labelsize": 15,
+}
 
 plt.rcParams.update(font)
 
@@ -45,44 +46,43 @@ class plotFigures:
         "Na": "gold",
         "Cl": "chocolate",
         "Ca": "olive",
-        "model":"royalblue",
-        'local':'white',
-        'global':'darkgray'
+        "model": "royalblue",
+        "local": "white",
+        "global": "darkgray",
     }
 
-    def resetTag(self,cell):
+    def resetTag(self, cell):
         # reset figure tag based on result parms
-        self.tag = f'_{cell.seed}_{cell.KoSize}'
-        for attr in ['GluTrans', 'kir2']:
+        self.tag = f"_{cell.seed}_{cell.KoSize}"
+        for attr in ["GluTrans", "kir2"]:
             if attr in cell.GENEDict.keys():
-                self.tag += f'{attr}{cell.GENEDict[attr]}'
-        for attr in ['multiple','GABACount','PAPLen','SpikeNum','durStim']:
-            if hasattr(cell,attr):
-                if attr == 'PAPLen':
-                    self.tag += f'{attr}{getattr(cell,attr):.2f}'
+                self.tag += f"{attr}{cell.GENEDict[attr]}"
+        for attr in ["multiple", "GABACount", "PAPLen", "SpikeNum", "durStim"]:
+            if hasattr(cell, attr):
+                if attr == "PAPLen":
+                    self.tag += f"{attr}{getattr(cell,attr):.2f}"
                 else:
-                    self.tag += f'{attr}{getattr(cell,attr)}'
+                    self.tag += f"{attr}{getattr(cell,attr)}"
 
         if not cell.Glu:
-            self.tag += f'_NoGlu'
+            self.tag += f"_NoGlu"
         if cell.GABA:
-            self.tag += '_GABA'
-        
-    def saveSourceData(self,dataDict):
+            self.tag += "_GABA"
+
+    def saveSourceData(self, dataDict):
         with open(
-                os.path.join("../results/paperRes", f"SourceData{self.tag}"),
-                "w",
+            os.path.join("../results/paperRes", f"SourceData{self.tag}"),
+            "w",
         ) as ofile:
             json.dump(dataDict, ofile)
-        
-        
+
     def returnColor(self, key):
         for typeName in self.colorDict.keys():
             if typeName in key:
                 return self.colorDict[typeName]
         else:
             eMessage(f"Color not found for {key}")
-            
+
     def plotPAPs(self):
         funcArgs = []
         funcArgs.append(
@@ -145,7 +145,9 @@ class plotFigures:
                 )
             )
 
-    def GABANMDARTrace(self,AllCells,NMDARCount,GABACount,fName='NMDAR_GABAR_TraceComp'):
+    def GABANMDARTrace(
+        self, AllCells, NMDARCount, GABACount, fName="NMDAR_GABAR_TraceComp"
+    ):
         plt.cla()
         plt.clf()
         fig, ax = plt.subplots()
@@ -165,7 +167,7 @@ class plotFigures:
                         list(cell.fluorVPAP)[initStep:],
                         label="NMDAR fluor",
                         color=self.returnColor("NMDAR"),
-                        linestyle='-.',
+                        linestyle="-.",
                     )
                 if GABACount == cell.GABACount and cell.multiple == 0:
                     ax.plot(
@@ -179,7 +181,7 @@ class plotFigures:
                         list(cell.fluorVPAP)[initStep:],
                         label="GABAR fluor",
                         color=self.returnColor("GABAR"),
-                        linestyle='-.',
+                        linestyle="-.",
                     )
         ax.legend()
         plt.savefig(
@@ -188,12 +190,21 @@ class plotFigures:
                 f"{fName}{self.tag}.pdf",
             )
         )
-        if 'OPT_' not in fName:
-            self.GABANMDARTrace(AllCells,10,40,fName=f'OPT_{fName}')
+        if "OPT_" not in fName:
+            self.GABANMDARTrace(AllCells, 10, 40, fName=f"OPT_{fName}")
 
-                
-
-    def plotIKSeries(self, AllCells, zoom=False, setyLim=None,setKoylim=False,setekylim=False,showFluor=False,initStep=None,bath=False,tagReset=False):
+    def plotIKSeries(
+        self,
+        AllCells,
+        zoom=False,
+        setyLim=None,
+        setKoylim=False,
+        setekylim=False,
+        showFluor=False,
+        initStep=None,
+        bath=False,
+        tagReset=False,
+    ):
         for cells in AllCells:
             for cell in cells:
                 if tagReset:
@@ -221,7 +232,7 @@ class plotFigures:
                         startStim = int(cell.initTstop)
                         endStim = max(cell.time)
                     print(max(cell.time))
-                    fig, (ax,ax2) = plt.subplots(1,2)
+                    fig, (ax, ax2) = plt.subplots(1, 2)
                 else:
                     fig, ax = plt.subplots()
                 ax.plot(
@@ -250,14 +261,14 @@ class plotFigures:
                             length_includes_head=True,
                         )
                 else:
-                    if self.locality == 'local':
+                    if self.locality == "local":
                         r = patches.Rectangle(
-                            xy=(startStim,19),
-                            width=endStim-startStim,
+                            xy=(startStim, 19),
+                            width=endStim - startStim,
                             height=2,
-                            fc='w',
-                            ec='k',
-                            label = f'{self.locality} stim'
+                            fc="w",
+                            ec="k",
+                            label=f"{self.locality} stim",
                         )
                         ax.add_patch(r)
                     else:
@@ -266,8 +277,8 @@ class plotFigures:
                             startStim,
                             endStim,
                             color=self.returnColor(self.locality),
-                            linewidth = 8,
-                            label = f'{self.locality} stim'
+                            linewidth=8,
+                            label=f"{self.locality} stim",
                         )
 
                 if setKoylim:
@@ -281,9 +292,9 @@ class plotFigures:
                         ax.set_xlabel("time (ms)")
                 else:
                     ax.set_xlabel("time (ms)")
-                     
+
                 ax.set_ylabel("extracellular [K] (mM)")
-                ax.xaxis.set_major_locator(MaxNLocator(nbins='auto',integer=True))
+                ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
 
                 if zoom:
@@ -299,7 +310,9 @@ class plotFigures:
 
                 if bath:
                     ax = ax2
-                    ax.tick_params('y', right=True, labelright=True, left=False, labelleft=False)
+                    ax.tick_params(
+                        "y", right=True, labelright=True, left=False, labelleft=False
+                    )
                 else:
                     plt.cla()
                     plt.clf()
@@ -324,7 +337,7 @@ class plotFigures:
                         list(cell.fluorVPAP)[initStep:],
                         label="PAP fluor",
                         color=self.returnColor("fluor"),
-                        linestyle='-.',
+                        linestyle="-.",
                     )
                 if not zoom:
                     ax.plot(
@@ -342,14 +355,14 @@ class plotFigures:
                     )
 
                 if bath:
-                    if self.locality == 'local':
+                    if self.locality == "local":
                         r = patches.Rectangle(
-                            xy=(startStim,-54),
-                            width=endStim-startStim,
-                            height=16/5,
-                            fc='w',
-                            ec='k',
-                            label = f'{self.locality} stim'
+                            xy=(startStim, -54),
+                            width=endStim - startStim,
+                            height=16 / 5,
+                            fc="w",
+                            ec="k",
+                            label=f"{self.locality} stim",
                         )
                         ax.add_patch(r)
                     else:
@@ -358,23 +371,23 @@ class plotFigures:
                             startStim,
                             endStim,
                             color=self.returnColor(self.locality),
-                            linewidth = 8,
-                            label = f'{self.locality} stim'
+                            linewidth=8,
+                            label=f"{self.locality} stim",
                         )
                     if second:
                         ax.set_xlabel("time (s)")
                     else:
                         ax.set_xlabel("time (ms)")
-                    
+
                 else:
                     ax.set_xlabel("time (ms)")
-                    
+
                 ax.set_ylabel("Voltage (mV)")
-                ax.xaxis.set_major_locator(MaxNLocator(nbins='auto',integer=True))
-                ax.yaxis.set_major_locator(MaxNLocator(nbins='auto',integer=True))
+                ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
+                ax.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
                 if setekylim:
-                    ax.set_ylim((-90,-10))
+                    ax.set_ylim((-90, -10))
 
                 if zoom:
                     ax.set_xlim((initStep * cell.dt, initStep * cell.dt + 20))
@@ -425,7 +438,6 @@ class plotFigures:
                         f"NaCon{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
                     )
                 )
-
 
                 plt.cla()
                 plt.clf()
@@ -558,46 +570,42 @@ class plotFigures:
 
                 plt.close("all")
 
-    def setLabelColors(self,area,Kir=True,x=False,y=False,chanOverride=None):
+    def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
-            'Kir':(120,30),
-            'GluT':(14248*area,812*area),
-            'GABAR':(np.inf,0)
+            "Kir": (120, 30),
+            "GluT": (14248 * area, 812 * area),
+            "GABAR": (np.inf, 0),
         }
         if chanOverride != None and type(chanOverride) == dict:
-            for k,v in chanOverride.items():
+            for k, v in chanOverride.items():
                 stdChannelDict[k] = v
         if y:
             if Kir:
-                mean,std = stdChannelDict['Kir']
-                _,labels = plt.yticks()
+                mean, std = stdChannelDict["Kir"]
+                _, labels = plt.yticks()
             else:
                 if self.GluT:
-                    mean,std = stdChannelDict['GluT']
-            _,labels = plt.yticks()
+                    mean, std = stdChannelDict["GluT"]
+            _, labels = plt.yticks()
             for l in labels:
                 if abs(float(l.get_text()) - mean) < std:
-                    l.set_color('red')
+                    l.set_color("red")
 
         if x:
             # if self.NMDAR:
             #     mean,std = stdChannelDict['NMDAR']
             if self.GluT:
-                mean,std = stdChannelDict['GluT']
+                mean, std = stdChannelDict["GluT"]
             elif self.GABAR and Kir:
-                mean,std = stdChannelDict['GABAR']
+                mean, std = stdChannelDict["GABAR"]
 
-            _,labels = plt.xticks()
+            _, labels = plt.xticks()
             for l in labels:
                 print(l)
                 if abs(float(l.get_text()) - mean) < std:
-                    l.set_color('red')
+                    l.set_color("red")
 
-                
-
-        
-
-    def plotHeatmap(self, results, tag="", divedend=1,Kir=True,stdLabels=False):
+    def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
         plt.cla()
         plt.clf()
         if Kir:
@@ -624,14 +632,17 @@ class plotFigures:
                 )
             )
         else:
-            imArray = np.zeros((5,5))
+            imArray = np.zeros((5, 5))
 
         for res in results:
             if Kir:
                 if self.GluT:
                     imArray[
                         int(res[0].GENEDict["kir2"] / self.KirStep),
-                        int((self.channelCompareMax + res[0].comparecount) / self.channelCompareStep),
+                        int(
+                            (self.channelCompareMax + res[0].comparecount)
+                            / self.channelCompareStep
+                        ),
                     ] += (
                         max(res[0].vPAP) - res[0].RMP
                     )
@@ -645,7 +656,7 @@ class plotFigures:
                         max(res[0].vPAP) - res[0].RMP
                     )
             elif self.GABAR:
-                # if not Kir and GABA i.e. GABA vs. NMDAR do this 
+                # if not Kir and GABA i.e. GABA vs. NMDAR do this
                 imArray[
                     int(res[0].GABACount / self.channelCompareStep),
                     int(res[0].comparecount / self.channelCompareStep),
@@ -653,7 +664,6 @@ class plotFigures:
                     max(res[0].vPAP) - res[0].RMP
                 )
 
-                
             else:
                 imArray[
                     int(res[0].PAPLen / 0.3) - 1,
@@ -661,7 +671,7 @@ class plotFigures:
                 ] += (
                     max(res[0].vPAP) - res[0].RMP
                 )
-                
+
         cmap = "magma"
 
         imArray /= divedend
@@ -677,17 +687,33 @@ class plotFigures:
             chanStart = -5
             skip = 2
             plt.xticks(
-                range(0,2*int(self.channelCompareMax / self.channelCompareStep) + addChan,skip),
-                np.arange(chanStart, int(self.channelCompareMax / self.channelCompareStep) + 1, skip) * res[0].PAPGluTCount_std + res[0].PAPGluTCount
-            )            
+                range(
+                    0,
+                    2 * int(self.channelCompareMax / self.channelCompareStep) + addChan,
+                    skip,
+                ),
+                np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    skip,
+                )
+                * res[0].PAPGluTCount_std
+                + res[0].PAPGluTCount,
+            )
         else:
             chanStart = 0
             addChan = 1
 
         if not self.GluT:
             plt.xticks(
-                range(0,int(self.channelCompareMax / self.channelCompareStep) + addChan),
-                np.arange(chanStart, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+                range(
+                    0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                ),
+                np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    1,
+                )
                 * self.channelCompareStep,
             )
         if Kir:
@@ -698,15 +724,21 @@ class plotFigures:
             plt.ylabel("# of Kir Channels")
         elif self.GABAR:
             plt.yticks(
-                range(0,int(self.channelCompareMax / self.channelCompareStep) + addChan),
-                np.arange(chanStart, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+                range(
+                    0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                ),
+                np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    1,
+                )
                 * self.channelCompareStep,
             )
             plt.ylabel("# of GABA Channels / um2")
         else:
             plt.yticks(
-                range(0,5),
-                [ f'{i:.2f}' for i in np.arange(0.3,1.6,0.3)],
+                range(0, 5),
+                [f"{i:.2f}" for i in np.arange(0.3, 1.6, 0.3)],
             )
             plt.ylabel("Affected PAP length (um)")
         if self.NMDAR:
@@ -725,14 +757,9 @@ class plotFigures:
                 Kir=Kir,
                 x=True,
                 y=True,
-                chanOverride={
-                    'GluT':(
-                        res[0].PAPGluTCount,
-                        res[0].PAPGluTCount_std
-                    )
-                }
+                chanOverride={"GluT": (res[0].PAPGluTCount, res[0].PAPGluTCount_std)},
             )
-            
+
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
         plt.cla()
         plt.clf()
@@ -759,7 +786,9 @@ class plotFigures:
             )
             plt.xticks(
                 range(int(self.channelCompareMax / self.channelCompareStep) + 1),
-                np.arange(0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+                np.arange(
+                    0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1
+                )
                 * self.channelCompareStep,
             )
             plt.yticks(
@@ -771,12 +800,14 @@ class plotFigures:
                 plt.xlabel("# of NMDAR Channels")
             elif self.GluT:
                 plt.xlabel("# of GluT Channels")
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(-100, -60, 10), extend="max")
+            plt.colorbar(
+                label="Voltage (mV)", ticks=np.arange(-100, -60, 10), extend="max"
+            )
             plt.clim((-100, -60))
             plt.savefig(os.path.join("../results/paperRes", f"FullRMP{tag}.pdf"))
             plt.cla()
             plt.clf()
-            print('Soma Comparison')
+            print("Soma Comparison")
             imArray = np.zeros(
                 (
                     int(self.KirMax / self.KirStep) + 1,
@@ -802,7 +833,9 @@ class plotFigures:
             )
             plt.xticks(
                 range(int(self.channelCompareMax / self.channelCompareStep) + 1),
-                np.arange(0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+                np.arange(
+                    0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1
+                )
                 * self.channelCompareStep,
             )
             plt.yticks(
@@ -815,8 +848,8 @@ class plotFigures:
             elif self.GluT:
                 plt.xlabel("GluT Channels")
             elif self.GABAR and Kir:
-                plt.xlabel("# of GABAR channels / um2")            
-                
+                plt.xlabel("# of GABAR channels / um2")
+
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 1), extend="max")
             plt.clim((0, 10))
             plt.savefig(os.path.join("../results/paperRes", f"FullSoma{tag}.pdf"))
@@ -827,7 +860,7 @@ class procedure(plotFigures):
     optKir = 120
     optNMDAR = 5
     optGABAR = 50
-    optGluT = 0 # std * optGluT + mean
+    optGluT = 0  # std * optGluT + mean
     channelCompareMax = 25
     channelCompareStep = 5
     KirMax = 400
@@ -840,7 +873,7 @@ class procedure(plotFigures):
     GABAR = True
     GluT = True
     GluStim = True
-    GabaStim=False
+    GabaStim = False
     KStim = True
     stimdelay = 0
     dt = 0.05
@@ -1149,10 +1182,7 @@ class procedure(plotFigures):
 
     def SomaVC(self):
         funcArgs = []
-        vClampList = comm.bcast(
-            np.arange(-95, -40, 5),
-            root=0
-        )
+        vClampList = comm.bcast(np.arange(-95, -40, 5), root=0)
         print(vClampList)
         plt.cla()
         plt.clf()
@@ -1175,26 +1205,21 @@ class procedure(plotFigures):
             [PAPModel],
             funcArgs,
             ccList,
-            [["setTstop","initialize", "run"]],
-            [[{'tstop':260},{}, {}]]
+            [["setTstop", "initialize", "run"]],
+            [[{"tstop": 260}, {}, {}]],
         )
         if rank == 0:
             for cells in results:
                 for cell in cells:
                     print(cell.voltageClamp)
-                    plt.plot(cell.time,cell.vSoma,color='black')
-                    
-            plt.xlabel('time (ms)')
-            plt.ylabel('Voltage (mV)')
-            plt.xlim((140,260))
-            plt.savefig(
-                os.path.join("../results/paperRes", f"VoltageClampSoma.pdf")
-            )
-                
-        
+                    plt.plot(cell.time, cell.vSoma, color="black")
 
+            plt.xlabel("time (ms)")
+            plt.ylabel("Voltage (mV)")
+            plt.xlim((140, 260))
+            plt.savefig(os.path.join("../results/paperRes", f"VoltageClampSoma.pdf"))
 
-    def branchAttenuation(self, alterDist=False,replay=False):
+    def branchAttenuation(self, alterDist=False, replay=False):
         self.addChannelTag()
         funcArgs = []
         funcArgs.append(
@@ -1202,7 +1227,7 @@ class procedure(plotFigures):
                 "mode": 0,
                 "ComplexMorph": True,
                 "Glu": self.GluStim,
-                "GABA":self.GabaStim,
+                "GABA": self.GabaStim,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "naleak": self.leak,
@@ -1215,18 +1240,18 @@ class procedure(plotFigures):
             }
         )
         if self.GluStim:
-            funcArgs[-1]['multiple'] = self.optNMDAR
+            funcArgs[-1]["multiple"] = self.optNMDAR
         else:
-            funcArgs[-1]['multiple'] = 0
+            funcArgs[-1]["multiple"] = 0
         if self.GabaStim:
-            funcArgs[-1]['GABACount'] = self.optGABAR
+            funcArgs[-1]["GABACount"] = self.optGABAR
         else:
-            funcArgs[-1]['GABACount'] = 0
-            
+            funcArgs[-1]["GABACount"] = 0
+
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
         if replay:
-            cells.replayK('./Data/invivo_K.csv',isolate=True)
+            cells.replayK("./Data/invivo_K.csv", isolate=True)
             # cells.replayK('./Data/invivo_test.csv',isolate=True)
         else:
             cells.multiSpike(number=self.stimCount, freq=self.freq, KoSize=self.ko)
@@ -1250,19 +1275,31 @@ class procedure(plotFigures):
         plt.xticks(
             range(0, 11, 2), [0, 0.2, 0.4, 0.6, 0.8, 1.0]
         )  # float point generated by np.linspace
-        max_time = len(list(cells.branchAtten[-1])[initStep:])*cells.dt
+        max_time = len(list(cells.branchAtten[-1])[initStep:]) * cells.dt
         if max_time > 1e3:
-            steps_per_time = int(0.5e3/cells.dt) # every 1 s
+            steps_per_time = int(0.5e3 / cells.dt)  # every 1 s
             cells.dt *= 1e-3
             plt.ylabel("Time (s)")
         else:
-            steps_per_time = int(20/cells.dt) # every 20 ms
+            steps_per_time = int(20 / cells.dt)  # every 20 ms
             plt.ylabel("Time (ms)")
 
-
         plt.yticks(
-            np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int),
-            np.round(np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int)* cells.dt)
+            np.arange(
+                0,
+                len(list(cells.branchAtten[0])[initStep:]) + 1,
+                steps_per_time,
+                dtype=int,
+            ),
+            np.round(
+                np.arange(
+                    0,
+                    len(list(cells.branchAtten[0])[initStep:]) + 1,
+                    steps_per_time,
+                    dtype=int,
+                )
+                * cells.dt
+            ),
         )
 
         # Show the plot
@@ -1321,7 +1358,6 @@ class procedure(plotFigures):
                 )
             )
 
-
     def kvPhasePlane(self):
         self.KirNMDAPhase()
         # self.duramplenPhase()
@@ -1329,7 +1365,7 @@ class procedure(plotFigures):
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
-        
+
         AllCells = []
         for amp in [0.5, 10]:
             funcArgs = []
@@ -1342,7 +1378,7 @@ class procedure(plotFigures):
                     "naleak": self.leak,
                     "clleak": 0,
                     "seed": self.seed,
-                    "KoSize":amp,
+                    "KoSize": amp,
                 }
             )
             if self.GluT:
@@ -1355,7 +1391,7 @@ class procedure(plotFigures):
                     funcArgs[-1]["GABACount"] = self.optGABAR
                     funcArgs[-1]["multiple"] = 0
                     funcArgs[-1]["GluTrans"] = self.optGluT
-                    chanName = "GABAR"                        
+                    chanName = "GABAR"
                 else:
                     funcArgs[-1]["GABACount"] = 0
                     funcArgs[-1]["multiple"] = 0
@@ -1371,7 +1407,7 @@ class procedure(plotFigures):
                     funcArgs[-1]["GABACount"] = self.optGABAR
                     funcArgs[-1]["multiple"] = 0
                     funcArgs[-1]["GluTrans"] = None
-                    chanName = "GABAR"                        
+                    chanName = "GABAR"
                 else:
                     funcArgs[-1]["GABACount"] = 0
                     funcArgs[-1]["multiple"] = 0
@@ -1379,15 +1415,15 @@ class procedure(plotFigures):
                     chanName = ""
 
             if funcArgs[-1]["multiple"] > 0 or funcArgs[-1]["GluTrans"] != None:
-                funcArgs[-1]['Glu'] = True
+                funcArgs[-1]["Glu"] = True
             if funcArgs[-1]["GABACount"] > 0:
                 funcArgs[-1]["GABA"] = True
 
             iterations = comm.bcast(
                 [
-                    (dur,papLen)
-                    for dur in np.arange(0.5,1,0.1)
-                    for papLen in np.arange(0.3,0.8,0.1)
+                    (dur, papLen)
+                    for dur in np.arange(0.5, 1, 0.1)
+                    for papLen in np.arange(0.3, 0.8, 0.1)
                 ],
                 root=0,
             )
@@ -1423,7 +1459,7 @@ class procedure(plotFigures):
                         cell = cell[j]
                         initStep = int(cell.initTstop / cell.dt) - 200
                         if cell.KoSize == 0.5:
-                            color = 'r'
+                            color = "r"
                             z = len(results) + 1
                         else:
                             color = cm.summer(i / len(results))
@@ -1467,7 +1503,7 @@ class procedure(plotFigures):
     def KirNMDAPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
-        
+
         AllCells = []
         for kircount in [400, self.optKir]:
             for chanCount in [self.optNMDAR, 25, self.optGABAR]:
@@ -1494,7 +1530,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GABACount"] = chanCount
                         funcArgs[-1]["multiple"] = 0
                         funcArgs[-1]["GluTrans"] = 0
-                        chanName = "GABAR"                        
+                        chanName = "GABAR"
                     else:
                         funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = 0
@@ -1510,7 +1546,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GABACount"] = chanCount
                         funcArgs[-1]["multiple"] = 0
                         funcArgs[-1]["GluTrans"] = None
-                        chanName = "GABAR"                        
+                        chanName = "GABAR"
                     else:
                         funcArgs[-1]["GABACount"] = 0
                         funcArgs[-1]["multiple"] = 0
@@ -1518,15 +1554,12 @@ class procedure(plotFigures):
                         chanName = ""
 
                 if funcArgs[-1]["multiple"] > 0 or funcArgs[-1]["GluTrans"] != None:
-                    funcArgs[-1]['Glu'] = True
+                    funcArgs[-1]["Glu"] = True
                 if funcArgs[-1]["GABACount"] > 0:
                     funcArgs[-1]["GABA"] = True
-                    
+
                 iterations = comm.bcast(
-                    [
-                        (kircount, conc)
-                        for conc in np.array([0,0.5,1.0,5.0,10.0])
-                    ],
+                    [(kircount, conc) for conc in np.array([0, 0.5, 1.0, 5.0, 10.0])],
                     root=0,
                 )
                 ccList = comm.bcast(["kir2", "KoSize"], root=0)
@@ -1562,7 +1595,7 @@ class procedure(plotFigures):
                             cell = cell[j]
                             initStep = int(cell.initTstop / cell.dt) - 200
                             if cell.KoSize == 0.5:
-                                color = 'r'
+                                color = "r"
                                 z = len(results) + 1
                             else:
                                 color = cm.summer(i / len(results))
@@ -1606,7 +1639,6 @@ class procedure(plotFigures):
 
                 plt.close("all")
 
-                
     def ekComp(self):
         self.addChannelTag()
         AllCells = []
@@ -1717,13 +1749,13 @@ class procedure(plotFigures):
         print(koList)
 
     def KOComp(self, papCount=10, koCond=6):
-        for transmitter in ['GABAR','NMDAR']:
+        for transmitter in ["GABAR", "NMDAR"]:
             self.NMDAR = False
             self.GABAR = False
             self.GluT = True
             self.GabaStim = False
             self.GluStim = False
-            if transmitter == 'GABAR':
+            if transmitter == "GABAR":
                 self.GabaStim = True
                 self.GluStim = False
                 self.GABAR = True
@@ -1731,9 +1763,9 @@ class procedure(plotFigures):
                 self.GabaStim = False
                 self.GluStim = True
                 self.NMDAR = True
-            self.runKOComp(transmitter,papCount,koCond)
+            self.runKOComp(transmitter, papCount, koCond)
 
-    def runKOComp(self,transmitter,papCount,koCond):
+    def runKOComp(self, transmitter, papCount, koCond):
         AllCells = []
         # single run
         for i in range(koCond):
@@ -1741,14 +1773,14 @@ class procedure(plotFigures):
             # Order is important
             if i == 0:
                 self.GluT = True
-                setattr(self,transmitter,True)
+                setattr(self, transmitter, True)
                 controlKir = self.optKir
                 self.optKir = controlKir
                 controlLeak = self.leak
                 tmpdt = self.dt
             elif i < 3:
                 self.GluT = True
-                setattr(self,transmitter,True)
+                setattr(self, transmitter, True)
                 if i == 1:
                     # Kir OE
                     self.optKir = controlKir * 6.0  # from experiment
@@ -1766,14 +1798,14 @@ class procedure(plotFigures):
                 if i == 3:
                     # NMDARKO
                     self.GluT = True
-                    setattr(self,transmitter,False)
+                    setattr(self, transmitter, False)
                 elif i == 4:
                     # NMDARKO
-                    setattr(self,transmitter,True)
+                    setattr(self, transmitter, True)
                     self.GluT = False
                 elif i == 5:
                     # NMDARKO
-                    setattr(self,transmitter,False)
+                    setattr(self, transmitter, False)
                     self.GluT = False
 
             funcArgs.append(
@@ -1782,7 +1814,7 @@ class procedure(plotFigures):
                     "ComplexMorph": True,
                     "bNum": 1,
                     "Glu": self.GluStim,
-                    "GABA":self.GabaStim,
+                    "GABA": self.GabaStim,
                     "kir2": self.optKir,
                     "clleak": 0,
                     "naleak": self.leak,
@@ -1790,15 +1822,15 @@ class procedure(plotFigures):
                 }
             )
             if i == 1:
-                krule = {'kuptake':True}
+                krule = {"kuptake": True}
             elif i == 2:
                 # nonspecific K+ block
                 # funcArgs[-1]['twik'] = 0
                 # funcArgs[-1]['kleak'] = 0
-                krule = {'kblock':True}
+                krule = {"kblock": True}
             else:
                 krule = {}
-                
+
             if self.NMDAR:
                 funcArgs[-1]["multiple"] = self.optNMDAR
             else:
@@ -1807,9 +1839,9 @@ class procedure(plotFigures):
                 funcArgs[-1]["GluTrans"] = self.optGluT
 
             if self.GABAR:
-                funcArgs[-1]['GABACount'] = self.optGABAR
+                funcArgs[-1]["GABACount"] = self.optGABAR
             else:
-                funcArgs[-1]['GABACount'] = 0
+                funcArgs[-1]["GABACount"] = 0
 
             comm.Barrier()
             if self.peakLen == None:
@@ -1844,16 +1876,19 @@ class procedure(plotFigures):
             resMat = np.zeros((koCond * 2, papCount))
             for cells in AllCells:
                 for cell in cells:
-                    if cell.multiple > 0 or hasattr(cell,'GABACount'):
+                    if cell.multiple > 0 or hasattr(cell, "GABACount"):
                         if cell.GENEDict["kir2"] == controlKir:
-                            if "GluTrans" in cell.GENEDict.keys() and cell.GENEDict['GluTrans'] != None:
+                            if (
+                                "GluTrans" in cell.GENEDict.keys()
+                                and cell.GENEDict["GluTrans"] != None
+                            ):
                                 # control
-                                setattr(self,transmitter,True)
+                                setattr(self, transmitter, True)
                                 k = 0
                                 self.addChannelTag()
                             else:
-                                # GluT KO       
-                                setattr(self,transmitter,True)
+                                # GluT KO
+                                setattr(self, transmitter, True)
                                 k = 4
                                 self.addChannelTag()
                         elif cell.GENEDict["kir2"] > controlKir:
@@ -1864,20 +1899,23 @@ class procedure(plotFigures):
                             # Kir inhibition
                             self.addChannelTag()
                             k = 2
-                            plt.plot(cell.time,cell.vPAP)
-                            plt.savefig('KO changes.pdf')
+                            plt.plot(cell.time, cell.vPAP)
+                            plt.savefig("KO changes.pdf")
                     else:
-                        if "GluTrans" in cell.GENEDict.keys() and cell.GENEDict['GluTrans'] != None:
+                        if (
+                            "GluTrans" in cell.GENEDict.keys()
+                            and cell.GENEDict["GluTrans"] != None
+                        ):
                             # transmitter KO
                             k = 3
-                            setattr(self,transmitter,False)
+                            setattr(self, transmitter, False)
                             self.GluT = True
                             self.addChannelTag()
                         else:
                             # transmitter KO
                             # GluT KO
                             k = 5
-                            setattr(self,transmitter,False)
+                            setattr(self, transmitter, False)
                             self.GluT = False
                             self.addChannelTag()
 
@@ -1935,11 +1973,11 @@ class procedure(plotFigures):
                     val_test[category[i]] = ttest_rel(resMat[i], resMat[i + koCond])
                 else:
                     dict_key = "spillover"
-                if i in [0,koCond]:
-                    for cond in [1,2]:
+                if i in [0, koCond]:
+                    for cond in [1, 2]:
                         print(dict_key)
-                        print(category[i % 6],category[(i+cond) % 6])
-                        print(ttest_rel(resMat[i],resMat[i+cond]))
+                        print(category[i % 6], category[(i + cond) % 6])
+                        print(ttest_rel(resMat[i], resMat[i + cond]))
 
                 val_means[dict_key].append(np.nanmean(resMat[i]))
                 val_sd[dict_key].append(np.nanstd(resMat[i]))
@@ -2066,20 +2104,18 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         cells.initialize()
-        cells.setK(KoSize=43, delay=0,dur=10)
+        cells.setK(KoSize=43, delay=0, dur=10)
         cells.run()
         cells = cells.copyAttr()
         initStep = int((cells.initTstop + 10) / cells.dt) + 1
         flux = np.array(list(cells.flux)[initStep:]) * -1
         kbath = np.array(list(cells.kbath)[initStep:]) * -1
-        plt.plot(list(cells.time)[initStep:],np.divide(flux,kbath))
-        plt.xlabel('time (ms)')
-        plt.ylabel('Ratio of\ninflux / diffusion\nfor potassium')
-        plt.savefig('fluxRatioOvertime.pdf')
-        
+        plt.plot(list(cells.time)[initStep:], np.divide(flux, kbath))
+        plt.xlabel("time (ms)")
+        plt.ylabel("Ratio of\ninflux / diffusion\nfor potassium")
+        plt.savefig("fluxRatioOvertime.pdf")
 
-            
-    def singleRun(self, *args,expOverlay=False,GluTime=True,nearSoma=True):
+    def singleRun(self, *args, expOverlay=False, GluTime=True, nearSoma=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -2087,7 +2123,7 @@ class procedure(plotFigures):
             d = 20
             k = 500
             tau1 = 1.69
-            nmdaCount,s,d,tau2 = args
+            nmdaCount, s, d, tau2 = args
         else:
             k = 500
             nmdaCount = 12
@@ -2096,13 +2132,12 @@ class procedure(plotFigures):
             tau1 = 1.69
             tau2 = 3.97
 
-            
         AllCells = []
         funcArgs = []
         funcArgs.append(
             {
-                'Glu':self.GluStim,
-                'GABA':self.GabaStim,
+                "Glu": self.GluStim,
+                "GABA": self.GabaStim,
                 "mode": 0,
                 "ComplexMorph": True,
                 "bNum": 1,
@@ -2111,16 +2146,16 @@ class procedure(plotFigures):
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
-                'KoSize':3,
-                'PAPLen':5
+                "KoSize": 3,
+                "PAPLen": 5,
             }
         )
         if self.OE:
             funcArgs[-1]["kir2"] = 400
-            
-        if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
-            funcArgs[-1]['dt'] *= 0.2
-            
+
+        if funcArgs[-1]["kir2"] > 300:  # to compensate for mathematical unstability
+            funcArgs[-1]["dt"] *= 0.2
+
         if self.NMDAR and self.GluStim:
             # funcArgs[-1]["multiple"] = self.optNMDAR
             funcArgs[-1]["multiple"] = nmdaCount
@@ -2133,16 +2168,14 @@ class procedure(plotFigures):
         else:
             funcArgs[-1]["GABACount"] = 0
 
-        
-
         cells = PAPModel(**funcArgs[-1])
         if nearSoma:
             cells.setPAPNearSoma()
         cells.setTstop(500)
         cells.initialize()
-        
-        cells.setNMDA_Mgblock(k,d,s)
-        cells.setNMDA_TC(tau1,tau2)
+
+        cells.setNMDA_Mgblock(k, d, s)
+        cells.setNMDA_TC(tau1, tau2)
         # cells.setSlowing(slow)
 
         # 6.12418747    5.40398865    0.42320213 -100.
@@ -2177,11 +2210,15 @@ class procedure(plotFigures):
             #     setKoylim = True
             # else:
             #     setKoylim = False
-            self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=not nearSoma,setyLim=[-5,5])
+            self.plotIKSeries(
+                AllCells, setKoylim=setKoylim, setekylim=not nearSoma, setyLim=[-5, 5]
+            )
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
-                self.plotExpFit(cells,stim=stim,Fname='expOverlay',correctArtifact=True)
+                self.plotExpFit(
+                    cells, stim=stim, Fname="expOverlay", correctArtifact=True
+                )
                 # results = AllCells[0][0]
                 # fig, ax1 = plt.subplots()
                 # ax2 = ax1.twinx()
@@ -2230,71 +2267,74 @@ class procedure(plotFigures):
                 # # plt.title(titleString)
                 # plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
 
-                
             if self.GluT:
-                if hasattr(cells,GluTGlu):
-                    plt.xlim((150,300))
-                    plt.xlabel('time (ms)')
-                    plt.ylabel('[Glu]o (mM)')
-                    plt.plot(list(cells.time),list(cells.GluTGlu))
-                    plt.savefig(os.path.join("../results/paperRes", f'GlutamateTimecourse{self.tag}.pdf'))
+                if hasattr(cells, GluTGlu):
+                    plt.xlim((150, 300))
+                    plt.xlabel("time (ms)")
+                    plt.ylabel("[Glu]o (mM)")
+                    plt.plot(list(cells.time), list(cells.GluTGlu))
+                    plt.savefig(
+                        os.path.join(
+                            "../results/paperRes", f"GlutamateTimecourse{self.tag}.pdf"
+                        )
+                    )
                 plt.cla()
                 plt.clf()
-                plt.plot(list(cells.time),list(cells.GluTC1),label='C1')
-                plt.plot(list(cells.time),list(cells.GluTC2),label='C2')
-                plt.plot(list(cells.time),list(cells.GluTC3),label='C3')
-                plt.plot(list(cells.time),list(cells.GluTC4),label='C4')
-                plt.plot(list(cells.time),list(cells.GluTC5),label='C5')
-                plt.plot(list(cells.time),list(cells.GluTC6),label='C6')
+                plt.plot(list(cells.time), list(cells.GluTC1), label="C1")
+                plt.plot(list(cells.time), list(cells.GluTC2), label="C2")
+                plt.plot(list(cells.time), list(cells.GluTC3), label="C3")
+                plt.plot(list(cells.time), list(cells.GluTC4), label="C4")
+                plt.plot(list(cells.time), list(cells.GluTC5), label="C5")
+                plt.plot(list(cells.time), list(cells.GluTC6), label="C6")
                 plt.legend()
-                plt.xlabel('time (ms)')
-                plt.ylabel('Ratio of states')
-                plt.savefig(os.path.join("../results/paperRes", f'GluTstates{self.tag}.pdf'))
+                plt.xlabel("time (ms)")
+                plt.ylabel("Ratio of states")
+                plt.savefig(
+                    os.path.join("../results/paperRes", f"GluTstates{self.tag}.pdf")
+                )
 
-
-    def bathExperiment(self,runAll=True,invivo=False,isolate=False,gaba=False):
+    def bathExperiment(self, runAll=True, invivo=False, isolate=False, gaba=False):
         if runAll:
             if invivo:
-                invivoRunConds = [True,False]
+                invivoRunConds = [True, False]
             else:
                 invivoRunConds = [False]
 
-            allConds = len(invivoRunConds)*2
-            
+            allConds = len(invivoRunConds) * 2
+
             if not size > allConds:
-                wMessage(f'bath experiment runAll only when there are more than {allConds} ranks')
-            for i,bool_invivo in enumerate(invivoRunConds):
-                for j,bool_isolate in enumerate([True,False]):
-                    if rank == 2*i + j:
+                wMessage(
+                    f"bath experiment runAll only when there are more than {allConds} ranks"
+                )
+            for i, bool_invivo in enumerate(invivoRunConds):
+                for j, bool_isolate in enumerate([True, False]):
+                    if rank == 2 * i + j:
                         self.bathExperiment(
-                            runAll=False, # for escaping inf loop
+                            runAll=False,  # for escaping inf loop
                             invivo=bool_invivo,
-                            isolate=bool_isolate
+                            isolate=bool_isolate,
                         )
             if rank == allConds:
-                        self.bathExperiment(
-                            runAll=False, # for escaping inf loop
-                            gaba=True
-                        )
+                self.bathExperiment(runAll=False, gaba=True)  # for escaping inf loop
 
         else:
             if gaba:
                 self.gababathExperiment()
             else:
-                self.kbathExperiment(invivo,isolate)
+                self.kbathExperiment(invivo, isolate)
 
-    def kbathExperiment(self,invivo,isolate):
+    def kbathExperiment(self, invivo, isolate):
         # add multispike ek clamp
         self.addChannelTag()
         if invivo:
-            self.tag += '_invivoBath'
+            self.tag += "_invivoBath"
         else:
-            self.tag += '_Bath'
+            self.tag += "_Bath"
         if isolate:
-            self.locality = 'local'
-            self.tag += '_isolated'
+            self.locality = "local"
+            self.tag += "_isolated"
         else:
-            self.locality = 'global'
+            self.locality = "global"
         # print(self.tag)
         AllCells = []
         funcArgs = []
@@ -2312,9 +2352,9 @@ class procedure(plotFigures):
         )
         if self.OE:
             funcArgs[-1]["kir2"] = 400
-            
-        if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
-            funcArgs[-1]['dt'] *= 0.2
+
+        if funcArgs[-1]["kir2"] > 300:  # to compensate for mathematical unstability
+            funcArgs[-1]["dt"] *= 0.2
         funcArgs[-1]["multiple"] = 0
         funcArgs[-1]["Glu"] = False
         funcArgs[-1]["GABACount"] = 0
@@ -2324,17 +2364,17 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         if invivo:
             cells.initialize()
-            cells.replayK('./Data/invivo_K.csv',isolate=isolate)
+            cells.replayK("./Data/invivo_K.csv", isolate=isolate)
             cells.run()
 
         else:
             cells.setTstop(500)
             cells.initialize()
             if isolate:
-                video=False
+                video = False
             else:
-                video=True
-            cells.setKBath(8,dur=500,video=video,isolate=isolate)
+                video = True
+            cells.setKBath(8, dur=500, video=video, isolate=isolate)
             cells.run()
 
         cells = cells.copyAttr()
@@ -2348,15 +2388,22 @@ class procedure(plotFigures):
         #     setKoylim = True
         # else:
         #     setKoylim = False
-        self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-20,10],initStep=0,bath=True)
+        self.plotIKSeries(
+            AllCells,
+            setKoylim=setKoylim,
+            setekylim=True,
+            setyLim=[-20, 10],
+            initStep=0,
+            bath=True,
+        )
         results = AllCells[0][0]
         # print(max(list(results.vPAP)))
 
     def gababathExperiment(self):
         # add multispike ek clamp
         self.addChannelTag()
-        self.tag += '_gabaBath'
-        self.locality = 'global'
+        self.tag += "_gabaBath"
+        self.locality = "global"
 
         # print(self.tag)
         AllCells = []
@@ -2365,9 +2412,9 @@ class procedure(plotFigures):
             {
                 "mode": 0,
                 "ComplexMorph": True,
-                "multiple":0,
-                "Glu":False,
-                "GABA":True,
+                "multiple": 0,
+                "Glu": False,
+                "GABA": True,
                 "bNum": 1,
                 "kir2": 120,
                 "clleak": 0,
@@ -2378,14 +2425,16 @@ class procedure(plotFigures):
         )
         if self.OE:
             funcArgs[-1]["kir2"] = 400
-            
-        if funcArgs[-1]['kir2'] > 300: # to compensate for mathematical unstability
-            funcArgs[-1]['dt'] *= 0.2
-        funcArgs[-1]["GABACount"] = 1 # not optGABA as GABABath distributes GABAs with different mechanism compared to default distribution
+
+        if funcArgs[-1]["kir2"] > 300:  # to compensate for mathematical unstability
+            funcArgs[-1]["dt"] *= 0.2
+        funcArgs[-1][
+            "GABACount"
+        ] = 1  # not optGABA as GABABath distributes GABAs with different mechanism compared to default distribution
 
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(200)
-        cells.GABABath(1,0)
+        cells.GABABath(1, 0)
         cells.run()
         cells = cells.copyAttr()
 
@@ -2398,42 +2447,41 @@ class procedure(plotFigures):
         #     setKoylim = True
         # else:
         #     setKoylim = False
-        self.plotIKSeries(AllCells,setKoylim=setKoylim,setekylim=True,setyLim=[-20,10],bath=True)
+        self.plotIKSeries(
+            AllCells, setKoylim=setKoylim, setekylim=True, setyLim=[-20, 10], bath=True
+        )
         results = AllCells[0][0]
         # print(max(list(results.vPAP)))
-        
-                
-    def calcRiseFall(self,t,V,label=None,stdout=False):
+
+    def calcRiseFall(self, t, V, label=None, stdout=False):
         t = list(t)
         V = list(V)
         Thalf = []
         if label != None and stdout:
             print(label)
-        maxInd = list(V).index(max(V)) 
-        for i,voltageRF in enumerate([ V[:maxInd], V[maxInd:] ]):
+        maxInd = list(V).index(max(V))
+        for i, voltageRF in enumerate([V[:maxInd], V[maxInd:]]):
             if i == 0:
                 origin = 150
             else:
                 origin = t[maxInd]
-            for j,v in enumerate(voltageRF):
-                if i == 0 and v > max(V)/2:
+            for j, v in enumerate(voltageRF):
+                if i == 0 and v > max(V) / 2:
                     if stdout:
-                        print('rise')
+                        print("rise")
                     break
-                elif i == 1 and v < max(V)/2:
+                elif i == 1 and v < max(V) / 2:
                     if stdout:
-                        print('fall')
+                        print("fall")
                     j += maxInd
                     break
-            
+
             if stdout:
-                print(v,max(V))
-                print(f'Half T: {abs(t[j]-origin)}')
-            Thalf.append(abs(t[j]-origin))
+                print(v, max(V))
+                print(f"Half T: {abs(t[j]-origin)}")
+            Thalf.append(abs(t[j] - origin))
 
         return Thalf
-        
-            
 
     def GABANMDARCompare(self):
         self.addChannelTag()
@@ -2455,7 +2503,7 @@ class procedure(plotFigures):
             {
                 "mode": 0,
                 "Glu": True,
-                "GABA":True,
+                "GABA": True,
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
@@ -2463,11 +2511,11 @@ class procedure(plotFigures):
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
-                "GluTrans":self.optGluT,
-                "kir2":self.optKir,
+                "GluTrans": self.optGluT,
+                "kir2": self.optKir,
             }
         )
-        ccList = ["multiple","GABACount"]
+        ccList = ["multiple", "GABACount"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
         callMethods = [[]]
@@ -2481,8 +2529,8 @@ class procedure(plotFigures):
             ]
 
         else:
-            callMethods[0] += ["setTstop","initialize", "run"]
-            callArgs[0] += [{},{}, {}]
+            callMethods[0] += ["setTstop", "initialize", "run"]
+            callArgs[0] += [{}, {}, {}]
 
         if self.ek != None:
             self.ko = self.nernstINV(ek, 80)  # 80 defined in neuron astrocyte.hoc
@@ -2502,7 +2550,7 @@ class procedure(plotFigures):
             ) as handle:
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
             # self.plotHeatmap(results, tag=self.tag,Kir=False)
-            self.GABANMDARTrace(results,self.channelCompareMax,self.channelCompareMax)
+            self.GABANMDARTrace(results, self.channelCompareMax, self.channelCompareMax)
 
     def channelComparison(self):
         self.addChannelTag()
@@ -2512,8 +2560,16 @@ class procedure(plotFigures):
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax *= 100
             self.channelCompareStep *= 100
-            iterations = [(i,j) for i in range(0, self.KirMax + 1, self.KirStep) for j in range(-self.channelCompareMax,self.channelCompareMax+1,self.channelCompareStep)]
-            iterations = comm.bcast(iterations,root=0)
+            iterations = [
+                (i, j)
+                for i in range(0, self.KirMax + 1, self.KirStep)
+                for j in range(
+                    -self.channelCompareMax,
+                    self.channelCompareMax + 1,
+                    self.channelCompareStep,
+                )
+            ]
+            iterations = comm.bcast(iterations, root=0)
         else:
             self.GluT = False
             # Calculate the number of iterations for all parm sets
@@ -2534,7 +2590,7 @@ class procedure(plotFigures):
             {
                 "mode": 0,
                 "Glu": self.GluStim,
-                "GABA":self.GabaStim,
+                "GABA": self.GabaStim,
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
@@ -2569,9 +2625,6 @@ class procedure(plotFigures):
             {},
         ]
 
-        
-
-
         if self.ek != None:
             self.ko = self.nernstINV(ek, 80)  # 80 defined in neuron astrocyte.hoc
             rIndex = callMethods[0].index("run")
@@ -2589,7 +2642,7 @@ class procedure(plotFigures):
                 "wb",
             ) as handle:
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            self.plotHeatmap(results, tag=self.tag,stdLabels=True)
+            self.plotHeatmap(results, tag=self.tag, stdLabels=True)
             self.plotIKSeries(results)
             totResults = []
             path = os.path.join(os.path.abspath("intermediaryData"), "resultsParallel")
@@ -2630,19 +2683,19 @@ class procedure(plotFigures):
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
                 "kir2": self.optKir,
-                "KoSize":self.ko,
-                "multiple":0
+                "KoSize": self.ko,
+                "multiple": 0,
             }
         )
         if not self.KStim:
-            funcArgs[-1]['KoSize']=0
+            funcArgs[-1]["KoSize"] = 0
         if (self.GluStim or self.GabaStim) and self.KStim:
             if self.GluStim:
                 # funcArgs[-1]['multiple']=self.optNMDAR
-                funcArgs[-1]['GluTrans'] =  self.optGluT
-                
+                funcArgs[-1]["GluTrans"] = self.optGluT
+
             if self.GabaStim:
-                funcArgs[-1]['GABACount']=self.optGABAR
+                funcArgs[-1]["GABACount"] = self.optGABAR
         ccList = ["PAPLen", "seed"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
@@ -2653,7 +2706,17 @@ class procedure(plotFigures):
                 funcArgs,
                 ccList,
                 [["initialize", "multiSpike", "run"]],
-                [[{}, {"number": self.stimCount, "freq": self.freq,"KoSize":self.ko}, {}]],
+                [
+                    [
+                        {},
+                        {
+                            "number": self.stimCount,
+                            "freq": self.freq,
+                            "KoSize": self.ko,
+                        },
+                        {},
+                    ]
+                ],
             )
 
         else:
@@ -2682,7 +2745,7 @@ class procedure(plotFigures):
                     color = cm.twilight(cindex)
                     initStep = int((cell.initTstop - 10) / cell.dt)
                     plt.plot(
-                        np.array(list(cell.time)[initStep:])*1e-3, # ms to s
+                        np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
                         np.array(list(cell.vPAP)[initStep:]) - cell.RMP,
                         color=color,
                     )
@@ -2747,7 +2810,7 @@ class procedure(plotFigures):
                 #     zorder=-1,
                 # )
             maxIndex = vList.index(max(vList))
-            maxY = max(vList)+5
+            maxY = max(vList) + 5
 
             self.peakLen = iterations[maxIndex]
             ax.scatter(
@@ -2766,9 +2829,13 @@ class procedure(plotFigures):
                     zorder=-2,
                 )
                 if maxIndex < (len(iterations) - 1):
-                    ax.text(self.peakLen + 0.1, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm")
+                    ax.text(
+                        self.peakLen + 0.1, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm"
+                    )
                 else:
-                    ax.text(self.peakLen - 0.3, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm")
+                    ax.text(
+                        self.peakLen - 0.3, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm"
+                    )
             ax.legend()
             ax.set_ylim((0, maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -2788,35 +2855,40 @@ class procedure(plotFigures):
             for cell in cellList:
                 self.tag = self.tag.split("_PAPLen")[0]
                 self.tag += f"_PAPLen{cell[0][0].PAPLen}"
-                self.plotIKSeries(cell,setekylim=True,setKoylim=True,setyLim=[-6,2])
+                self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
 
     def potassiumComparison(self):
-        for comparison in ['PAPLen', 'durStim','KoSize']:
-            if comparison == 'KoSize':
+        for comparison in ["PAPLen", "durStim", "KoSize"]:
+            if comparison == "KoSize":
                 compMax = 30
                 compStep = 3
-                startb=0
-            elif comparison == 'PAPLen':
+                startb = 0
+            elif comparison == "PAPLen":
                 compMax = 10
                 compStep = 1
-                startb=1
-            elif comparison == 'durStim':
+                startb = 1
+            elif comparison == "durStim":
                 compMax = 9
                 compStep = 1
-                startb=0
-            
-            if comparison != 'KoSize':
-                iterations = comm.bcast(get_iter(30,3, compMax, compStep,startb=startb), root=0)
-                self.runAmpLenComparison(comparison,iterations,compMax,compStep)
+                startb = 0
 
-             # Calculate the number of iterations for all parm sets
-            iterations = comm.bcast(get_iter(self.KirMax, self.KirStep, compMax, compStep,startb=startb), root=0)
+            if comparison != "KoSize":
+                iterations = comm.bcast(
+                    get_iter(30, 3, compMax, compStep, startb=startb), root=0
+                )
+                self.runAmpLenComparison(comparison, iterations, compMax, compStep)
+
+            # Calculate the number of iterations for all parm sets
+            iterations = comm.bcast(
+                get_iter(self.KirMax, self.KirStep, compMax, compStep, startb=startb),
+                root=0,
+            )
             # # Adjust the range for the last process
-            self.runPotassiumComparison(comparison,iterations,maxStep=compMax,intermStep=compStep)
+            self.runPotassiumComparison(
+                comparison, iterations, maxStep=compMax, intermStep=compStep
+            )
 
-
-
-    def runAmpLenComparison(self,comparison,iterations,maxStep,intermStep):
+    def runAmpLenComparison(self, comparison, iterations, maxStep, intermStep):
         comm.Barrier()
         funcArgs = []
         funcArgs.append(
@@ -2831,7 +2903,7 @@ class procedure(plotFigures):
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
-                "kir2":self.optKir,
+                "kir2": self.optKir,
             }
         )
         # if self.NMDAR:
@@ -2846,7 +2918,7 @@ class procedure(plotFigures):
             self.GluT = False
             funcArgs[-1]["GluTrans"] = None
 
-        ccList = ['KoSize',comparison]
+        ccList = ["KoSize", comparison]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
         results = parallizeFor(
@@ -2862,11 +2934,11 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
-            imArray = np.zeros((11,int(maxStep/intermStep)+1))
+            imArray = np.zeros((11, int(maxStep / intermStep) + 1))
             for res in results:
                 imArray[
-                    int(getattr(res[0],ccList[0])/3),
-                    int(getattr(res[0],ccList[1])/intermStep)
+                    int(getattr(res[0], ccList[0]) / 3),
+                    int(getattr(res[0], ccList[1]) / intermStep),
                 ] += (max(res[0].vPAP) - res[0].RMP)
 
             plt.imshow(
@@ -2877,43 +2949,47 @@ class procedure(plotFigures):
                 aspect="equal",
             )
             # set xlabel
-            if comparison == 'durStim':
+            if comparison == "durStim":
                 skip = 2
-                dec=0
-                printType=int
+                dec = 0
+                printType = int
                 plt.xlabel("stim. duation (ms)")
             else:
-                skip=2
-                dec=1
-                printType=float
+                skip = 2
+                dec = 1
+                printType = float
                 plt.xlabel("PAP Length (\u03bcm)")
             plt.xticks(
-                np.arange(0,int(maxStep/intermStep)+1,1),
-                np.round(np.arange(0,maxStep+intermStep/2,intermStep),decimals=dec).astype(printType)
+                np.arange(0, int(maxStep / intermStep) + 1, 1),
+                np.round(
+                    np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
+                ).astype(printType),
             )
             # set ylabel
             skip = 1
             dec = 0
-            printType=int
+            printType = int
             maxStep = 30
             intermStep = 3
             plt.ylabel("$\Delta$extracellular [K] (mM)")
             plt.yticks(
-                np.arange(0,int(maxStep/intermStep)+1,1),
-                np.round(np.arange(0,maxStep+intermStep/2,intermStep),decimals=dec).astype(printType)
+                np.arange(0, int(maxStep / intermStep) + 1, 1),
+                np.round(
+                    np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
+                ).astype(printType),
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
 
             plt.savefig(
-                os.path.join("../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf")
+                os.path.join(
+                    "../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf"
+                )
             )
-            if comparison == 'PAPLen':
-                self.plotIKSeries(results,tagReset=True,setKoylim=True)
+            if comparison == "PAPLen":
+                self.plotIKSeries(results, tagReset=True, setKoylim=True)
 
-
-
-    def runPotassiumComparison(self,comparison,iterations,maxStep=10,intermStep=1):
+    def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):
 
         comm.Barrier()
         funcArgs = []
@@ -2966,10 +3042,13 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
-            imArray = np.zeros((int(self.KirMax / self.KirStep) + 1, int(maxStep/intermStep) + 1))
+            imArray = np.zeros(
+                (int(self.KirMax / self.KirStep) + 1, int(maxStep / intermStep) + 1)
+            )
             for res in results:
                 imArray[
-                    int(res[0].GENEDict["kir2"] / self.KirStep), int(getattr(res[0],comparison)/intermStep)
+                    int(res[0].GENEDict["kir2"] / self.KirStep),
+                    int(getattr(res[0], comparison) / intermStep),
                 ] += (max(res[0].vPAP) - res[0].RMP)
 
             plt.imshow(
@@ -2984,36 +3063,37 @@ class procedure(plotFigures):
                 np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
             )
             plt.ylabel("# of Kir Channels")
-            if comparison == 'KoSize':
+            if comparison == "KoSize":
                 skip = 1
                 dec = 0
-                printType=int
+                printType = int
                 plt.xlabel("$\Delta$extracellular [K] (mM)")
-            elif comparison == 'durStim':
+            elif comparison == "durStim":
                 skip = 2
-                dec=0
-                printType=int
+                dec = 0
+                printType = int
                 plt.xlabel("stim. duation (ms)")
             else:
-                skip=2
-                dec=1
-                printType=float
+                skip = 2
+                dec = 1
+                printType = float
                 plt.xlabel("PAP Length (\u03bcm)")
             plt.xticks(
-                np.arange(0,int(maxStep/intermStep)+1,1),
-                np.round(np.arange(0,maxStep+intermStep/2,intermStep),decimals=dec).astype(printType)
+                np.arange(0, int(maxStep / intermStep) + 1, 1),
+                np.round(
+                    np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
+                ).astype(printType),
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
-            self.setLabelColors(res[0].PAParea,Kir=True,y=True)
+            self.setLabelColors(res[0].PAParea, Kir=True, y=True)
 
             plt.savefig(
                 os.path.join("../results/paperRes", f"FullPotassium{self.tag}.pdf")
             )
 
-            if comparison == 'KoSize':
+            if comparison == "KoSize":
                 self.plotIKSeries(results)
-
 
     def SCeq(self, x, a, l, c):
         return a * np.exp(-x / l) + c
@@ -3071,7 +3151,7 @@ class procedure(plotFigures):
                 "ComplexMorph": True,
                 "bNum": 1,
                 "Glu": False,
-                "kir2": self.optKir*int(x),
+                "kir2": self.optKir * int(x),
                 "clleak": 0,
                 "naleak": self.leak,
                 "dt": self.dt,
@@ -3080,8 +3160,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT,
             }
         )
-        if funcArgs[-1]['kir2'] > 300:
-            funcArgs[-1]['dt'] *= 0.1
+        if funcArgs[-1]["kir2"] > 300:
+            funcArgs[-1]["dt"] *= 0.1
         cells = PAPModel(**funcArgs[-1])
         cells.initialize(krule=float(x))
         cells.multiSpike(number=10, freq=100, KoSize=0.5)
@@ -3090,7 +3170,7 @@ class procedure(plotFigures):
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
-    def readExpRawData(self,results):
+    def readExpRawData(self, results):
         df = pd.read_csv("./Data/depolarTime.csv")
         stimIndex = 5
         # calibrate to relative point from stimulus onset
@@ -3101,13 +3181,11 @@ class procedure(plotFigures):
             else:
                 df[c] = df[c] - df[c][stimIndex]
         # Match stim initialization with model
-        df["V"]*=10
+        df["V"] *= 10
         df["t"] = df["t"] + (results.initTstop + results.stimdelay) * ms
         return df
-        
-        
 
-    def fitExpDepolarization(self, x,showFig=False,PAP=True):
+    def fitExpDepolarization(self, x, showFig=False, PAP=True):
         self.addChannelTag()
         AllCells = []
         funcArgs = []
@@ -3116,7 +3194,7 @@ class procedure(plotFigures):
         if PAP:
             k = 500
             mprint(x)
-            NMDAR,s,d,tau2 = x
+            NMDAR, s, d, tau2 = x
             tau1 = 1.69
             Kir = 120
             funcArgs.append(
@@ -3125,74 +3203,79 @@ class procedure(plotFigures):
                     "ComplexMorph": True,
                     "Glu": True,
                     "kir2": Kir,
-                    "twik":TWIK,
+                    "twik": TWIK,
                     "clleak": 0,
                     "naleak": leak,
                     "dt": self.dt,
                     "seed": self.seed,
                     "multiple": NMDAR,
                     "GluTrans": self.optGluT,
-                    'KoSize':3,
+                    "KoSize": 3,
                 }
             )
         else:
             mprint(x)
-            glt,kir,PAPLen,KoSize,tau2,slowing = x
+            glt, kir, PAPLen, KoSize, tau2, slowing = x
             funcArgs.append(
                 {
                     "mode": 0,
                     "Glu": True,
                     "kir2": kir,
-                    "twik":TWIK,
+                    "twik": TWIK,
                     "clleak": 0,
-                    "naleak": leak*10,
+                    "naleak": leak * 10,
                     "dt": self.dt,
                     "seed": self.seed,
                     "multiple": 0,
                     "GluTrans": glt,
-                    'KoSize':KoSize,
-                    'PAPLen':PAPLen
+                    "KoSize": KoSize,
+                    "PAPLen": PAPLen,
                 }
             )
-            
-        if funcArgs[-1]['kir2'] >= 200:
-            funcArgs[-1]['dt'] *= 0.1
-        if rank%3== 2:
+
+        if funcArgs[-1]["kir2"] >= 200:
+            funcArgs[-1]["dt"] *= 0.1
+        if rank % 3 == 2:
             stim = 1
-        elif rank%3== 1:
+        elif rank % 3 == 1:
             stim = 5
         else:
             stim = 10
         cells = PAPModel(**funcArgs[-1])
         cells.setTstop(500)
         if not PAP:
-            cells.setGLT_TC(0.61,tau2)
+            cells.setGLT_TC(0.61, tau2)
         cells.initialize()
 
         if PAP:
-            cells.setNMDA_Mgblock(k,d,s)
-            cells.setNMDA_TC(tau1,tau2)
+            cells.setNMDA_Mgblock(k, d, s)
+            cells.setNMDA_TC(tau1, tau2)
             # cells.setSlowing(slow)
         else:
             cells.setSlowing(slowing)
         cells.multiSpike(number=stim, freq=100)
         if not PAP:
-            cells.setGLT_TC(0.61,5.8)
-            cells.setSlowing(1) # return to normal after neuro activity
+            cells.setGLT_TC(0.61, 5.8)
+            cells.setSlowing(1)  # return to normal after neuro activity
 
         cells.run()
         cells = cells.copyAttr()
 
-        return self.plotExpFit(cells,stim=stim,PAP=PAP,showFig=showFig,Fname=f'fit{PAP=}',correctArtifact=True)
+        return self.plotExpFit(
+            cells,
+            stim=stim,
+            PAP=PAP,
+            showFig=showFig,
+            Fname=f"fit{PAP=}",
+            correctArtifact=True,
+        )
 
-
-    def artifactCurve(self,x,a,l,c):
+    def artifactCurve(self, x, a, l, c):
         x = np.array(x)
         x[x < 150] = 150
-        return -a * np.exp(-(x-150) / l) + c
+        return -a * np.exp(-(x - 150) / l) + c
 
-
-    def fitbaselineCurve(self,expData,tdata):
+    def fitbaselineCurve(self, expData, tdata):
         popt, pcov = curve_fit(
             self.artifactCurve,
             tdata,
@@ -3200,137 +3283,162 @@ class procedure(plotFigures):
         )
         return popt
 
-
-    def plotExpFit(self,cells,stim=10,PAP=True,verbose=True,showFig=True,Fname='FitResult',correctArtifact=True):
+    def plotExpFit(
+        self,
+        cells,
+        stim=10,
+        PAP=True,
+        verbose=True,
+        showFig=True,
+        Fname="FitResult",
+        correctArtifact=True,
+    ):
         plt.cla()
         plt.clf()
         AllCells = []
         sim_time = None
         # get and tweak results
-        tList,fList,stdList = procedure.getExpRes(f'./Data/{stim}stim.csv')
-            
-        stdList = [ np.nan if val == 0 or val is None else val for val in stdList]
-        zeroPoint = tList.index(min(tList,key=abs))
+        tList, fList, stdList = procedure.getExpRes(f"./Data/{stim}stim.csv")
+
+        stdList = [np.nan if val == 0 or val is None else val for val in stdList]
+        zeroPoint = tList.index(min(tList, key=abs))
         # print(zeroPoint,fList)
         fList = np.array(fList) - fList[zeroPoint]
 
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
 
-        fluorTrace = (np.array(list(cells.fluorVPAP)) - cells.RMP)* -1/10
-        simV = np.array(list(cells.vPAP)) - cells.RMP # use raw sim data for plot
-        
+        fluorTrace = (np.array(list(cells.fluorVPAP)) - cells.RMP) * -1 / 10
+        simV = np.array(list(cells.vPAP)) - cells.RMP  # use raw sim data for plot
+
         # extract corresponding indexes in df and sim
-        indexConvert = [(i,int(t/cells.dt)) for i,t in enumerate(tList) if 0 <= t < max(cells.time)]
-        
+        indexConvert = [
+            (i, int(t / cells.dt))
+            for i, t in enumerate(tList)
+            if 0 <= t < max(cells.time)
+        ]
+
         expT = []
         expF = []
         expSTD = []
         simF = []
-        for j,k in indexConvert:
+        for j, k in indexConvert:
             # print(j,k)
             # print(len(fluorTrace))
             # if max(df["V"]) == df["V"][j]:
             #     maxIndex = j + 1
             expT.append(tList[j])
-            expF.append(fList[j]) # f to mV
+            expF.append(fList[j])  # f to mV
             expSTD.append(stdList[j])
             # simV.append(voltTrace[k])
-            simF.append(fluorTrace[k]) #V to mV
+            simF.append(fluorTrace[k])  # V to mV
             # print(simV,simF)
         expF = np.array(expF)
         expSTD = np.absolute(expSTD)
         if correctArtifact:
-            singleStimBaseline = comm.bcast(expF,root=2)
-            singleStimBaselineT = comm.bcast(expT,root=2)
-            spl = spline(singleStimBaselineT,singleStimBaseline)
+            singleStimBaseline = comm.bcast(expF, root=2)
+            singleStimBaselineT = comm.bcast(expT, root=2)
+            spl = spline(singleStimBaselineT, singleStimBaseline)
             simF += spl(expT)
         loss = np.absolute(expF - simF)
 
         stdComp = loss - expSTD
-        loss = sum(loss[(stdComp >= 0) | (stdComp == np.nan)] **2)
+        loss = sum(loss[(stdComp >= 0) | (stdComp == np.nan)] ** 2)
 
         if len(simV) < len(tList) and loss == 0:
             loss = np.inf
-        
+
         # MLS
         # trueloss = sum((expF - simV)**2)
         # lossRMP = self.optRMPSearch((leak,Kir))
         if not np.isnan(loss) and verbose:
-            print(f'Loss:{loss}@rank{rank}')
-        loss = comm.gather(loss,root=0)
+            print(f"Loss:{loss}@rank{rank}")
+        loss = comm.gather(loss, root=0)
         if showFig:
             sim_time = cells.time
-            expF = comm.gather(expF,root=0)
-            expT = comm.gather(expT,root=0)
-            expSTD = comm.gather(expSTD,root=0)
-            simV = comm.gather(simV,root=0)
-            simF = comm.gather(simF,root=0)
-            stim = comm.gather(stim,root=0)
-            fluorTrace = comm.gather(fluorTrace,root=0)
-            AllCells = comm.gather(cells,root=0)
+            expF = comm.gather(expF, root=0)
+            expT = comm.gather(expT, root=0)
+            expSTD = comm.gather(expSTD, root=0)
+            simV = comm.gather(simV, root=0)
+            simF = comm.gather(simF, root=0)
+            stim = comm.gather(stim, root=0)
+            fluorTrace = comm.gather(fluorTrace, root=0)
+            AllCells = comm.gather(cells, root=0)
         total = 0
         comm.Barrier()
         if rank == 0 and showFig:
-            fig, ax1 = plt.subplots(figsize=(9,6))
+            fig, ax1 = plt.subplots(figsize=(9, 6))
             ax2 = ax1.twinx()
 
             for l in loss:
                 total += l
-            color = {
-                10:'tab:blue',
-                5:'tab:orange',
-                1:'tab:green'
-            }
-            for i,t,f,yerr,sim_v,sim_f in zip(stim,expT,expF,expSTD,simV,fluorTrace):
+            color = {10: "tab:blue", 5: "tab:orange", 1: "tab:green"}
+            for i, t, f, yerr, sim_v, sim_f in zip(
+                stim, expT, expF, expSTD, simV, fluorTrace
+            ):
                 ax1.plot(
                     sim_time,
                     sim_v,
-                    label=f'{i} stim simulation',
-                    linestyle='-',
+                    label=f"{i} stim simulation",
+                    linestyle="-",
                     color=color[i],
                     alpha=0.5,
-                    zorder=i
+                    zorder=i,
                 )
                 if correctArtifact:
                     sim_f += spl(sim_time)
-                    label = f'corrected\n{i} stim simulation'
+                    label = f"corrected\n{i} stim simulation"
                 else:
-                    label = f'{i} stim simulation'
-                ax2.plot(sim_time,sim_f,label=label,linestyle='--',color=color[i],zorder=100+i
-)
-                ax2.errorbar(t,f,yerr=yerr,fmt='none',color=color[i],zorder=200+i)
-                
-                ax2.scatter(t,f,label=f'{i} stim experiment',color=color[i],zorder=201+i)
+                    label = f"{i} stim simulation"
+                ax2.plot(
+                    sim_time,
+                    sim_f,
+                    label=label,
+                    linestyle="--",
+                    color=color[i],
+                    zorder=100 + i,
+                )
+                ax2.errorbar(
+                    t, f, yerr=yerr, fmt="none", color=color[i], zorder=200 + i
+                )
+
+                ax2.scatter(
+                    t, f, label=f"{i} stim experiment", color=color[i], zorder=201 + i
+                )
             ax1.set_xlim((100, 500))
-            ax1.legend(loc='upper left',edgecolor=self.returnColor('model'))
-            ax2.legend(loc='upper right',edgecolor=self.returnColor('fluor'))
+            ax1.legend(loc="upper left", edgecolor=self.returnColor("model"))
+            ax2.legend(loc="upper right", edgecolor=self.returnColor("fluor"))
             ax1.set_xlabel("Time (ms)")
             ax1.set_ylabel("Membrane potential change (mV)")
             ax2.set_ylabel("$\Delta F/F_0$ (%)")
-            ylim_value = 40 #mv
-            ax2.set_ylim((0,ylim_value*-1/10))
-            ax1.set_ylim((0,ylim_value))
-            for axObj,label in { ax1:'model', ax2:'fluor'}.items():
-                axObj.tick_params(axis='y',colors=self.returnColor(label))
+            ylim_value = 40  # mv
+            ax2.set_ylim((0, ylim_value * -1 / 10))
+            ax1.set_ylim((0, ylim_value))
+            for axObj, label in {ax1: "model", ax2: "fluor"}.items():
+                axObj.tick_params(axis="y", colors=self.returnColor(label))
                 axObj.yaxis.label.set_color(self.returnColor(label))
 
             if correctArtifact:
-                Fname += '_correctedArtifact'
+                Fname += "_correctedArtifact"
 
-            plt.savefig(f'../results/paperRes/{Fname}.pdf') 
+            plt.savefig(f"../results/paperRes/{Fname}.pdf")
             if np.isnan(total):
                 total = np.inf
             elif verbose:
-                print(f'{total=}')
+                print(f"{total=}")
 
-            self.plotIKSeries([AllCells],setKoylim=True,setekylim=True,setyLim=[-15,1],initStep=0,tagReset=True)
-                
-        total = comm.bcast(total,root=0)
+            self.plotIKSeries(
+                [AllCells],
+                setKoylim=True,
+                setekylim=True,
+                setyLim=[-15, 1],
+                initStep=0,
+                tagReset=True,
+            )
+
+        total = comm.bcast(total, root=0)
         sys.stdout.flush()
         comm.Barrier()
         return total
-
-    
 
     def optPotassiumSearch(self, x, optmV=19.2):
         self.addChannelTag()
@@ -3352,8 +3460,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT,
             }
         )
-        if funcArgs[-1]['kir2'] > 300:
-            funcArgs[-1]['dt'] *= 0.2
+        if funcArgs[-1]["kir2"] > 300:
+            funcArgs[-1]["dt"] *= 0.2
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
         cells.setK(KoSize=float(x))
@@ -3361,7 +3469,7 @@ class procedure(plotFigures):
         print(x)
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
-    
+
     def optSpikeSearch(self, x, optmV=19.2):
         freq, number = x
         freq = round(freq)
@@ -3385,7 +3493,7 @@ class procedure(plotFigures):
                 "seed": self.seed,
                 "multiple": self.optNMDAR,
                 "GluTrans": self.optGluT,
-           }
+            }
         )
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
@@ -3399,7 +3507,7 @@ class procedure(plotFigures):
         controlLeak = self.leak
         controldt = self.dt
         self.NMDAR = True
-        for kir in [120,0,720]:
+        for kir in [120, 0, 720]:
             self.dt = controldt
             if kir == 0:
                 self.leak = 8455
@@ -3411,7 +3519,13 @@ class procedure(plotFigures):
             self.channelCompareMax = 10
             self.channelCompareStep = 2
             iterations = comm.bcast(
-                [(i,j*0.001) for i in range(2,self.channelCompareMax+1,self.channelCompareStep) for j in range(300,1501,300)],
+                [
+                    (i, j * 0.001)
+                    for i in range(
+                        2, self.channelCompareMax + 1, self.channelCompareStep
+                    )
+                    for j in range(300, 1501, 300)
+                ],
                 root=0,
             )
             # print(iterations)
@@ -3422,7 +3536,7 @@ class procedure(plotFigures):
             funcArgs.append(
                 {
                     "mode": 0,
-                        "Glu": self.GluStim,
+                    "Glu": self.GluStim,
                     "ComplexMorph": True,
                     "naleak": self.leak,
                     "clleak": 0,
@@ -3430,11 +3544,11 @@ class procedure(plotFigures):
                     "seed": self.seed,
                     "stimdelay": self.stimdelay,
                     "PAPCount": self.PAPCount,
-                    "GluTrans":self.optGluT,
-                    "kir2":kir,
+                    "GluTrans": self.optGluT,
+                    "kir2": kir,
                 }
             )
-            ccList = ["multiple","PAPLen"]
+            ccList = ["multiple", "PAPLen"]
             # results are collected only on rank 0
             callMethods = [[]]
             callArgs = [[]]
@@ -3457,13 +3571,11 @@ class procedure(plotFigures):
             comm.Barrier()
 
             if rank == 0:
-                self.plotHeatmap(results, tag=f'{self.tag}_Kir{kir}_CompLen',Kir=False)
-
-        
+                self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value
-        leak,kir = x
+        leak, kir = x
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -3481,7 +3593,7 @@ class procedure(plotFigures):
                 "naleak": leak,
                 "dt": self.dt,
                 "seed": self.seed,
-                "Glu":False,
+                "Glu": False,
                 "multiple": 0,
             }
         )
@@ -3500,7 +3612,7 @@ class procedure(plotFigures):
                 "naleak": x,
                 "dt": self.dt,
                 "seed": self.seed,
-                "Glu":False,
+                "Glu": False,
                 "multiple": 0,
             }
         )
@@ -3509,19 +3621,18 @@ class procedure(plotFigures):
         print(abs(cellsRMP.RMP + 80))
         loss = (cellsRMP.RMP + 80) ** 2
         return lossKO + loss
-    
 
     def freqComparison(self):
         self.addChannelTag()
         # Calculate the number of iterations for all parm sets
         spikeNumStep = 1
         spikeFreqStep = 20
-        spikeNumMin= 1
+        spikeNumMin = 1
         spikeNumMax = 11
         spikeFreqMax = 200
         iterations = comm.bcast(
             [
-                (i,j)
+                (i, j)
                 for i in range(spikeNumMin, spikeNumMax + 1, spikeNumStep)
                 for j in range(0, spikeFreqMax + 1, spikeFreqStep)
             ],
@@ -3543,21 +3654,21 @@ class procedure(plotFigures):
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
-                "kir2":self.optKir,
-                "multiple":self.optNMDAR,
-                "GluTrans":self.optGluT,
+                "kir2": self.optKir,
+                "multiple": self.optNMDAR,
+                "GluTrans": self.optGluT,
             }
         )
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
-        ccList = ['multiSpike']
+        ccList = ["multiSpike"]
         callMethods = [[]]
         callArgs = [[]]
-        callMethods[0] += ["setTstop","initialize", "multiSpike", "run"]
+        callMethods[0] += ["setTstop", "initialize", "multiSpike", "run"]
         callArgs[0] += [
-            {'tstop':1000/spikeFreqStep*spikeNumMax+10},
+            {"tstop": 1000 / spikeFreqStep * spikeNumMax + 10},
             {},
-            {"number": 'parallelItem1', "KoSize": self.ko, "freq": 'parallelItem2'},
+            {"number": "parallelItem1", "KoSize": self.ko, "freq": "parallelItem2"},
             {},
         ]
 
@@ -3567,7 +3678,13 @@ class procedure(plotFigures):
             callArgs[0][rIndex]["ko"] = self.ko
 
         results = parallizeFor(
-            iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs,mode='MethodArgs'
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ccList,
+            callMethods,
+            callArgs,
+            mode="MethodArgs",
         )
 
         comm.Barrier()
@@ -3580,10 +3697,12 @@ class procedure(plotFigures):
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
             plt.cla()
             plt.clf()
-            imArray = np.zeros((
-                int(spikeNumMax/spikeNumStep) + 1,
-                int(spikeFreqMax/spikeFreqStep) + 1
-            ))
+            imArray = np.zeros(
+                (
+                    int(spikeNumMax / spikeNumStep) + 1,
+                    int(spikeFreqMax / spikeFreqStep) + 1,
+                )
+            )
             for res in results:
                 imArray[
                     int(res[0].SpikeNum / spikeNumStep),
@@ -3592,7 +3711,7 @@ class procedure(plotFigures):
                     max(res[0].vPAP) - res[0].RMP
                 )
             cmap = "magma"
-            
+
             plt.imshow(
                 imArray,
                 cmap=cmap,
@@ -3600,19 +3719,21 @@ class procedure(plotFigures):
                 interpolation="nearest",
                 aspect="equal",
             )
-            plt.ylabel('Number of stimuli')
-            plt.xlabel('Frequency (Hz)')
+            plt.ylabel("Number of stimuli")
+            plt.xlabel("Frequency (Hz)")
             plt.xticks(
-                range(int(spikeFreqMax/ spikeFreqStep) + 1),
-                np.arange(0, spikeFreqMax + 1, spikeFreqStep)
+                range(int(spikeFreqMax / spikeFreqStep) + 1),
+                np.arange(0, spikeFreqMax + 1, spikeFreqStep),
             )
             plt.yticks(
-                range(int(spikeNumMax/spikeNumStep) + 1),
-                np.arange(0, spikeNumMax + 1, spikeNumStep)
+                range(int(spikeNumMax / spikeNumStep) + 1),
+                np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
             plt.clim((0, 50))
-            plt.savefig(os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf"))
+            plt.savefig(
+                os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")
+            )
 
     @staticmethod
     def extract_and_pair_f_by_gid(csv_file_path):
@@ -3620,72 +3741,75 @@ class procedure(plotFigures):
         res = []
         t = []
 
-        for target_gid in range(min(df['gId']),max(df['gId'])):
+        for target_gid in range(min(df["gId"]), max(df["gId"])):
             # Filter rows by gId
-            filtered = df[df['gId'] == target_gid]
-            t.append(df[df['gId'] == target_gid]['t'].iloc[0])
+            filtered = df[df["gId"] == target_gid]
+            t.append(df[df["gId"] == target_gid]["t"].iloc[0])
             # Reset index and extract 'f' column
-            f_values = filtered['f'].reset_index(drop=True)
+            f_values = filtered["f"].reset_index(drop=True)
 
             # Pair f values into tuples
-            f_pairs = [(f_values[i], f_values[i + 1]) for i in range(0, len(f_values) - 1, 2)]
+            f_pairs = [
+                (f_values[i], f_values[i + 1]) for i in range(0, len(f_values) - 1, 2)
+            ]
 
             # Handle odd number of values
             if len(f_values) % 2 != 0:
                 f_pairs.append((f_values.iloc[-1], None))
             res += f_pairs
-        return t,res
+        return t, res
 
     @staticmethod
     def getExpRes(fName):
-        t,res = procedure.extract_and_pair_f_by_gid(fName)
-        yerr = [abs(m-s) if s is not None else 0 for m,s in res]
-        f,_ = list(zip(*res))
+        t, res = procedure.extract_and_pair_f_by_gid(fName)
+        yerr = [abs(m - s) if s is not None else 0 for m, s in res]
+        f, _ = list(zip(*res))
         return t, f, yerr
 
     def plotExpRes(self):
-        for fTag in [1,5,10]:
-            t,f,yerr = procedure.getExpRes(
-                os.path.join(
-                    './Data',
-                    f'{fTag}stim.csv'
-                )
-            )
-            plt.scatter(t,f,label=f'{fTag} stim')
-            plt.errorbar(t,f,yerr=yerr)
-            plt.ylim((0,-5))
+        for fTag in [1, 5, 10]:
+            t, f, yerr = procedure.getExpRes(os.path.join("./Data", f"{fTag}stim.csv"))
+            plt.scatter(t, f, label=f"{fTag} stim")
+            plt.errorbar(t, f, yerr=yerr)
+            plt.ylim((0, -5))
         plt.legend()
         plt.savefig()
-            
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if size == 3:
-        mprint('exp fit')
-        testBools = [False,True]
+        mprint("exp fit")
+        testBools = [False, True]
         for PAP in testBools:
-            exp = procedure(3,0)
-            kwargs = {'PAP':PAP,'showFig':False}
+            exp = procedure(3, 0)
+            kwargs = {"PAP": PAP, "showFig": False}
             if PAP:
                 # initParms = (5, -72.5, 10, 19,0.5)
                 initParms = (8, -71.5, 10, 19)
-                bounds=[(1,10),(-80, -70),(10,50),(4,50)]
+                bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
                 initParms = (400, 120, 5, 10, 800, 10000)
-                bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30),(5.8,800),(0,10000)]
+                bounds = [
+                    (-1000, 1000),
+                    (90, 150),
+                    (1, 10),
+                    (0.5, 30),
+                    (5.8, 800),
+                    (0, 10000),
+                ]
 
-            exp.fitExpDepolarization(initParms,showFig=True,PAP=PAP)
+            exp.fitExpDepolarization(initParms, showFig=True, PAP=PAP)
             res = minimize(
-                lambda x: exp.fitExpDepolarization(x,**kwargs),
+                lambda x: exp.fitExpDepolarization(x, **kwargs),
                 initParms,
                 method="Nelder-Mead",
-                bounds=bounds
+                bounds=bounds,
             )
-            exp.fitExpDepolarization(res.x,showFig=True,PAP=PAP)
+            exp.fitExpDepolarization(res.x, showFig=True, PAP=PAP)
     elif size == 5 or size == 2 or size == 4:
-        mprint('running bathExp')
-        exp = procedure(4,0)
+        mprint("running bathExp")
+        exp = procedure(4, 0)
         if size == 2:
             exp.bathExperiment()
         else:
@@ -3696,10 +3820,9 @@ if __name__ == '__main__':
         # exp.GABAR=False
         # exp.stimCount = 10
         # exp.singleRun(*initParms)
-        
-        exp = procedure(6,0)
+
+        exp = procedure(6, 0)
         # exp.gababathExperiment()
         exp.branchAttenuation(replay=True)
 
         # print('Nothing set; try MPI -n 2 for kbath; MPI -n 3 for exp fit')
-

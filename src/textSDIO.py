@@ -60,8 +60,8 @@ def printTime(start, end, message, unit="min", show=True):
         end = end / 60
         start = start / 60
     elif unit == "hour":
-        end = end / (60**2)
-        start = start / (60**2)
+        end = end / (60 ** 2)
+        start = start / (60 ** 2)
     else:
         eMessage("No such unit set for print time")
     tMessage = f"{message} in {'{:.2f}'.format(end - start)} [{unit}]"

@@ -81,7 +81,7 @@ def plot(dir, zoom=False, ext=False):
     return max(v.iloc[:, 0])
 
 
-def get_iter(parmA, parmASteps, parmB, parmBSteps,starta=0,startb=0):
+def get_iter(parmA, parmASteps, parmB, parmBSteps, starta=0, startb=0):
     # Update to get dynamic loops
     iterations = []
     for i in range(starta, parmA + 1, parmASteps):
@@ -89,15 +89,20 @@ def get_iter(parmA, parmASteps, parmB, parmBSteps,starta=0,startb=0):
             for j in range(startb, parmB + 1, parmBSteps):
                 iterations.append((i, j))
         else:
-            for j in np.arange(startb, parmB + parmBSteps/2, parmBSteps):
+            for j in np.arange(startb, parmB + parmBSteps / 2, parmBSteps):
                 iterations.append((i, j))
-            
 
     return iterations
 
 
 def parallizeFor(
-        iterations, functions, functionArgs, functionParms, callmethods, methodArgs,mode='InitArgs'
+    iterations,
+    functions,
+    functionArgs,
+    functionParms,
+    callmethods,
+    methodArgs,
+    mode="InitArgs",
 ):
     # Calculate the number of iterations each process will handle
     iterations_per_process = len(iterations) // size
@@ -134,13 +139,13 @@ def parallizeFor(
     )
 
     comm.Barrier()
-    if mode == 'InitArgs':
+    if mode == "InitArgs":
         for index in range(minimum, maximum):
             parmSet = iterations[index]
             # print(f'Thread {rank} is performing set {parmSet}')
             results.append([])
             for k, func in enumerate(functions):
-                if len(functionParms) > 1:                
+                if len(functionParms) > 1:
                     for l, parameterName in enumerate(functionParms):
                         functionArgs[k][parameterName] = parmSet[l]
                 else:
@@ -157,7 +162,7 @@ def parallizeFor(
 
             # update tqdm
             pbar.update(1)
-    elif mode == 'MethodArgs':
+    elif mode == "MethodArgs":
         for index in range(minimum, maximum):
             # print(index)
             parmSet = iterations[index]
@@ -171,10 +176,17 @@ def parallizeFor(
 
                 for l, method in enumerate(callmethods[k]):
                     if method in functionParms:
-                        keyList = [key for key,v in methodArgs[k][l].items() if type(v) == str and 'parallelItem' in v]
+                        keyList = [
+                            key
+                            for key, v in methodArgs[k][l].items()
+                            if type(v) == str and "parallelItem" in v
+                        ]
                         # accepts only two variations in method args
                         if len(keyList) == 2:
-                            if methodArgsTmp[k][l][keyList[0]] < methodArgsTmp[k][l][keyList[1]]:
+                            if (
+                                methodArgsTmp[k][l][keyList[0]]
+                                < methodArgsTmp[k][l][keyList[1]]
+                            ):
                                 methodArgsTmp[k][l][keyList[0]] = parmSet[0]
                                 methodArgsTmp[k][l][keyList[1]] = parmSet[1]
                             else:
