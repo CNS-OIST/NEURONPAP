@@ -19,11 +19,21 @@ fn_exists() {
 if fn_exists nproc; then
   np=$(nproc)
   echo "$np processes found; Use half"
-  if read -q "choice?Press Y/y to continue."; then
-    np=$(expr $np / 2) # Use only half of all processes
-  else
-    echo "Using All $np"
-  fi
+  while true; do
+    if read -q "choice?Press Y/y to continue."; then
+      np=$(expr $np / 2) # Use only half of all processes
+      break
+    else
+      suggestion=$(nproc)
+      echo ""
+      reg='^[+]?\d+([.]\d+)?$'
+      while [[ ($suggestion -ge $np) && ! ($suggestion =~ $reg) ]]; do
+        read "suggestion?How many processes do you want to use?"
+      done
+      np=$suggestion
+      break
+    fi
+  done
 else
   np=4 # generic guess for processes
 fi
