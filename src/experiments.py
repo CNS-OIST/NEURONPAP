@@ -3344,7 +3344,7 @@ class procedure(plotFigures):
         stdComp = loss - expSTD
         loss = sum(loss[(stdComp >= 0) | (stdComp == np.nan)] ** 2)
 
-        if len(simV) < len(tList) and loss == 0:
+        if len(simV) < len(tList):
             loss = np.inf
 
         # MLS
