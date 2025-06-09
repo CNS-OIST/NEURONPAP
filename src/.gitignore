@@ -3,7 +3,6 @@
 video/
 *.log
 *.json
-Data/
 *.out
 flycheck*
 .python-version
