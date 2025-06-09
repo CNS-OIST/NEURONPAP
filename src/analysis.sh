@@ -118,7 +118,7 @@ python NEURONPAP.py --somaVC $seed # Fig 1b
     wait
     mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 1 $seed &
     echo "bath experiments"
-    mpiexec -n 3 python NEURONPAP.py --bathExperiment $seed
+    mpiexec -n 5 python NEURONPAP.py --bathExperiment $seed
     wait
   else
     echo "Skipped Phase plane analysees and bath experiments"

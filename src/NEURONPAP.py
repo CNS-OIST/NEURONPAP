@@ -106,10 +106,12 @@ def callExperimentMode(**kwargs):
         if exp.GluStim:
             exp.NMDAR = True
             exp.GABAR = False
+            exp.GluT = True
         exp.GabaStim = kwargs["gabastim"]
         if exp.GabaStim:
             exp.NMDAR = False
             exp.GABAR = True
+            exp.GluT = False
         exp.branchAttenuation()
 
     if "stim" in kwargs.keys() and kwargs["stim"]:
@@ -148,8 +150,13 @@ def callExperimentMode(**kwargs):
         exp.ekComp()
 
     if "bathcomp" in kwargs.keys() and kwargs["bathcomp"]:
-        exp.bathExperiment()
-        
+        mprint('running bathExp')
+        exp = procedure(4,0)
+        if size == 3:
+            exp.bathExperiment()
+        elif size == 5:
+            exp.bathExperiment(invivo=True)
+ 
     if "optVm" in kwargs.keys() and kwargs["optVm"]:
         print(
             minimize(
