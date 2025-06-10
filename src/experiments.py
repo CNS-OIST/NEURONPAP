@@ -572,9 +572,10 @@ class plotFigures:
 
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
-            "Kir": (120, 30),
-            "GluT": (14248 * area, 812 * area),
-            "GABAR": (np.inf, 0),
+           'Kir':(120,30),
+            'GluT':(14248*area,812*area),
+            'GABAR':(np.inf,0),
+            'PAPLen':(0.425,0.225) # 95th percentile of node sizes from Arizono M. Nat Comm. (2020)
         }
         if chanOverride != None and type(chanOverride) == dict:
             for k, v in chanOverride.items():
@@ -598,6 +599,8 @@ class plotFigures:
                 mean, std = stdChannelDict["GluT"]
             elif self.GABAR and Kir:
                 mean, std = stdChannelDict["GABAR"]
+            else:
+                mean,std = stdChannelDict["PAPLen"]
 
             _, labels = plt.xticks()
             for l in labels:
@@ -738,7 +741,7 @@ class plotFigures:
         else:
             plt.yticks(
                 range(0, 5),
-                [f"{i:.2f}" for i in np.arange(0.3, 1.6, 0.3)],
+                [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
             )
             plt.ylabel("Affected PAP length (um)")
         if self.NMDAR:
@@ -808,21 +811,39 @@ class plotFigures:
             plt.cla()
             plt.clf()
             print("Soma Comparison")
-            imArray = np.zeros(
-                (
-                    int(self.KirMax / self.KirStep) + 1,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+
+            if Kir and self.GluT:
+                imArray = np.zeros(
+                    (
+                        int(self.KirMax / self.KirStep) + 1,
+                        2*int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    )
                 )
-            )
+            else:
+                imArray = np.zeros(
+                    (
+                        int(self.KirMax / self.KirStep) + 1,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    )
+                )
 
             for res in results:
                 initStep = int(res[0].initTstop / res[0].dt)
-                imArray[
-                    int(res[0].GENEDict["kir2"] / self.KirStep),
-                    int(res[0].comparecount / self.channelCompareStep),
-                ] += (
-                    max(list(res[0].vSoma)[initStep:]) - res[0].RMP
-                )
+                if Kir and self.GluT:
+                    imArray[
+                        int(res[0].GENEDict["kir2"] / self.KirStep),
+                        int(self.channelCompareMax + res[0].comparecount / self.channelCompareStep),
+                    ] += (
+                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
+                    )
+
+                else:
+                    imArray[
+                        int(res[0].GENEDict["kir2"] / self.KirStep),
+                        int(res[0].comparecount / self.channelCompareStep),
+                    ] += (
+                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
+                    )
             imArray /= divedend
             plt.imshow(
                 imArray,
@@ -2642,8 +2663,8 @@ class procedure(plotFigures):
                 "wb",
             ) as handle:
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            self.plotHeatmap(results, tag=self.tag, stdLabels=True)
-            self.plotIKSeries(results)
+           self.plotHeatmap(results, tag=self.tag,stdLabels=True)
+            self.plotIKSeries(results,setekylim=True,setKoylim=True,setyLim=[-15,1])
             totResults = []
             path = os.path.join(os.path.abspath("intermediaryData"), "resultsParallel")
             resFiles = glob.glob(path + "*.pickle")
@@ -2840,6 +2861,8 @@ class procedure(plotFigures):
             ax.set_ylim((0, maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
             ax.set_xlabel("Affected PAP length (\u03bcm)")
+            self.GluT = False # just to force setLabelColors to highlight PAPLen
+            self.setLabelColors(0,Kir=False,y=True)
             ax.set_ylabel("Peak Voltage (mV)")
             plt.savefig(
                 os.path.join(
@@ -2862,12 +2885,12 @@ class procedure(plotFigures):
             if comparison == "KoSize":
                 compMax = 30
                 compStep = 3
-                startb = 0
-            elif comparison == "PAPLen":
-                compMax = 10
-                compStep = 1
-                startb = 1
-            elif comparison == "durStim":
+                startb=0
+            elif comparison == 'PAPLen':
+                compMax = 3
+                compStep = 0.3
+                startb=0.3
+            elif comparison == 'durStim':
                 compMax = 9
                 compStep = 1
                 startb = 0
@@ -2888,7 +2911,9 @@ class procedure(plotFigures):
                 comparison, iterations, maxStep=compMax, intermStep=compStep
             )
 
-    def runAmpLenComparison(self, comparison, iterations, maxStep, intermStep):
+
+    def runAmpLenComparison(self,comparison,iterations,maxStep,intermStep):
+        self.addChannelTag()
         comm.Barrier()
         funcArgs = []
         funcArgs.append(
@@ -3410,11 +3435,11 @@ class procedure(plotFigures):
             ax1.set_xlabel("Time (ms)")
             ax1.set_ylabel("Membrane potential change (mV)")
             ax2.set_ylabel("$\Delta F/F_0$ (%)")
-            ylim_value = 40  # mv
-            ax2.set_ylim((0, ylim_value * -1 / 10))
-            ax1.set_ylim((0, ylim_value))
-            for axObj, label in {ax1: "model", ax2: "fluor"}.items():
-                axObj.tick_params(axis="y", colors=self.returnColor(label))
+           ylim_value = 80 #mv
+            ax2.set_ylim((0,ylim_value*-1/10))
+            ax1.set_ylim((0,ylim_value))
+            for axObj,label in { ax1:'model', ax2:'fluor'}.items():
+                axObj.tick_params(axis='y',colors=self.returnColor(label))
                 axObj.yaxis.label.set_color(self.returnColor(label))
 
             if correctArtifact:
