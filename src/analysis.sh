@@ -30,6 +30,7 @@ if fn_exists nproc; then
       while [[ ($suggestion -ge $np) && ! ($suggestion =~ $reg) ]]; do
         read "suggestion?How many processes do you want to use?"
       done
+      echo "Selected $suggestion processes"
       np=$suggestion
       break
     fi
