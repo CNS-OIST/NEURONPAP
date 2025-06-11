@@ -1283,7 +1283,7 @@ class procedure(plotFigures):
 
         plt.yticks(
             np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int),
-            np.round(np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int)* cells.dt)
+            np.round(np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int)* cells.dt).astype(int)
         )
 
         # Show the plot
@@ -1591,7 +1591,7 @@ class procedure(plotFigures):
                             plt.plot(
                                 list(cell.KoPAP)[initStep:],
                                 list(cell.vPAP)[initStep:],
-                                label=f"{cell.KoSize:.3f}",
+                                label=f"{cell.KoSize:.1f}",
                                 color=color,
                                 zorder=z,
                             )
@@ -2829,7 +2829,10 @@ class procedure(plotFigures):
                 startb=0
             
             if comparison != 'KoSize':
-                iterations = comm.bcast(get_iter(30,3, compMax, compStep,startb=startb), root=0)
+                if comparison == 'durStim':
+                    iterations = comm.bcast(get_iter(30,3, compMax, compStep,startb=startb), root=0)
+                else:
+                    iterations = comm.bcast([(i,j) for i in range(0,31,3) for j in np.logspace(1,-5,base=0.3,num=10)])
                 self.runAmpLenComparison(comparison,iterations,compMax,compStep)
 
              # Calculate the number of iterations for all parm sets
@@ -2928,9 +2931,14 @@ class procedure(plotFigures):
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
+            if comparison == 'PAPLen':
+                self.GluT = False # just to force plot setLabel Colors
+            self.setLabelColors(res[0].PAParea,Kir=True,y=True)
+
+
 
             plt.savefig(
-                os.path.join("../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf")
+                os.path.join("../results/paperRes", f"FullPotassiumAmp{self.tag}_{comparison}.pdf")
             )
             if comparison == 'PAPLen':
                 self.plotIKSeries(results,tagReset=True,setKoylim=True)
@@ -3029,6 +3037,8 @@ class procedure(plotFigures):
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
+            if comparison == 'PAPLen':
+                self.GluT = False # just to force plot setLabel Colors
             self.setLabelColors(res[0].PAParea,Kir=True,y=True)
 
             plt.savefig(
