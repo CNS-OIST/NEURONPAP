@@ -65,11 +65,11 @@ for i in $( # for ten random PAPs
   for j in 0.5 10; do # for extracellular potassium condition 0.5 and 10
     echo "seed $i-Ko$j" >>$output
     mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --ko $j $i  # Fig 4a
-    mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --ko $j $i  # Fig 4a
+    mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --ko $j $i  # Fig 4a
     mpiexec -n $np python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --ko $j $i # Fig 4a
     echo "Running multi Stim" >>$output
     mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount 10 --ko $j $i  # Fig 4a
-    mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 1 --stimCount 10 --ko $j $i  # Fig 4a
+    mpiexec -n $np python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount 10 --ko $j $i  # Fig 4a
     mpiexec -n $np python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount 10 --ko $j $i # Fig 1ghi 3ab 4abcd
     {
       if (($i == 1)); then

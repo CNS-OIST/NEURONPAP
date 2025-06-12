@@ -51,7 +51,7 @@ class PAPModel(ResultsPAPModel):
         voltageClamp=40,
         somaSize=10,
         currentClamp=2,
-        multiple=1,
+        multiple=None,
         mode=0,
         somaCheck=False,
         ComplexMorph=True,
@@ -210,7 +210,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         # print(self.GENEDict)
-        if self.multiple == 0:
+        if self.multiple == None:
             if "GluTrans" in self.GENEDict.keys() and self.GENEDict["GluTrans"] != None:
                 # Can be buggy
                 self.comparecount = self.GENEDict["GluTrans"]
