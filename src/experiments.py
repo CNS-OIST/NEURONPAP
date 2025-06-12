@@ -387,7 +387,9 @@ class plotFigures:
                 ax.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
                 if setekylim:
-                    ax.set_ylim((-90, -10))
+                    ax.set_ylim((-90,-10))
+                else:
+                    ax.set_ylim((-84,-77))
 
                 if zoom:
                     ax.set_xlim((initStep * cell.dt, initStep * cell.dt + 20))
@@ -764,116 +766,110 @@ class plotFigures:
             )
 
         plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
-        plt.cla()
-        plt.clf()
-        if Kir:
-            imArray = np.zeros(
-                (
-                    int(self.KirMax / self.KirStep) + 1,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                )
-            )
-
-            for res in results:
-                imArray[
-                    int(res[0].GENEDict["kir2"] / self.KirStep),
-                    int(res[0].comparecount / self.channelCompareStep),
-                ] += res[0].RMP
-            imArray /= divedend
-            plt.imshow(
-                imArray,
-                cmap=cmap,
-                origin="lower",
-                interpolation="nearest",
-                aspect="equal",
-            )
-            plt.xticks(
-                range(int(self.channelCompareMax / self.channelCompareStep) + 1),
-                np.arange(
-                    0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1
-                )
-                * self.channelCompareStep,
-            )
-            plt.yticks(
-                range(int(self.KirMax / self.KirStep) + 1),
-                np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
-            )
-            plt.ylabel("# of Kir Channels")
-            if self.NMDAR:
-                plt.xlabel("# of NMDAR Channels")
-            elif self.GluT:
-                plt.xlabel("# of GluT Channels")
-            plt.colorbar(
-                label="Voltage (mV)", ticks=np.arange(-100, -60, 10), extend="max"
-            )
-            plt.clim((-100, -60))
-            plt.savefig(os.path.join("../results/paperRes", f"FullRMP{tag}.pdf"))
-            plt.cla()
-            plt.clf()
-            print("Soma Comparison")
-
-            if Kir and self.GluT:
-                imArray = np.zeros(
-                    (
-                        int(self.KirMax / self.KirStep) + 1,
-                        2*int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    )
-                )
-            else:
-                imArray = np.zeros(
-                    (
-                        int(self.KirMax / self.KirStep) + 1,
-                        int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    )
-                )
-
-            for res in results:
-                initStep = int(res[0].initTstop / res[0].dt)
-                if Kir and self.GluT:
-                    imArray[
-                        int(res[0].GENEDict["kir2"] / self.KirStep),
-                        int(self.channelCompareMax + res[0].comparecount / self.channelCompareStep),
-                    ] += (
-                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
-                    )
-
-                else:
-                    imArray[
-                        int(res[0].GENEDict["kir2"] / self.KirStep),
-                        int(res[0].comparecount / self.channelCompareStep),
-                    ] += (
-                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
-                    )
-            imArray /= divedend
-            plt.imshow(
-                imArray,
-                cmap=cmap,
-                origin="lower",
-                interpolation="nearest",
-                aspect="equal",
-            )
-            plt.xticks(
-                range(int(self.channelCompareMax / self.channelCompareStep) + 1),
-                np.arange(
-                    0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1
-                )
-                * self.channelCompareStep,
-            )
-            plt.yticks(
-                range(int(self.KirMax / self.KirStep) + 1),
-                np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
-            )
-            plt.ylabel("# of Kir Channels")
-            if self.NMDAR:
-                plt.xlabel("# of NMDAR Channels")
-            elif self.GluT:
-                plt.xlabel("GluT Channels")
-            elif self.GABAR and Kir:
-                plt.xlabel("# of GABAR channels / um2")
-
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 1), extend="max")
-            plt.clim((0, 10))
-            plt.savefig(os.path.join("../results/paperRes", f"FullSoma{tag}.pdf"))
+#        plt.cla()
+#        plt.clf()
+#        if Kir:
+#            imArray = np.zeros(
+#                (
+#                    int(self.KirMax / self.KirStep) + 1,
+#                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+#                )
+#            )
+#
+#            for res in results:
+#                imArray[
+#                    int(res[0].GENEDict["kir2"] / self.KirStep),
+#                    int(res[0].comparecount / self.channelCompareStep),
+#                ] += res[0].RMP
+#            imArray /= divedend
+#            plt.imshow(
+#                imArray,
+#                cmap=cmap,
+#                origin="lower",
+#                interpolation="nearest",
+#                aspect="equal",
+#            )
+#            plt.xticks(
+#                range(int(self.channelCompareMax / self.channelCompareStep) + 1),
+#                np.arange(0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+#                * self.channelCompareStep,
+#            )
+#            plt.yticks(
+#                range(int(self.KirMax / self.KirStep) + 1),
+#                np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
+#            )
+#            plt.ylabel("# of Kir Channels")
+#            if self.NMDAR:
+#                plt.xlabel("# of NMDAR Channels")
+#            elif self.GluT:
+#                plt.xlabel("# of GluT Channels")
+#            plt.colorbar(label="Voltage (mV)", ticks=np.arange(-100, -60, 10), extend="max")
+#            plt.clim((-100, -60))
+#            plt.savefig(os.path.join("../results/paperRes", f"FullRMP{tag}.pdf"))
+#            plt.cla()
+#            plt.clf()
+#           print('Soma Comparison')
+#
+#            if Kir and self.GluT:
+#                imArray = np.zeros(
+#                    (
+#                        int(self.KirMax / self.KirStep) + 1,
+#                        2*int(self.channelCompareMax / self.channelCompareStep) + 1,
+#                    )
+#                )
+#            else:
+#                imArray = np.zeros(
+#                    (
+#                        int(self.KirMax / self.KirStep) + 1,
+#                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+#                    )
+#                )
+#
+#            for res in results:
+#                initStep = int(res[0].initTstop / res[0].dt)
+#                if Kir and self.GluT:
+#                    imArray[
+#                        int(res[0].GENEDict["kir2"] / self.KirStep),
+#                        int(self.channelCompareMax + res[0].comparecount / self.channelCompareStep),
+#                    ] += (
+#                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
+#                    )
+#
+#                else:
+#                    imArray[
+#                        int(res[0].GENEDict["kir2"] / self.KirStep),
+#                        int(res[0].comparecount / self.channelCompareStep),
+#                    ] += (
+#                        max(list(res[0].vSoma)[initStep:]) - res[0].RMP
+#                    )
+#            imArray /= divedend
+#            plt.imshow(
+#                imArray,
+#                cmap=cmap,
+#                origin="lower",
+#                interpolation="nearest",
+#                aspect="equal",
+#            )
+#            plt.xticks(
+#                range(int(self.channelCompareMax / self.channelCompareStep) + 1),
+#                np.arange(0, int(self.channelCompareMax / self.channelCompareStep) + 1, 1)
+#                * self.channelCompareStep,
+#            )
+#            plt.yticks(
+#                range(int(self.KirMax / self.KirStep) + 1),
+#                np.arange(0, int(self.KirMax / self.KirStep) + 1, 1) * self.KirStep,
+#            )
+#            plt.ylabel("# of Kir Channels")
+#            if self.NMDAR:
+#                plt.xlabel("# of NMDAR Channels")
+#            elif self.GluT:
+#                plt.xlabel("GluT Channels")
+#            elif self.GABAR and Kir:
+#                plt.xlabel("# of GABAR channels / um2")            
+#                
+#            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 1), extend="max")
+#            plt.clim((0, 10))
+#            plt.savefig(os.path.join("../results/paperRes", f"FullSoma{tag}.pdf"))
 
 
 class procedure(plotFigures):
@@ -1306,21 +1302,8 @@ class procedure(plotFigures):
             plt.ylabel("Time (ms)")
 
         plt.yticks(
-            np.arange(
-                0,
-                len(list(cells.branchAtten[0])[initStep:]) + 1,
-                steps_per_time,
-                dtype=int,
-            ),
-            np.round(
-                np.arange(
-                    0,
-                    len(list(cells.branchAtten[0])[initStep:]) + 1,
-                    steps_per_time,
-                    dtype=int,
-                )
-                * cells.dt
-            ),
+            np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int),
+            np.round(np.arange(0, len(list(cells.branchAtten[0])[initStep:]) + 1, steps_per_time,dtype=int)* cells.dt).astype(int)
         )
 
         # Show the plot
@@ -1624,7 +1607,7 @@ class procedure(plotFigures):
                             plt.plot(
                                 list(cell.KoPAP)[initStep:],
                                 list(cell.vPAP)[initStep:],
-                                label=f"{cell.KoSize:.3f}",
+                                label=f"{cell.KoSize:.1f}",
                                 color=color,
                                 zorder=z,
                             )
@@ -2136,7 +2119,8 @@ class procedure(plotFigures):
         plt.ylabel("Ratio of\ninflux / diffusion\nfor potassium")
         plt.savefig("fluxRatioOvertime.pdf")
 
-    def singleRun(self, *args, expOverlay=False, GluTime=True, nearSoma=True):
+            
+    def singleRun(self, *args,expOverlay=False,GluTime=False,nearSoma=True):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -2167,8 +2151,8 @@ class procedure(plotFigures):
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
-                "KoSize": 3,
-                "PAPLen": 5,
+                'KoSize':3,
+                'PAPLen':0.3
             }
         )
         if self.OE:
@@ -2181,7 +2165,7 @@ class procedure(plotFigures):
             # funcArgs[-1]["multiple"] = self.optNMDAR
             funcArgs[-1]["multiple"] = nmdaCount
         else:
-            funcArgs[-1]["multiple"] = 0
+            funcArgs[-1]["multiple"] = None
         if self.GluT and self.GluStim:
             funcArgs[-1]["GluTrans"] = self.optGluT
         if self.GABAR and self.GabaStim:
@@ -2192,11 +2176,12 @@ class procedure(plotFigures):
         cells = PAPModel(**funcArgs[-1])
         if nearSoma:
             cells.setPAPNearSoma()
-        cells.setTstop(500)
+        #        cells.setTstop(500)
         cells.initialize()
-
-        cells.setNMDA_Mgblock(k, d, s)
-        cells.setNMDA_TC(tau1, tau2)
+        
+        if self.GluStim:
+            cells.setNMDA_Mgblock(k,d,s)
+            cells.setNMDA_TC(tau1,tau2)
         # cells.setSlowing(slow)
 
         # 6.12418747    5.40398865    0.42320213 -100.
@@ -2288,17 +2273,14 @@ class procedure(plotFigures):
                 # # plt.title(titleString)
                 # plt.savefig(os.path.join("../results/paperRes", f"Experimental Overlay{self.tag}.pdf"))
 
-            if self.GluT:
-                if hasattr(cells, GluTGlu):
-                    plt.xlim((150, 300))
-                    plt.xlabel("time (ms)")
-                    plt.ylabel("[Glu]o (mM)")
-                    plt.plot(list(cells.time), list(cells.GluTGlu))
-                    plt.savefig(
-                        os.path.join(
-                            "../results/paperRes", f"GlutamateTimecourse{self.tag}.pdf"
-                        )
-                    )
+               
+            if self.GluT and GluTime:
+                if hasattr(cells,'GluTGlu'):
+                    plt.xlim((150,300))
+                    plt.xlabel('time (ms)')
+                    plt.ylabel('[Glu]o (mM)')
+                    plt.plot(list(cells.time),list(cells.GluTGlu))
+                    plt.savefig(os.path.join("../results/paperRes", f'GlutamateTimecourse{self.tag}.pdf'))
                 plt.cla()
                 plt.clf()
                 plt.plot(list(cells.time), list(cells.GluTC1), label="C1")
@@ -2592,7 +2574,6 @@ class procedure(plotFigures):
             ]
             iterations = comm.bcast(iterations, root=0)
         else:
-            self.GluT = False
             # Calculate the number of iterations for all parm sets
             iterations = comm.bcast(
                 get_iter(
@@ -2663,7 +2644,9 @@ class procedure(plotFigures):
                 "wb",
             ) as handle:
                 pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
-           self.plotHeatmap(results, tag=self.tag,stdLabels=True)
+            if self.NMDAR and self.GluT:
+                self.GluT = False # force plot priority of NMDA
+            self.plotHeatmap(results, Kir=True,tag=self.tag,stdLabels=True)
             self.plotIKSeries(results,setekylim=True,setKoylim=True,setyLim=[-15,1])
             totResults = []
             path = os.path.join(os.path.abspath("intermediaryData"), "resultsParallel")
@@ -2672,7 +2655,7 @@ class procedure(plotFigures):
                 with open(os.path.join("intermediaryData", res), "rb") as handle:
                     results = pickle.load(handle)
                 totResults += results
-            self.plotHeatmap(totResults, divedend=len(resFiles))
+#            self.plotHeatmap(totResults, divedend=len(resFiles))
 
     def glutamateSpillOver(self, sampleNum=10):
         self.addChannelTag()
@@ -2893,7 +2876,14 @@ class procedure(plotFigures):
             elif comparison == 'durStim':
                 compMax = 9
                 compStep = 1
-                startb = 0
+                startb=0
+            
+            if comparison != 'KoSize':
+                if comparison == 'durStim':
+                    iterations = comm.bcast(get_iter(30,3, compMax, compStep,startb=startb), root=0)
+                else:
+                    iterations = comm.bcast([(i,j) for i in range(0,31,3) for j in np.logspace(1,-5,base=0.3,num=10)])
+                self.runAmpLenComparison(comparison,iterations,compMax,compStep)
 
             if comparison != "KoSize":
                 iterations = comm.bcast(
@@ -3005,11 +2995,14 @@ class procedure(plotFigures):
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
+            if comparison == 'PAPLen':
+                self.GluT = False # just to force plot setLabel Colors
+            self.setLabelColors(res[0].PAParea,Kir=True,y=True)
+
+
 
             plt.savefig(
-                os.path.join(
-                    "../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf"
-                )
+                os.path.join("../results/paperRes", f"FullPotassiumAmp{self.tag}_{comparison}.pdf")
             )
             if comparison == "PAPLen":
                 self.plotIKSeries(results, tagReset=True, setKoylim=True)
@@ -3111,7 +3104,9 @@ class procedure(plotFigures):
             )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
-            self.setLabelColors(res[0].PAParea, Kir=True, y=True)
+            if comparison == 'PAPLen':
+                self.GluT = False # just to force plot setLabel Colors
+            self.setLabelColors(res[0].PAParea,Kir=True,y=True)
 
             plt.savefig(
                 os.path.join("../results/paperRes", f"FullPotassium{self.tag}.pdf")
@@ -3215,7 +3210,8 @@ class procedure(plotFigures):
         AllCells = []
         funcArgs = []
         TWIK = 1
-        leak = 17375
+        leak = 3e5
+        # maybe bug for result fit check how parms should change with diffrenet leak value
         if PAP:
             k = 500
             mprint(x)
@@ -3240,7 +3236,12 @@ class procedure(plotFigures):
             )
         else:
             mprint(x)
-            glt, kir, PAPLen, KoSize, tau2, slowing = x
+            if len(x) == 4:
+                glt,kir,PAPLen,KoSize= x
+                tau2 = 5.8
+                slowing = 1
+            else:
+                glt,kir,PAPLen,KoSize,tau2,slowing = x
             funcArgs.append(
                 {
                     "mode": 0,
@@ -3267,7 +3268,7 @@ class procedure(plotFigures):
         else:
             stim = 10
         cells = PAPModel(**funcArgs[-1])
-        cells.setTstop(500)
+#        cells.setTstop(500)
         if not PAP:
             cells.setGLT_TC(0.61, tau2)
         cells.initialize()
@@ -3435,7 +3436,7 @@ class procedure(plotFigures):
             ax1.set_xlabel("Time (ms)")
             ax1.set_ylabel("Membrane potential change (mV)")
             ax2.set_ylabel("$\Delta F/F_0$ (%)")
-           ylim_value = 80 #mv
+            ylim_value = 80 #mv
             ax2.set_ylim((0,ylim_value*-1/10))
             ax1.set_ylim((0,ylim_value))
             for axObj,label in { ax1:'model', ax2:'fluor'}.items():
@@ -3451,16 +3452,9 @@ class procedure(plotFigures):
             elif verbose:
                 print(f"{total=}")
 
-            self.plotIKSeries(
-                [AllCells],
-                setKoylim=True,
-                setekylim=True,
-                setyLim=[-15, 1],
-                initStep=0,
-                tagReset=True,
-            )
-
-        total = comm.bcast(total, root=0)
+            self.plotIKSeries([AllCells],setKoylim=True,setekylim=True,setyLim=[-15,1],tagReset=True)
+                
+        total = comm.bcast(total,root=0)
         sys.stdout.flush()
         comm.Barrier()
         return total
@@ -3803,8 +3797,9 @@ class procedure(plotFigures):
 
 if __name__ == "__main__":
     if size == 3:
-        mprint("exp fit")
-        testBools = [False, True]
+        mprint('exp fit')
+        testBools = [True,False]
+        forcedAccum = False
         for PAP in testBools:
             exp = procedure(3, 0)
             kwargs = {"PAP": PAP, "showFig": False}
@@ -3814,15 +3809,12 @@ if __name__ == "__main__":
                 bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
             else:
                 # initParms = (5, -72.5, 10, 19,0.5)
-                initParms = (400, 120, 5, 10, 800, 10000)
-                bounds = [
-                    (-1000, 1000),
-                    (90, 150),
-                    (1, 10),
-                    (0.5, 30),
-                    (5.8, 800),
-                    (0, 10000),
-                ]
+                if forcedAccum:
+                    initParms = (400, 120, 5, 10, 800, 10000)
+                    bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30),(5.8,800),(0,10000)]
+                else:
+                    initParms = (400, 120, 5, 10)
+                    bounds=[(-1000,1000),(90, 150),(1,10),(0.5,30)]
 
             exp.fitExpDepolarization(initParms, showFig=True, PAP=PAP)
             res = minimize(
