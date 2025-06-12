@@ -3647,8 +3647,8 @@ class procedure(plotFigures):
             plt.ylabel('Number of stimuli')
             plt.xlabel('Frequency (Hz)')
             plt.xticks(
-                range(int(spikeFreqMax/ spikeFreqStep) + 1),
-                np.arange(0, spikeFreqMax + 1, spikeFreqStep)
+                range(0,int(spikeFreqMax/ spikeFreqStep) + 1,2),
+                np.arange(0, spikeFreqMax + 1, spikeFreqStep*2)
             )
             plt.yticks(
                 range(int(spikeNumMax/spikeNumStep) + 1),
