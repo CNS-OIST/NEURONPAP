@@ -264,7 +264,14 @@ class PAPModel(ResultsPAPModel):
         h.setGEVI(tON, tOFF)
 
     def multiSpike(
-        self, number=None, freq=None, KoSize=None, koclamp=False, video=False, dur=None
+        self,
+        number=None,
+        freq=None,
+        KoSize=None,
+        koclamp=False,
+        video=False,
+        dur=0.5,
+        amp=None,
     ):
         self.SpikeFreq = freq
         self.SpikeNum = number
@@ -288,6 +295,9 @@ class PAPModel(ResultsPAPModel):
             h(f"stim.number = {number}")
             h(f"stim.interval = {ISI}")
             # print(h.stim.number,h.stim.interval)
+        if amp is not None:
+            for nc in self.NCs:
+                nc.weight[0] = amp
         if koclamp:
             while h.t < ISI * number:
                 self.koClamp(self.Ko)
@@ -332,7 +342,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         self.NCs += list(h.ncNMDAList)
         for i, sNMDA in enumerate(self.NMDAs):
-            if self.Glu and self.multiple != 0:
+            if self.Glu and self.multiple != 0 and self.multiple != None:
                 # distribute the total num of NMDA equally among all patches with remainder clustered at tip
                 totNMDA = len(self.NMDAs)
                 if i > (totNMDA - self.multiple % totNMDA):
@@ -602,12 +612,12 @@ class PAPModel(ResultsPAPModel):
         while h.t < stop:
             if int(h.t / self.dt) % interval == 0:
                 for v in var:
-                    fname = f"astro{v}_{int(h.t/self.dt)}.psf"
+                    fname = f"astro{v}_{int(h.t / self.dt)}.psf"
                     self.plotWholecellVariable(
                         v, os.path.join("../morphResults/video", fname)
                     )
                     if zoom:
-                        fname = f"pap{v}_{int(h.t/self.dt)}.psf"
+                        fname = f"pap{v}_{int(h.t / self.dt)}.psf"
                         self.plotWholecellVariable(
                             v, os.path.join("../morphResults/video", fname), zoom=zoom
                         )
@@ -617,11 +627,13 @@ class PAPModel(ResultsPAPModel):
                 f"convert -delay 2 -loop 0 ../morphResults/video/astro{v}*.psf ../morphResults/video/{v}Morph_{self.seed}_{self.Ko}.gif",
                 shell=True,
             )
+            subprocess.call(f"rm -f ../morphresults/video/astro{v}*.psf ", shell=True)
             if zoom:
                 subprocess.call(
                     f"convert -delay 2 -loop 0 ../morphResults/video/pap{v}*.psf ../morphResults/video/{v}PAPMorph_{self.seed}_{self.Ko}.gif",
                     shell=True,
                 )
+                subprocess.call(f"../morphresults/video/pap{v}*.psf", shell=True)
         return
 
     def flattenPAP(self):
@@ -1039,26 +1051,34 @@ class PAPModel(ResultsPAPModel):
         elif type(mode) == float or type(mode) == int:
             h.kbath_rule(mode)
 
-    def replayK(self, fileName, isolate=False, video=False):
+    def replayK(self, fileName, isolate=False, video=False, setStop=None):
         df = pd.read_csv(fileName)
         baselineK = self.getPAPK()
         df["k"] += baselineK
         df["t"] += h.t
         # self.dt = 10*math.floor(math.log(max(df['t']),10) - 2)
         # h.dt = self.dt
-        print(f"{self.dt=}")
-        # get Max
-        maxT = max(df["t"])
-        maxT -= maxT % self.dt
-        # remove remainder
-        maxT += self.dt * 6
-        # add 6 timesteps
-        self.setTstop(maxT)
+        if setStop != None:
+            self.setTstop(setStop)
+        else:
+            # get Max
+            maxT = max(df["t"])
+            maxT -= maxT % self.dt
+            # remove remainder
+            maxT += self.dt * 6
+            # add 6 timesteps
+            self.setTstop(maxT)
 
         for i, (_, row) in enumerate(df.iterrows()):
             t = int(row["t"])
             t -= t % self.dt
             k = row["k"]
+            if setStop != None:
+                if t >= setStop:
+                    if h.t >= setStop:
+                        break
+                    else:
+                        t = setStop
 
             # print(t,k)
             if video:

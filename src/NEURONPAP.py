@@ -18,6 +18,7 @@ import time
 from CLIargParser import argParser
 from experiments import procedure
 from utils import *
+from scipy.optimize import minimize
 
 
 def callExperimentMode(**kwargs):
@@ -161,9 +162,9 @@ def callExperimentMode(**kwargs):
         print(
             minimize(
                 exp.optDepolarizationSearch,
-                (5),
+                (10, 10, 10),
                 method="Nelder-Mead",
-                bounds=[(0, None)],
+                bounds=[(0, None), (0, None), (0, None)],
             )
         )
 
