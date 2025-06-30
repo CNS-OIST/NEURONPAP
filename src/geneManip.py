@@ -21,27 +21,12 @@ class GENEManipulation:
     def kir4Change(self, multiple):
         for sec in self.compartments:
             for seg in sec:
-                seg.kir4.Pkir = seg.kir4.Pkir / multiple
-                if seg.kir4.Pkir > 1.0:
-                    seg.kir4.Pkir = 1.0
+                seg.kir4.multiple = multiple
 
     def kir2Change(self, multiple):
-        # get PAP area
-        PAParea = 0
-        for pap in self.PAPs:
-            for sec in pap:
-                for seg in sec:
-                    PAParea += seg.area()
-                    # set channel count to uniform density
-        PAParea /= len(self.PAPs)
-        if PAParea == 0:
-            # Uniform distribution to standard pap area
-            PAParea = 0.3 * 0.05 ** 2 * math.pi
         for sec in self.compartments:
             for seg in sec:
-                # print(sec)
-                # print(seg.area()/PAParea)
-                seg.kir2.gkbar = seg.kir2.gkbar * multiple * seg.area() / PAParea
+                seg.kir2.multiple = multiple
 
     def twikChange(self, multiple):
         for sec in self.compartments:
@@ -107,13 +92,14 @@ class GENExpression(GENEManipulation):
             eMessage(f"GENE{GENE} should be dict type")
         self.checkExpressionStatement()
         for gName, xfold in GENE.items():
-            self.changeExpression(gName, xfoldXpression=xfold)
+            if xfold is not None:
+                self.changeExpression(gName, xfoldXpression=xfold)
 
     def changeExpression(self, gName, xfoldXpression=None):
         if hasattr(self, f"{gName}Change"):  # check if method is implemented
             if xfoldXpression == None:
                 xfoldXpression = self.GENE[gName]
-            exec(f"self.{gName}Change({xfoldXpression})")
+            getattr(self, f"{gName}Change")(xfoldXpression)
         else:
             wMessage(f"No {gName} skipped")
 

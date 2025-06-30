@@ -58,6 +58,9 @@ PARAMETER {
         : celsius          (degC)  		: unused if q10 == 1.
         q10 = 1.                              	: temperature scaling
         A = 0.09534626                          : fit to sqrt rule and match single channel conductance 50 pS at Yang condition
+multiple = 0 (1)
+density = 370e8 (/cm2)
+density_std = 1e8 (/cm2)
 }
 
 
@@ -65,7 +68,7 @@ PARAMETER {
 NEURON {
 	SUFFIX kir2 			
 	USEION k READ ek,ko WRITE ik	
-        RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10 
+        RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
         GLOBAL linf,taul
         
         THREADSAFE
@@ -85,18 +88,30 @@ ASSIGNED {
         ko                              (mM)
         area (um2)
         celsius (degC)
+        count (1)
+        count_std(1)
 }
 
 
 INITIAL {
 	rate(v)
 	l=linf
+  count = (1e-08) * area * density
+  count_std = (1e-08) * area * density_std
 }
 
 
+
 BREAKPOINT {
-	SOLVE states METHOD cnexp	: solve differential equations in states with method 'cnexp'
-	gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM)))/area
+  LOCAL updatedCount
+	SOLVE states METHOD derivimplicit	: solve differential equations in states with method 'cnexp'
+    updatedCount = (count + multiple * count_std)
+  if (updatedCount < 0){
+    updatedCount = 0
+  }
+	gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * updatedCount /area
+
+
         : printf("%g\n",area)
         : printf("%g\n",gk*area*(1e-8))
 	: use state l to calulate gk

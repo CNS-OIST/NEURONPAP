@@ -180,6 +180,9 @@ BREAKPOINT {
     : set_k(ki,ko)
     : set_na(nai,nao)
     updatedCount = (count + multiple * count_std)
+    if (updatedCount < 0){
+        updatedCount = 0
+      }
     ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * area * updatedCount
     
     iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) + 0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.4*( C3*k34*u(v,0.4)-C4*k43)) * area * updatedCount

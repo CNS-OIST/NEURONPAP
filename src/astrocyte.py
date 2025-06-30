@@ -194,10 +194,10 @@ class PAPModel(ResultsPAPModel):
             else:
                 self.GABACount = GABACount
 
-        # if 'kir2' in kwargs.keys():
-        #     if kwargs['kir2'] > 200:
-        #         self.dt = 0.05
-        #         h.dt = self.dt
+        if "kir2" in kwargs.keys():
+            if kwargs["kir2"] > 0:
+                self.dt = 0.03
+                h.dt = self.dt
 
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
@@ -461,6 +461,16 @@ class PAPModel(ResultsPAPModel):
             self.PAPGluTCount_std += int(sGLT.count_std)
         # print(self.PAPGluTCount,self.PAPGluTCount_std)
 
+    def getKirCountPAP(self):
+        self.PAPKirCount = 0
+        self.PAPKirCount_std = 0
+
+        for pap in self.PAPs:
+            for sec in pap:
+                for seg in sec:
+                    self.PAPKirCount += int(seg.kir2.count)
+                    self.PAPKirCount_std += int(seg.kir2.count_std)
+
     def setStimStart(self):
         h("objref stim")
         h("stim = new NetStim(.5)")
@@ -499,6 +509,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         # print('placing GluChannel')
         # sys.stdout.flush()
+        self.getKirCountPAP()
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()

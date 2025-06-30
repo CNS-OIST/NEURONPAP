@@ -1,6 +1,7 @@
 """
 Library of conveninet utils such as parallizeFor
 """
+
 import math
 from mpi4py import MPI
 import tqdm
@@ -84,8 +85,12 @@ def plot(dir, zoom=False, ext=False):
 def get_iter(parmA, parmASteps, parmB, parmBSteps, starta=0, startb=0):
     # Update to get dynamic loops
     iterations = []
-    for i in range(starta, parmA + 1, parmASteps):
-        if type(parmB) == int and type(parmBSteps) == int:
+    if type(parmA) is int and type(parmASteps) is int:
+        parmA_iters = range(starta, parmA + 1, parmASteps)
+    else:
+        parmA_iters = np.arange(starta, parmA + parmASteps / 2, parmASteps)
+    for i in parmA_iters:
+        if type(parmB) is int and type(parmBSteps) is int:
             for j in range(startb, parmB + 1, parmBSteps):
                 iterations.append((i, j))
         else:

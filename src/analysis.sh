@@ -77,11 +77,10 @@ seed=1
 # figure 1
 # Panel A: model cartoon
 # Panel C gen in NEURON
-#mpiexec -n 10 python NEURONPAP.py --somaVC $seed # Fig 1b
 # Panel D gen in NEURON
+#mpiexec -n 10 python NEURONPAP.py --somaVC $seed # Fig 1b
 #mpiexec -n 5 python experiments.py                                               # Fig 1 EFH
-#python NEURONPAP.py -s --GABAR 0 --NMDAR 0 --GluT 0 --stimCount 10 $seed         # Fig1 G
-#python NEURONPAP.py -s --GABAR 0 --NMDAR 0 --GluT 0 --stimCount 10 --ko 30 $seed # Fig2 E
+#python NEURONPAP.py -s --GABAR 0 --NMDAR 0 --GluT 0 --stimCount 10 $seed # Fig1 G
 #python experiments.py                                                            # Fig 1 I
 #python NEURONPAP.py -s --NMDAR 0 --GABAR 0 --GluT 0 --stimCount 10 --ko 50 $seed
 #mpiexec -n 3 python experiments.py # fig 3EF 5D
@@ -94,10 +93,10 @@ for i in $( # for ten random PAPs
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i # Fig 3CD
   for j in 0.5 10; do                                                                        # for extracellular potassium condition 0.5 and 10
     echo "seed $i-Ko$j" >>$output
-    for k in 1 10; do # for stimCoutn
-      #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i  # Fig 3A
-      #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i # Fig 4CD
-      mpiexec -n $np --use-hewthrea-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i # Fig 5AC
+    for k in 1 10; do                                                                                                   # for stimCoutn
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i  # Fig 3A
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i # Fig 4CD
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i  # Fig 5AC
       # if (($k == 10)); then
       #   python NEURONPAP.py -v --stimCount $k --ko $j $i #
       #   python NEURONPAP.py -b --stimCount $k --ko $j $i #
@@ -109,10 +108,10 @@ for i in $( # for ten random PAPs
       # fi
     done
     if (($i == 0)); then
-      #1  echo "KO spillover Comparison"
-      #  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 6A
-      #1  echo "Glu spillover Comparison"
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount 10 --ko $j $i # Fig 4B
+      # echo "KO spillover Comparison"
+      # mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 6A
+      #  echo "Glu spillover Comparison"
+      # mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount 10 --ko $j $i # Fig 4B
     fi
     # echo "Running KO experiments" >> $output
     # mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu $i
@@ -141,6 +140,6 @@ zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morph
 
 # if uv exists use uv environment
 if command -v uv &>/dev/null; then
-  echo "Found UV using uv environment"
+  echo "Found UV deactivating uv environment"
   deactivate
 fi
