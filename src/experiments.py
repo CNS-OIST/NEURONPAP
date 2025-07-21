@@ -3160,12 +3160,13 @@ class procedure(plotFigures):
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
-                "seed": self.seed,
+                "dt": self.dt,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
                 "GluTrans": self.optGluT,
             }
         )
+
         # if self.NMDAR:
         #     funcArgs[-1]["multiple"] = self.optNMDAR
         # else:
