@@ -195,8 +195,8 @@ class PAPModel(ResultsPAPModel):
                 self.GABACount = GABACount
 
         if "kir2" in kwargs.keys():
-            if kwargs["kir2"] > 0:
-                self.dt = 0.03
+            if kwargs["kir2"] > 400:
+                self.dt = dt / 3
                 h.dt = self.dt
 
         # GENE expression setup
@@ -215,6 +215,7 @@ class PAPModel(ResultsPAPModel):
             else:
                 self.comparecount = self.multiple
 
+            self.multiple = 0
         else:
             # print('NMDAR selected')
             self.comparecount = self.multiple
@@ -421,7 +422,6 @@ class PAPModel(ResultsPAPModel):
         self.GluTs = list(h.GluTs)
         # print(self.NMDAs)
         self.NCs += list(h.ncGluList)
-        self.getGLTCountPAP()
         if "GluTrans" in self.GENEDict.keys() and self.Glu:
             # print(self.GENEDict)
             # print(len(self.GluTs))
@@ -457,9 +457,10 @@ class PAPModel(ResultsPAPModel):
 
         for nc in list(h.ncGluList):
             sGLT = nc.syn()
-            self.PAPGluTCount += int(sGLT.count)
-            self.PAPGluTCount_std += int(sGLT.count_std)
-        # print(self.PAPGluTCount,self.PAPGluTCount_std)
+            self.PAPGluTCount += float(sGLT.count)
+            self.PAPGluTCount_std += float(sGLT.count_std)
+        self.PAPGluTCount = self.PAPGluTCount
+        self.PAPGluTCount_std = self.PAPGluTCount_std
 
     def getKirCountPAP(self):
         self.PAPKirCount = 0
@@ -468,8 +469,10 @@ class PAPModel(ResultsPAPModel):
         for pap in self.PAPs:
             for sec in pap:
                 for seg in sec:
-                    self.PAPKirCount += int(seg.kir2.count)
-                    self.PAPKirCount_std += int(seg.kir2.count_std)
+                    self.PAPKirCount += float(seg.kir2.count)
+                    self.PAPKirCount_std += float(seg.kir2.count_std)
+        self.PAPKirCount = self.PAPKirCount
+        self.PAPKirCount_std = self.PAPKirCount_std
 
     def setStimStart(self):
         h("objref stim")
@@ -509,7 +512,6 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         # print('placing GluChannel')
         # sys.stdout.flush()
-        self.getKirCountPAP()
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
@@ -536,6 +538,8 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         h.finitialize(self.v_init)
         h.fcurrent()
+        self.getKirCountPAP()
+        self.getGLTCountPAP()
         self.getkin()
         # print('initialized')
         # sys.stdout.flush()

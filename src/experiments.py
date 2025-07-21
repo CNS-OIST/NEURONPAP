@@ -169,7 +169,7 @@ class plotFigures:
                         color=self.returnColor("NMDAR"),
                         linestyle="-.",
                     )
-                if GABACount == cell.GABACount and cell.multiple == 0:
+                if GABACount == cell.GABACount and cell.multiple == None:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
@@ -615,7 +615,6 @@ class plotFigures:
 
             _, labels = plt.xticks()
             for l in labels:
-                print(l)
                 if abs(float(l.get_text()) - mean) < std:
                     l.set_color("red")
 
@@ -698,21 +697,27 @@ class plotFigures:
         )
         if self.GluT:
             addChan = 1
-            chanStart = -5
+            chanStart = -1 * int(self.channelCompareMax / self.channelCompareStep)
             skip = 2
+            xlabels = (
+                np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    skip,
+                )
+                * self.channelCompareStep
+                * res[0].PAPGluTCount_std
+                + res[0].PAPGluTCount
+            )
+            xlabels = [int(val) if val > 0 else 0 for val in xlabels]
+
             plt.xticks(
                 range(
                     0,
                     2 * int(self.channelCompareMax / self.channelCompareStep) + addChan,
                     skip,
                 ),
-                np.arange(
-                    chanStart,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    skip,
-                )
-                * res[0].PAPGluTCount_std
-                + res[0].PAPGluTCount,
+                xlabels,
             )
         else:
             chanStart = 0
@@ -737,10 +742,12 @@ class plotFigures:
                     int(self.KirMax / self.KirStep) + 1,
                     1,
                 )
+                * self.KirStep
                 * res[0].PAPKirCount_std
                 + res[0].PAPKirCount
             )
-            ytick_labels = ytick_labels[ytick_labels > 0].astype(int)
+            ytick_labels[ytick_labels < 0] = 0
+            ytick_labels = ytick_labels.astype(int)
 
             plt.yticks(
                 range(2 * int(self.KirMax / self.KirStep) + 1),
@@ -905,8 +912,9 @@ class procedure(plotFigures):
     optGluT = 0  # std * optGluT + mean
     channelCompareMax = 25
     channelCompareStep = 5
-    KirMax = 1
-    KirStep = 0.2
+    # max 390
+    KirMax = 300
+    KirStep = 60
     seed = int()
     ko = float()
     tag = str()
@@ -1162,7 +1170,7 @@ class procedure(plotFigures):
                 "kir2": self.optKir,
                 "clleak": 0,
                 "naleak": self.leak,
-                "multiple": 0,
+                "multiple": None,
                 "dt": 0.1,
                 "seed": self.seed,
             }
@@ -1406,7 +1414,7 @@ class procedure(plotFigures):
 
     def kvPhasePlane(self):
         self.KirNMDAPhase()
-        # self.duramplenPhase()
+        self.duramplenPhase()
 
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
@@ -1435,12 +1443,12 @@ class procedure(plotFigures):
                     chanName = "GluT_NMDAR"
                 elif self.GABAR:
                     funcArgs[-1]["GABACount"] = self.optGABAR
-                    funcArgs[-1]["multiple"] = 0
+                    funcArgs[-1]["multiple"] = None
                     funcArgs[-1]["GluTrans"] = self.optGluT
                     chanName = "GABAR"
                 else:
                     funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = 0
+                    funcArgs[-1]["multiple"] = None
                     funcArgs[-1]["GluTrans"] = self.optGluT
                     chanName = "GluTrans"
             else:
@@ -1451,16 +1459,19 @@ class procedure(plotFigures):
                     chanName = "NMDAR"
                 elif self.GABAR:
                     funcArgs[-1]["GABACount"] = self.optGABAR
-                    funcArgs[-1]["multiple"] = 0
+                    funcArgs[-1]["multiple"] = None
                     funcArgs[-1]["GluTrans"] = None
                     chanName = "GABAR"
                 else:
                     funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = 0
+                    funcArgs[-1]["multiple"] = None
                     funcArgs[-1]["GluTrans"] = None
                     chanName = ""
 
-            if funcArgs[-1]["multiple"] > 0 or funcArgs[-1]["GluTrans"] != None:
+            if (
+                funcArgs[-1]["multiple"] is not None
+                or funcArgs[-1]["GluTrans"] is not None
+            ):
                 funcArgs[-1]["Glu"] = True
             if funcArgs[-1]["GABACount"] > 0:
                 funcArgs[-1]["GABA"] = True
@@ -1469,7 +1480,7 @@ class procedure(plotFigures):
                 [
                     (dur, papLen)
                     for dur in np.arange(0.5, 1, 0.1)
-                    for papLen in np.arange(0.3, 0.8, 0.1)
+                    for papLen in np.arange(0.3, 3, 0.3)
                 ],
                 root=0,
             )
@@ -1551,7 +1562,7 @@ class procedure(plotFigures):
         self.addChannelTag()
 
         AllCells = []
-        for kircount in [400, self.optKir]:
+        for kircount in [self.KirMax, self.optKir]:
             for chanCount in [self.optNMDAR, 25, self.optGABAR]:
                 funcArgs = []
                 funcArgs.append(
@@ -1574,12 +1585,12 @@ class procedure(plotFigures):
                         chanName = "GluT_NMDAR"
                     elif self.GABAR:
                         funcArgs[-1]["GABACount"] = chanCount
-                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["multiple"] = None
                         funcArgs[-1]["GluTrans"] = 0
                         chanName = "GABAR"
                     else:
                         funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["multiple"] = None
                         funcArgs[-1]["GluTrans"] = 0
                         chanName = "GluTrans"
                 else:
@@ -1590,22 +1601,28 @@ class procedure(plotFigures):
                         chanName = "NMDAR"
                     elif self.GABAR:
                         funcArgs[-1]["GABACount"] = chanCount
-                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["multiple"] = None
                         funcArgs[-1]["GluTrans"] = None
                         chanName = "GABAR"
                     else:
                         funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = 0
+                        funcArgs[-1]["multiple"] = None
                         funcArgs[-1]["GluTrans"] = None
                         chanName = ""
 
-                if funcArgs[-1]["multiple"] > 0 or funcArgs[-1]["GluTrans"] != None:
+                if (
+                    funcArgs[-1]["multiple"] is not None
+                    or funcArgs[-1]["GluTrans"] is not None
+                ):
                     funcArgs[-1]["Glu"] = True
                 if funcArgs[-1]["GABACount"] > 0:
                     funcArgs[-1]["GABA"] = True
 
                 iterations = comm.bcast(
-                    [(kircount, conc) for conc in np.array([0, 0.5, 1.0, 5.0, 10.0])],
+                    [
+                        (kircount, conc)
+                        for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 20.0])
+                    ],
                     root=0,
                 )
                 ccList = comm.bcast(["kir2", "KoSize"], root=0)
@@ -1673,7 +1690,7 @@ class procedure(plotFigures):
                                 plt.ylabel("Voltage (mV)")
                                 plt.xlabel("[K]o (mM)")
                                 plt.ylim((-90, -50))
-                                plt.xlim((2, 14))
+                                plt.xlim((2, 25))
                                 plt.savefig(
                                     os.path.join(
                                         "../results/paperRes",
@@ -1708,7 +1725,7 @@ class procedure(plotFigures):
             if self.NMDAR:
                 funcArgs[-1]["multiple"] = self.optNMDAR
             else:
-                funcArgs[-1]["multiple"] = 0
+                funcArgs[-1]["multiple"] = None
             if self.GluT:
                 funcArgs[-1]["GluTrans"] = self.optGluT
 
@@ -1880,7 +1897,7 @@ class procedure(plotFigures):
             if self.NMDAR:
                 funcArgs[-1]["multiple"] = self.optNMDAR
             else:
-                funcArgs[-1]["multiple"] = 0
+                funcArgs[-1]["multiple"] = None
             if self.GluT:
                 funcArgs[-1]["GluTrans"] = self.optGluT
 
@@ -2143,7 +2160,7 @@ class procedure(plotFigures):
         if self.NMDAR:
             funcArgs[-1]["multiple"] = self.optNMDAR
         else:
-            funcArgs[-1]["multiple"] = 0
+            funcArgs[-1]["multiple"] = None
         if self.GluT:
             funcArgs[-1]["GluTrans"] = self.optGluT
 
@@ -2404,7 +2421,7 @@ class procedure(plotFigures):
 
         if funcArgs[-1]["kir2"] > 5:  # to compensate for mathematical unstability
             funcArgs[-1]["dt"] *= 0.2
-        funcArgs[-1]["multiple"] = 0
+        funcArgs[-1]["multiple"] = None
         funcArgs[-1]["Glu"] = False
         funcArgs[-1]["GABACount"] = 0
         funcArgs[-1]["GABA"] = False
@@ -2461,7 +2478,7 @@ class procedure(plotFigures):
             {
                 "mode": 0,
                 "ComplexMorph": True,
-                "multiple": 0,
+                "multiple": None,
                 "Glu": False,
                 "GABA": True,
                 "bNum": 1,
@@ -2604,11 +2621,11 @@ class procedure(plotFigures):
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
-            self.channelCompareMax *= 4
-            self.channelCompareStep *= 4
+            self.channelCompareMax *= 2
+            self.channelCompareStep *= 2
         if not (self.GABAR or self.NMDAR) and self.GluT:
-            self.channelCompareMax *= 10
-            self.channelCompareStep *= 10
+            self.channelCompareMax = 5
+            self.channelCompareStep = int(self.channelCompareMax / 5)
             iterations = [
                 (i, j)
                 for i in np.arange(
@@ -2653,16 +2670,19 @@ class procedure(plotFigures):
         )
         ccList = ["kir2"]
         if self.GABAR:
-            funcArgs[-1]["multiple"] = 0
+            funcArgs[-1]["multiple"] = None
+            funcArgs[-1]["GABA"] = True
             ccList.append("GABACount")
         elif self.NMDAR:
             ccList.append("multiple")
             if self.GluT:
                 funcArgs[-1]["GluTrans"] = self.optGluT
+            funcArgs[-1]["Glu"] = True
         else:
-            funcArgs[-1]["multiple"] = 0
+            funcArgs[-1]["multiple"] = None
             if self.GluT:
                 ccList.append("GluTrans")
+                funcArgs[-1]["Glu"] = True
             else:
                 iterations = [
                     [i]
@@ -2743,7 +2763,7 @@ class procedure(plotFigures):
                 "PAPCount": self.PAPCount,
                 "kir2": self.optKir,
                 "KoSize": self.ko,
-                "multiple": 0,
+                "multiple": None,
             }
         )
         if not self.KStim:
@@ -2919,9 +2939,9 @@ class procedure(plotFigures):
                 self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
 
     def potassiumComparison(self):
-        self.KoCompMax = 20
+        self.KoCompMax = 16
         self.KoCompStep = 2
-        for comparison in ["PAPLen", "durStim", "KoSize"]:
+        for comparison in ["KoSize", "PAPLen", "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -2934,19 +2954,35 @@ class procedure(plotFigures):
                 compMax = 9
                 compStep = 1
                 startb = 1
+            elif comparison == "seed":
+                compMax = 14
+                compStep = 1
+                startb = 0
 
             if comparison != "KoSize":
-                if comparison == "durStim":
-                    iterations = comm.bcast(
-                        get_iter(20, 2, compMax, compStep, startb=startb), root=0
-                    )
-                    logx = None
-                else:
+                if comparison == "PAPLen":
                     logx = np.logspace(1, -1.5, base=0.3, num=10)
                     iterations = comm.bcast(
-                        [(i, j) for i in range(0, 21, 2) for j in logx],
+                        [
+                            (i, j)
+                            for i in range(0, self.KoCompMax + 1, self.KoCompStep)
+                            for j in logx
+                        ],
                         root=0,
                     )
+                else:
+                    iterations = comm.bcast(
+                        get_iter(
+                            self.KoCompMax,
+                            self.KoCompStep,
+                            compMax,
+                            compStep,
+                            startb=startb,
+                        ),
+                        root=0,
+                    )
+                    logx = None
+
                 self.runAmpLenComparison(
                     comparison, iterations, compMax, compStep, logx=logx
                 )
@@ -2964,15 +3000,15 @@ class procedure(plotFigures):
                 root=0,
             )
             # # Adjust the range for the last process
-            self.runPotassiumComparison(
-                comparison, iterations, maxStep=compMax, intermStep=compStep
-            )
+            if comparison != "seed":
+                self.runPotassiumComparison(
+                    comparison, iterations, maxStep=compMax, intermStep=compStep
+                )
 
     def runAmpLenComparison(
         self, comparison, iterations, maxStep, intermStep, logx=None
     ):
         self.addChannelTag()
-        mprint(logx)
 
         comm.Barrier()
         funcArgs = []
@@ -2985,7 +3021,6 @@ class procedure(plotFigures):
                 "naleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
-                "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
                 "kir2": self.optKir,
@@ -2995,13 +3030,16 @@ class procedure(plotFigures):
         #     funcArgs[-1]["multiple"] = self.optNMDAR
         # else:
         self.NMDAR = False
-        funcArgs[-1]["multiple"] = 0
+        funcArgs[-1]["multiple"] = None
         if self.GluStim:
             self.GluT = True
             funcArgs[-1]["GluTrans"] = self.optGluT
         else:
             self.GluT = False
             funcArgs[-1]["GluTrans"] = None
+
+        if comparison != "seed":
+            funcArgs[-1]["seed"] = self.seed
 
         ccList = ["KoSize", comparison]
         # make sure that funcParms is in the correct order of whatever iterations spits out
@@ -3048,12 +3086,17 @@ class procedure(plotFigures):
             )
             # set xlabel
             if comparison == "durStim":
-                skip = 2
+                skip = 1
                 dec = 0
                 printType = int
                 plt.xlabel("stim. duation (ms)")
+            if comparison == "seed":
+                skip = 0
+                dec = 0
+                printType = int
+                plt.xlabel("seed number")
             else:
-                skip = 2
+                skip = 0
                 dec = 1
                 printType = float
                 plt.xlabel("PAP Length (\u03bcm)")
@@ -3065,9 +3108,10 @@ class procedure(plotFigures):
                 plt.xticks(np.arange(0, len(logx), 1), logx_label)
             else:
                 plt.xticks(
-                    np.arange(0, int(maxStep / intermStep), 1),
+                    np.arange(0, int(maxStep / intermStep) + (1 - skip), 1),
                     np.round(
-                        np.arange(1, maxStep + intermStep / 2, intermStep), decimals=dec
+                        np.arange(skip, maxStep + intermStep / 2, intermStep),
+                        decimals=dec,
                     ).astype(printType),
                 )
             # set ylabel
@@ -3075,8 +3119,8 @@ class procedure(plotFigures):
             dec = 0
 
             printType = int
-            maxStep = 20
-            intermStep = 2
+            maxStep = self.KoCompMax
+            intermStep = self.KoCompStep
             plt.ylabel("$\Delta$extracellular [K] (mM)")
             plt.yticks(
                 np.arange(0, int(maxStep / intermStep) + 1, 1),
@@ -3092,6 +3136,7 @@ class procedure(plotFigures):
                 res[0].PAParea,
                 Kir=True,
                 y=True,
+                x=True if comparison == "PAPLen" else False,
                 chanOverride={"Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std)},
             )
 
@@ -3115,7 +3160,6 @@ class procedure(plotFigures):
                 "ComplexMorph": True,
                 "naleak": self.leak,
                 "clleak": 0,
-                "dt": self.dt,
                 "seed": self.seed,
                 "stimdelay": self.stimdelay,
                 "PAPCount": self.PAPCount,
@@ -3125,11 +3169,15 @@ class procedure(plotFigures):
         # if self.NMDAR:
         #     funcArgs[-1]["multiple"] = self.optNMDAR
         # else:
-        funcArgs[-1]["multiple"] = 0
+        funcArgs[-1]["multiple"] = None
         if self.GluT:
             funcArgs[-1]["GluTrans"] = self.optGluT
 
+        if comparison != "seed":
+            funcArgs[-1]["seed"] = self.seed
         ccList = ["kir2", comparison]
+        #        if comparison == "PAPLen":
+        #            funcArgs[-1]["dt"] = self.dt / 2
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
         if self.KStim:
@@ -3159,13 +3207,31 @@ class procedure(plotFigures):
             imArray = np.zeros(
                 (2 * int(self.KirMax / self.KirStep) + 1, int(maxStep / intermStep) + 1)
             )
+            if comparison == "durStim":
+                adjust = 1
+            else:
+                adjust = 0
             for res in results:
-                imArray[
+                arrayValue = max(res[0].vPAP) - res[0].RMP
+                originalValue = imArray[
                     int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
-                    int(getattr(res[0], comparison) / intermStep),
-                ] += (
-                    max(res[0].vPAP) - res[0].RMP
-                )
+                    int(getattr(res[0], comparison) / intermStep) - adjust,
+                ]
+                if originalValue == 0:
+                    imArray[
+                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+                        int(getattr(res[0], comparison) / intermStep) - adjust,
+                    ] = arrayValue
+            #                else:
+            #                    mprint(
+            #                        originalValue,
+            #                        arrayValue,
+            #                        res[0].GENEDict["kir2"],
+            #                        getattr(res[0], comparison),
+            #                        adjust,
+            #                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+            #                        int(getattr(res[0], comparison) / intermStep) - adjust,
+            #                    )
 
             plt.imshow(
                 imArray,
@@ -3180,6 +3246,7 @@ class procedure(plotFigures):
                     int(self.KirMax / self.KirStep) + 1,
                     1,
                 ).astype(float)
+                * self.KirStep
                 * res[0].PAPKirCount_std
                 + res[0].PAPKirCount
             )
@@ -3205,17 +3272,30 @@ class procedure(plotFigures):
                 dec = 0
                 printType = int
                 plt.xlabel("stim. duation (ms)")
+            elif comparison == "seed":
+                skip = 1
+                dec = 0
+                printType = int
+                plt.xlabel("seed number")
             else:
                 skip = 2
                 dec = 1
                 printType = float
                 plt.xlabel("PAP Length (\u03bcm)")
-            plt.xticks(
-                np.arange(0, int(maxStep / intermStep) + 1, 1),
-                np.round(
-                    np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
-                ).astype(printType),
-            )
+            if comparison == "durStim":
+                plt.xticks(
+                    np.arange(0, int(maxStep / intermStep), 1),
+                    np.round(
+                        np.arange(1, maxStep + intermStep / 2, intermStep), decimals=dec
+                    ).astype(printType),
+                )
+            else:
+                plt.xticks(
+                    np.arange(0, int(maxStep / intermStep) + 1, 1),
+                    np.round(
+                        np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
+                    ).astype(printType),
+                )
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
             if comparison == "PAPLen":
@@ -3238,15 +3318,18 @@ class procedure(plotFigures):
                 res[0].PAParea,
                 Kir=True,
                 y=True,
+                x=True if comparison == "PAPLen" else False,
                 chanOverride=chanOverride,
             )
 
             plt.savefig(
-                os.path.join("../results/paperRes", f"FullPotassium{self.tag}.pdf")
+                os.path.join(
+                    "../results/paperRes", f"FullPotassium{self.tag}_{comparison}.pdf"
+                )
             )
 
-            if comparison == "KoSize":
-                self.plotIKSeries(results)
+            if comparison == "KoSize" or comparison == "PAPLen":
+                self.plotIKSeries(results, tagReset=True, setKoylim=True)
 
     def SCeq(self, x, a, l, c):
         return a * np.exp(-x / l) + c
@@ -3310,7 +3393,7 @@ class procedure(plotFigures):
                 "naleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
-                "multiple": 0,
+                "multiple": None,
                 "GluTrans": int(gluCount),
                 "PAPLen": papLen,
             }
@@ -3390,7 +3473,7 @@ class procedure(plotFigures):
                     "naleak": leak * 10,
                     "dt": self.dt,
                     "seed": self.seed,
-                    "multiple": 0,
+                    "multiple": None,
                     "GluTrans": glt,
                     "KoSize": KoSize,
                     "PAPLen": PAPLen,
@@ -3458,8 +3541,15 @@ class procedure(plotFigures):
         correctArtifact=True,
         split=False,
     ):
-        plt.cla()
-        plt.clf()
+        plt.close("all")
+        if split:
+            for i in range(2):
+                plt.figure(i)
+                plt.cla()
+                plt.clf()
+        else:
+            plt.cla()
+            plt.clf()
         AllCells = []
         sim_time = None
         # get and tweak results
@@ -3577,16 +3667,16 @@ class procedure(plotFigures):
                     Fname += "_correctedArtifact"
                 for i in range(2):
                     plt.figure(i)
-                    plt.set_xlim((100, 500))
+                    plt.xlim((100, 500))
                     plt.legend()
-                    plt.set_xlabel("Time (ms)")
+                    plt.xlabel("Time (ms)")
                     if i == 0:
-                        plt.set_ylabel("Membrane potential change (mV)")
-                        plt.set_ylim((0, ylim_value))
+                        plt.ylabel("Membrane potential change (mV)")
+                        plt.ylim((0, ylim_value))
                         Fname += "memb_potential"
                     else:
-                        plt.set_ylabel("$\Delta F/F_0$ (%)")
-                        plt.set_ylim((0, ylim_value * -1 / 10))
+                        plt.ylabel("$\Delta F/F_0$ (%)")
+                        plt.ylim((0, ylim_value * -1 / 10))
                         Fname = "fluor"
                     plt.savefig(f"../results/paperRes/{Fname}.pdf")
                 if np.isnan(total):
@@ -3826,7 +3916,7 @@ class procedure(plotFigures):
                 "dt": self.dt,
                 "seed": self.seed,
                 "Glu": False,
-                "multiple": 0,
+                "multiple": None,
             }
         )
         cells = PAPModel(**funcArgs[-1])
@@ -3845,7 +3935,7 @@ class procedure(plotFigures):
                 "dt": self.dt,
                 "seed": self.seed,
                 "Glu": False,
-                "multiple": 0,
+                "multiple": None,
             }
         )
         cellsRMP = PAPModel(**funcArgs[-1])
@@ -4011,28 +4101,28 @@ class procedure(plotFigures):
 if __name__ == "__main__":
     if size == 3:
         mprint("exp fit")
-        testBools = [False, True]
+        testBools = [True]  # [True,False]
         for PAP in testBools:
             for forcedAccum in [True, False]:
                 exp = procedure(3, 0)
                 kwargs = {"PAP": PAP, "showFig": False}
                 if PAP:
                     # initParms = (5, -72.5, 10, 19,0.5)
-                    initParms = (8, -65, 10, 19)
+                    initParms = (8, -67, 10, 19)
                     bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
                 else:
                     # initParms = (5, -72.5, 10, 19,0.5)
                     #        glt, kir, PAPLen, KoSize, tau2, slowing
-                    initParms = (150, 1, 5, 50)
+                    initParms = (150, 100, 5, 50)
                     bounds = [(-1000, 1000), (90, 150), (1, 10), (0.5, 30)]
 
                     if forcedAccum:
                         initParms = list(initParms)
-                        initParms[0] = 0
-                        initParms[1] = 1
+                        # initParms[0] = 0
+                        # initParms[1] = 1
                         initParms = tuple(initParms)
 
-                        initParms += (2, 2)
+                        initParms += (10, 10)
                         bounds = [
                             (5.8, 800),
                             (0, 10000),
@@ -4065,6 +4155,6 @@ if __name__ == "__main__":
         exp = procedure(6, 0)
         # exp.gababathExperiment()
         # exp.uptakeRatio()
-        exp.branchAttenuation(replay=True)
+        # exp.branchAttenuation(replay=True)
 
         # print('Nothing set; try MPI -n 2 for kbath; MPI -n 3 for exp fit')

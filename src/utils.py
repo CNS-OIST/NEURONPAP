@@ -8,6 +8,7 @@ import tqdm
 import numpy as np
 from textSDIO import *
 import copy
+import random
 
 
 comm = MPI.COMM_WORLD
@@ -108,7 +109,12 @@ def parallizeFor(
     callmethods,
     methodArgs,
     mode="InitArgs",
+    randomize=False,
 ):
+    # ranodmize in case of consectuive iteration pairs that take time
+    if randomize:
+        iterations = comm.bcast(random.sample(iterations, len(iterations)), root=0)
+
     # Calculate the number of iterations each process will handle
     iterations_per_process = len(iterations) // size
 
@@ -145,9 +151,10 @@ def parallizeFor(
 
     comm.Barrier()
     if mode == "InitArgs":
+        # print(f"Thread {rank} will perform sets {iterations[minimum:maximum]}")
         for index in range(minimum, maximum):
             parmSet = iterations[index]
-            # print(f'Thread {rank} is performing set {parmSet}')
+            # print(f"Thread {rank} is performing set {parmSet}")
             results.append([])
             for k, func in enumerate(functions):
                 if len(functionParms) > 1:
