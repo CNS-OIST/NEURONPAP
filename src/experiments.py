@@ -220,7 +220,7 @@ class plotFigures:
                 ):
                     tmpTag = self.tag
                     self.tag += "_zoom"
-                    self.plotIKSeries([[cell]], zoom=True)
+                    self.plotIKSeries([[cell]], zoom=True,setekylim=setekylim)
                     self.tag = tmpTag
 
                 if initStep == None:
@@ -1811,7 +1811,7 @@ class procedure(plotFigures):
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
         print(koList)
 
-    def KOComp(self, papCount=10, koCond=6):
+    def KOComp(self, papCount=15, koCond=6):
         for transmitter in ["GABAR", "NMDAR"]:
             self.NMDAR = False
             self.GABAR = False
@@ -2941,7 +2941,7 @@ class procedure(plotFigures):
     def potassiumComparison(self):
         self.KoCompMax = 16
         self.KoCompStep = 2
-        for comparison in ["KoSize", "PAPLen", "durStim"]:
+        for comparison in ["durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -3090,7 +3090,7 @@ class procedure(plotFigures):
                 dec = 0
                 printType = int
                 plt.xlabel("stim. duation (ms)")
-            if comparison == "seed":
+            elif comparison == "seed":
                 skip = 0
                 dec = 0
                 printType = int
@@ -3205,13 +3205,13 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
-            imArray = np.zeros(
-                (2 * int(self.KirMax / self.KirStep) + 1, int(maxStep / intermStep) + 1)
-            )
             if comparison == "durStim":
                 adjust = 1
             else:
                 adjust = 0
+            imArray = np.zeros(
+                (2 * int(self.KirMax / self.KirStep) + 1, int(maxStep / intermStep) + (1-adjust))
+            )
             for res in results:
                 arrayValue = max(res[0].vPAP) - res[0].RMP
                 originalValue = imArray[
@@ -4102,7 +4102,7 @@ class procedure(plotFigures):
 if __name__ == "__main__":
     if size == 3:
         mprint("exp fit")
-        testBools = [True]  # [True,False]
+        testBools = [True,False]
         for PAP in testBools:
             for forcedAccum in [True, False]:
                 exp = procedure(3, 0)
