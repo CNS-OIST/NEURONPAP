@@ -3757,7 +3757,7 @@ class procedure(plotFigures):
                     )
                     if correctArtifact:
                         sim_f += spl(sim_time)
-                        label = f"corrected\n{i} stim simulation"
+                        label = f"{i} stim simulation"
                     else:
                         label = f"{i} stim simulation"
                     ax2.plot(
