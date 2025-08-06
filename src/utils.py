@@ -109,7 +109,7 @@ def parallizeFor(
     callmethods,
     methodArgs,
     mode="InitArgs",
-    randomize=False,
+    randomize=True,
 ):
     # ranodmize in case of consectuive iteration pairs that take time
     if randomize:

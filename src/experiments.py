@@ -3999,7 +3999,7 @@ class procedure(plotFigures):
     def freqComparison(self):
         self.addChannelTag()
         # Calculate the number of iterations for all parm sets
-        spikeNumStep = 1
+        spikeNumStep = 2
         spikeFreqStep = 20
         spikeNumMin = 1
         spikeNumMax = 11
