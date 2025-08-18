@@ -1277,7 +1277,7 @@ class procedure(plotFigures):
 
     def SomaVC(self):
         funcArgs = []
-        vClampList = comm.bcast(np.arange(-95, -40, 5), root=0)
+        vClampList = comm.bcast(list(np.arange(-95, -40, 5)), root=0)
         print(vClampList)
         plt.cla()
         plt.clf()
@@ -1529,7 +1529,7 @@ class procedure(plotFigures):
                 ],
                 root=0,
             )
-            ccList = comm.bcast(["dur", "papLen"], root=0)
+            ccList = comm.bcast(["durStim", "papLen"], root=0)
             comm.Barrier()
             if self.KStim:
                 results = parallizeFor(
@@ -1569,7 +1569,7 @@ class procedure(plotFigures):
                         plt.plot(
                             list(cell.KoPAP)[initStep:],
                             list(cell.vPAP)[initStep:],
-                            label=f"Dur:{cell.dur:.1f},PAPLen:{cell.PAPLen:.1f}",
+                            label=f"Dur:{cell.durStim:.1f},PAPLen:{cell.PAPLen:.1f}",
                             color=color,
                             zorder=z,
                         )
@@ -2731,7 +2731,7 @@ class procedure(plotFigures):
                 funcArgs[-1]["Glu"] = True
             else:
                 iterations = [
-                    [i]
+                    i
                     for i in np.arange(
                         -self.KirMax, self.KirMax + self.KirStep / 2, self.KirStep
                     )
