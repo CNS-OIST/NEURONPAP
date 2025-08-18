@@ -117,34 +117,6 @@ class plotFigures:
         cells = PAPModel(**funcArgs[-1])
         cells.plotMorphParms()
 
-    def plotMergeSeries(self, AllCells):
-        for attr in ["KoPAP", "vPAP"]:
-            plt.cla()
-            plt.clf()
-            fig, ax = plt.subplots()
-            ax.set_xlabel("time (ms)")
-            if attr == "vPAP":
-                ax.set_ylabel("Voltage (mV)")
-                ax.set_ylim((-100, 0))
-            else:
-                ax.set_ylabel("[K] (mM)")
-                ax.set_ylim((0, 15))
-            for cells in AllCells:
-                for cell in cells:
-                    initStep = int(cell.initTstop / cell.dt)
-                    ax.plot(
-                        list(cell.time)[initStep:],
-                        list(getattr(cell, attr))[initStep:],
-                        label=f"{cell.KoSize:.3f}",
-                    )
-            ax.legend()
-            plt.savefig(
-                os.path.join(
-                    "../results/paperRes",
-                    f"{attr}Merge{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
-                )
-            )
-
     def GABANMDARTrace(
         self, AllCells, NMDARCount, GABACount, fName="NMDAR_GABAR_TraceComp"
     ):
@@ -220,7 +192,7 @@ class plotFigures:
                 ):
                     tmpTag = self.tag
                     self.tag += "_zoom"
-                    self.plotIKSeries([[cell]], zoom=True,setekylim=setekylim)
+                    self.plotIKSeries([[cell]], zoom=True, setekylim=setekylim)
                     self.tag = tmpTag
 
                 if initStep == None:
@@ -286,7 +258,12 @@ class plotFigures:
                         )
 
                 if setKoylim:
-                    ax.set_ylim((0, 60))
+                    _, _, _, ymax = ax.axis()
+
+                    if ymax > 30:
+                        ax.set_ylim((0, 60))
+                    else:
+                        ax.set_ylim((0, 30))
                 else:
                     ax.set_ylim((0, 20))
                 if bath:
@@ -576,6 +553,66 @@ class plotFigures:
 
                 plt.close("all")
 
+    def mergePlotsIK(self, AllCells, comparison, merge, selected=1, zoom=True):
+        AllRes = {}
+        AllRecVals = ["vPAP", "KoPAP", "ekPAP"]
+
+        total = []
+        if zoom:
+            self.mergePlotsIK(
+                AllCells, comparison, merge, selected=selected, zoom=False
+            )
+        for cells in AllCells:
+            for cell in cells:
+                compVal = getattr(cell, comparison)
+                if compVal not in AllRes.keys():
+                    AllRes[compVal] = {}
+                AllRes[compVal][getattr(cell, merge)] = cell
+        for compVal in AllRes.keys():
+            for recVal in AllRecVals:
+                plt.cla()
+                plt.clf()
+                if compVal == 16:
+                    total = [
+                        max(getattr(cell, recVal)) for cell in AllRes[compVal].values()
+                    ]
+                    total = np.array(total)
+                    total = np.unique(total)
+
+                    print(recVal)
+                    print(total.mean(), total.std())
+                for cell in AllRes[compVal].values():
+                    alpha = 1
+                    if getattr(cell, merge) != selected:
+                        alpha = 0.3
+                    initStep = int((cell.initTstop - 10) / cell.dt)
+                    plt.plot(
+                        list(cell.time)[initStep:],
+                        list(getattr(cell, recVal))[initStep:],
+                        alpha=alpha,
+                        label=getattr(cell, merge),
+                        zorder=(
+                            100
+                            if getattr(cell, merge) == selected
+                            else getattr(cell, merge)
+                        ),
+                    )
+                if zoom:
+                    plt.xlim((cell.initTstop - 10, cell.initTstop + 10))
+                plt.legend(title="seed", title_fontsize="x-small", fontsize="xx-small")
+                plt.xlabel("time (ms)")
+                if recVal == "vPAP":
+                    plt.ylabel("Voltage (mV)")
+                else:
+                    plt.ylabel(recVal)
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f"{recVal}_Merged_for_{comparison}={compVal}_over_{merge}_{zoom=}.pdf",
+                    )
+                )
+                plt.close("all")
+
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
             "Kir": (819 * area, 197 * area),
@@ -804,7 +841,6 @@ class plotFigures:
                 )
 
             plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}_{PAPattr}.pdf"))
-
 
 #        plt.cla()
 #        plt.clf()
@@ -1516,7 +1552,7 @@ class procedure(plotFigures):
                 )
             comm.Barrier()
             if rank == 0:
-                # self.plotMergeSeries(results)
+                # self.mergePlotsIK(results)
                 plt.cla()
                 plt.clf()
                 for j in range(len(results[0])):
@@ -1658,7 +1694,7 @@ class procedure(plotFigures):
                     )
                 comm.Barrier()
                 if rank == 0:
-                    # self.plotMergeSeries(results)
+                    # self.mergePlotsIK(results)
                     plt.cla()
                     plt.clf()
                     for j in range(len(results[0])):
@@ -1918,8 +1954,7 @@ class procedure(plotFigures):
             if self.peakLen == None:
                 self.peakLen = 2
             else:
-                if rank == 0:
-                    print(self.peakLen)
+                mprint(self.peakLen)
             iterations = comm.bcast(
                 [(i, j) for j in [0.3, self.peakLen] for i in range(papCount)]
             )
@@ -1947,7 +1982,9 @@ class procedure(plotFigures):
             resMat = np.zeros((koCond * 2, papCount))
             for cells in AllCells:
                 for cell in cells:
-                    if cell.multiple > 0 or hasattr(cell, "GABACount"):
+                    if cell.multiple > 0 or (
+                        hasattr(cell, "GABACount") and cell.GABACount > 0
+                    ):
                         if cell.GENEDict["kir2"] == controlKir:
                             if (
                                 "GluTrans" in cell.GENEDict.keys()
@@ -2950,7 +2987,7 @@ class procedure(plotFigures):
     def potassiumComparison(self):
         self.KoCompMax = 16
         self.KoCompStep = 2
-        for comparison in ["durStim"]:
+        for comparison in ["seed"]:  # , "PAPLen", "KoSize", "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -2964,9 +3001,9 @@ class procedure(plotFigures):
                 compStep = 1
                 startb = 1
             elif comparison == "seed":
-                compMax = 14
+                compMax = 15
                 compStep = 1
-                startb = 0
+                startb = 1
 
             if comparison != "KoSize":
                 if comparison == "PAPLen":
@@ -3157,6 +3194,8 @@ class procedure(plotFigures):
             )
             if comparison == "PAPLen":
                 self.plotIKSeries(results, tagReset=True, setKoylim=True)
+            elif comparison == "seed":
+                self.mergePlotsIK(results, "KoSize", "seed", selected=1)
 
     def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):
         comm.Barrier()
@@ -3219,7 +3258,10 @@ class procedure(plotFigures):
             else:
                 adjust = 0
             imArray = np.zeros(
-                (2 * int(self.KirMax / self.KirStep) + 1, int(maxStep / intermStep) + (1-adjust))
+                (
+                    2 * int(self.KirMax / self.KirStep) + 1,
+                    int(maxStep / intermStep) + (1 - adjust),
+                )
             )
             for res in results:
                 arrayValue = max(res[0].vPAP) - res[0].RMP
@@ -3649,7 +3691,7 @@ class procedure(plotFigures):
                     )
                     if correctArtifact:
                         sim_f += spl(sim_time)
-                        label = f"corrected\n{i} stim simulation"
+                        label = f"\n{i} stim simulation"
                     else:
                         label = f"{i} stim simulation"
                     plt.figure(1)
@@ -3715,7 +3757,7 @@ class procedure(plotFigures):
                     )
                     if correctArtifact:
                         sim_f += spl(sim_time)
-                        label = f"corrected\n{i} stim simulation"
+                        label = f"{i} stim simulation"
                     else:
                         label = f"{i} stim simulation"
                     ax2.plot(
@@ -4061,8 +4103,8 @@ class procedure(plotFigures):
                 range(int(spikeNumMax / spikeNumStep) + 1),
                 np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
-            plt.clim((0, 50))
+            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 35, 10), extend="max")
+            plt.clim((0, 35))
             plt.savefig(
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")
             )
@@ -4111,7 +4153,7 @@ class procedure(plotFigures):
 if __name__ == "__main__":
     if size == 3:
         mprint("exp fit")
-        testBools = [True,False]
+        testBools = [True, False]
         for PAP in testBools:
             for forcedAccum in [True, False]:
                 exp = procedure(3, 0)
