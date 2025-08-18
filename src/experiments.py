@@ -621,181 +621,189 @@ class plotFigures:
     def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
         plt.cla()
         plt.clf()
-        if Kir:
-            if self.GluT:
-                imArray = np.zeros(
-                    (
-                        2 * int(self.KirMax / self.KirStep) + 1,
-                        2 * int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    )
-                )
-
-            else:
-                imArray = np.zeros(
-                    (
-                        2 * int(self.KirMax / self.KirStep) + 1,
-                        int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    )
-                )
-        elif self.GABAR:
-            imArray = np.zeros(
-                (
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                )
-            )
-        else:
-            imArray = np.zeros((5, 5))
-
-        for res in results:
+        for PAPattr in ['vPAP','vSoma']:
             if Kir:
                 if self.GluT:
-                    imArray[
-                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
-                        int(
-                            (self.channelCompareMax + res[0].comparecount)
-                            / self.channelCompareStep
-                        ),
-                    ] += (
-                        max(res[0].vPAP) - res[0].RMP
+                    imArray = np.zeros(
+                        (
+                            2 * int(self.KirMax / self.KirStep) + 1,
+                            2 * int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        )
                     )
 
                 else:
-                    # bug when stimulus but not GABAR
+                    imArray = np.zeros(
+                        (
+                            2 * int(self.KirMax / self.KirStep) + 1,
+                            int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        )
+                )
+            elif self.GABAR:
+                imArray = np.zeros(
+                    (
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    )
+                )
+            else:
+                imArray = np.zeros((5, 5))
+
+            plt.cla()
+            plt.clf()
+            for res in results:
+                if Kir:
+                    if self.GluT:
+                        imArray[
+                            int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+                            int(
+                                (self.channelCompareMax + res[0].comparecount)
+                                / self.channelCompareStep
+                            ),
+                        ] += (
+                            max(getattr(res[0],PAPattr)) - res[0].RMP
+                        )
+
+                    else:
+                        # bug when stimulus but not GABAR
+                        imArray[
+                            int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+                            int(res[0].comparecount / self.channelCompareStep),
+                        ] += (
+                            max(getattr(res[0],PAPattr)) - res[0].RMP
+                        )
+                elif self.GABAR:
+                    # if not Kir and GABA i.e. GABA vs. NMDAR do this
                     imArray[
-                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+                        int(res[0].GABACount / self.channelCompareStep),
                         int(res[0].comparecount / self.channelCompareStep),
                     ] += (
-                        max(res[0].vPAP) - res[0].RMP
+                        max(getattr(res[0],PAPattr)) - res[0].RMP
                     )
-            elif self.GABAR:
-                # if not Kir and GABA i.e. GABA vs. NMDAR do this
-                imArray[
-                    int(res[0].GABACount / self.channelCompareStep),
-                    int(res[0].comparecount / self.channelCompareStep),
-                ] += (
-                    max(res[0].vPAP) - res[0].RMP
-                )
 
+                else:
+                    imArray[
+                        int(res[0].PAPLen / 0.3) - 1,
+                        int(res[0].comparecount / self.channelCompareStep) - 1,
+                    ] += (
+                        max(getattr(res[0],PAPattr)) - res[0].RMP
+                    )
+
+            cmap = "magma"
+
+            imArray /= divedend
+            plt.imshow(
+                imArray,
+                cmap=cmap,
+                origin="lower",
+                interpolation="nearest",
+                aspect="equal",
+            )
+            if self.GluT:
+                addChan = 1
+                chanStart = -1 * int(self.channelCompareMax / self.channelCompareStep)
+                skip = 2
+                xlabels = (
+                    np.arange(
+                        chanStart,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        skip,
+                    )
+                    * self.channelCompareStep
+                    * res[0].PAPGluTCount_std
+                    + res[0].PAPGluTCount
+                )
+                xlabels = [int(val) if val > 0 else 0 for val in xlabels]
+
+                plt.xticks(
+                    range(
+                        0,
+                        2 * int(self.channelCompareMax / self.channelCompareStep) + addChan,
+                        skip,
+                    ),
+                    xlabels,
+                )
             else:
-                imArray[
-                    int(res[0].PAPLen / 0.3) - 1,
-                    int(res[0].comparecount / self.channelCompareStep) - 1,
-                ] += (
-                    max(res[0].vPAP) - res[0].RMP
+                chanStart = 0
+                addChan = 1
+
+            if not self.GluT:
+                plt.xticks(
+                    range(
+                        0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                    ),
+                    np.arange(
+                        chanStart,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        1,
+                    )
+                    * self.channelCompareStep,
+                )
+            if Kir:
+                ytick_labels = (
+                    np.arange(
+                        -1 * int(self.KirMax / self.KirStep),
+                        int(self.KirMax / self.KirStep) + 1,
+                        1,
+                    )
+                    * self.KirStep
+                    * res[0].PAPKirCount_std
+                    + res[0].PAPKirCount
+                )
+                ytick_labels /= res[0].PAPCount
+                ytick_labels[ytick_labels < 0] = 0
+                ytick_labels = ytick_labels.astype(int)
+
+                plt.yticks(
+                    range(2 * int(self.KirMax / self.KirStep) + 1),
+                    ytick_labels,
+                )
+                plt.ylabel("# of Kir Channels")
+            elif self.GABAR:
+                plt.yticks(
+                    range(
+                        0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                    ),
+                    np.arange(
+                        chanStart,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        1,
+                    )
+                    * self.channelCompareStep,
+                )
+                plt.ylabel("# of GABA Channels / um2")
+            else:
+                plt.yticks(
+                    range(0, 5),
+                    [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
+                )
+                plt.ylabel("Affected PAP length (um)")
+            if self.NMDAR:
+                plt.xlabel("# of NMDAR Channels in PAP")
+            elif self.GluT:
+                # plt.xlabel("Multiple of estimated GluT density")
+                plt.xlabel("# of GLT-1 Channels in PAP")
+            elif self.GABAR and Kir:
+                # plt.xlabel("# of GABAR channels / um2")
+                plt.xlabel("# of GABAR channels in PAP")
+            if self.NMDAR or (self.GABAR and Kir):
+                cbarMax = 20
+            else:
+                cbarMax = 50
+            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, cbarMax, 10), extend="max")
+            plt.clim((0, cbarMax))
+            if stdLabels:
+                self.setLabelColors(
+                    res[0].PAParea,
+                    Kir=Kir,
+                    x=True,
+                    y=True,
+                    chanOverride={
+                        "GluT": (res[0].PAPGluTCount, res[0].PAPGluTCount_std),
+                        "Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std),
+                    },
                 )
 
-        cmap = "magma"
-
-        imArray /= divedend
-        plt.imshow(
-            imArray,
-            cmap=cmap,
-            origin="lower",
-            interpolation="nearest",
-            aspect="equal",
-        )
-        if self.GluT:
-            addChan = 1
-            chanStart = -1 * int(self.channelCompareMax / self.channelCompareStep)
-            skip = 2
-            xlabels = (
-                np.arange(
-                    chanStart,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    skip,
-                )
-                * self.channelCompareStep
-                * res[0].PAPGluTCount_std
-                + res[0].PAPGluTCount
-            )
-            xlabels = [int(val) if val > 0 else 0 for val in xlabels]
-
-            plt.xticks(
-                range(
-                    0,
-                    2 * int(self.channelCompareMax / self.channelCompareStep) + addChan,
-                    skip,
-                ),
-                xlabels,
-            )
-        else:
-            chanStart = 0
-            addChan = 1
-
-        if not self.GluT:
-            plt.xticks(
-                range(
-                    0, int(self.channelCompareMax / self.channelCompareStep) + addChan
-                ),
-                np.arange(
-                    chanStart,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    1,
-                )
-                * self.channelCompareStep,
-            )
-        if Kir:
-            ytick_labels = (
-                np.arange(
-                    -1 * int(self.KirMax / self.KirStep),
-                    int(self.KirMax / self.KirStep) + 1,
-                    1,
-                )
-                * self.KirStep
-                * res[0].PAPKirCount_std
-                + res[0].PAPKirCount
-            )
-            ytick_labels[ytick_labels < 0] = 0
-            ytick_labels = ytick_labels.astype(int)
-
-            plt.yticks(
-                range(2 * int(self.KirMax / self.KirStep) + 1),
-                ytick_labels,
-            )
-            plt.ylabel("# of Kir Channels")
-        elif self.GABAR:
-            plt.yticks(
-                range(
-                    0, int(self.channelCompareMax / self.channelCompareStep) + addChan
-                ),
-                np.arange(
-                    chanStart,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    1,
-                )
-                * self.channelCompareStep,
-            )
-            plt.ylabel("# of GABA Channels / um2")
-        else:
-            plt.yticks(
-                range(0, 5),
-                [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
-            )
-            plt.ylabel("Affected PAP length (um)")
-        if self.NMDAR:
-            plt.xlabel("# of NMDAR Channels in PAP")
-        elif self.GluT:
-            # plt.xlabel("Multiple of estimated GluT density")
-            plt.xlabel("# of GLT-1 Channels in PAP")
-        elif self.GABAR and Kir:
-            # plt.xlabel("# of GABAR channels / um2")
-            plt.xlabel("# of GABAR channels in PAP")
-        plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 50, 10), extend="max")
-        plt.clim((0, 50))
-        if stdLabels:
-            self.setLabelColors(
-                res[0].PAParea,
-                Kir=Kir,
-                x=True,
-                y=True,
-                chanOverride={
-                    "GluT": (res[0].PAPGluTCount, res[0].PAPGluTCount_std),
-                    "Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std),
-                },
-            )
-
-        plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}.pdf"))
+            plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}_{PAPattr}.pdf"))
 
 
 #        plt.cla()
@@ -910,8 +918,8 @@ class procedure(plotFigures):
     optNMDAR = 5
     optGABAR = 50
     optGluT = 0  # std * optGluT + mean
-    channelCompareMax = 25
-    channelCompareStep = 5
+    channelCompareMax = 10
+    channelCompareStep = 2
     # max 390
     KirMax = 300
     KirStep = 60
@@ -1414,7 +1422,7 @@ class procedure(plotFigures):
 
     def kvPhasePlane(self):
         self.KirNMDAPhase()
-        self.duramplenPhase()
+        ##self.duramplenPhase()
 
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
@@ -2048,7 +2056,7 @@ class procedure(plotFigures):
             width = 0.25
             multiplier = 0
             x = np.arange(int(len(category) - 2))
-            pattern = {"confined": "", "spillover": "|"}
+            pattern = {"confined": "", "spillover": ""}
             for k, v in val_means.items():
                 offset = width * multiplier
                 rects = plt.bar(
@@ -2621,8 +2629,8 @@ class procedure(plotFigures):
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
-            self.channelCompareMax *= 2
-            self.channelCompareStep *= 2
+            self.channelCompareMax *= 5
+            self.channelCompareStep *= 5
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 5
             self.channelCompareStep = int(self.channelCompareMax / 5)
@@ -2878,6 +2886,7 @@ class procedure(plotFigures):
                     controlV,
                     color=cm.twilight(controlIndex / len(iterations)),
                     marker="D",
+                    markeredgecolor='black'
                     label="Confined",
                     zorder=10,
                 )
@@ -3089,7 +3098,7 @@ class procedure(plotFigures):
                 skip = 1
                 dec = 0
                 printType = int
-                plt.xlabel("stim. duation (ms)")
+                plt.xlabel("stim. duration (ms)")
             elif comparison == "seed":
                 skip = 0
                 dec = 0

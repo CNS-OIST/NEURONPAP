@@ -327,7 +327,7 @@ proc setGABAas(){local lenPAP
 
 proc fINITGABAa(){
     for i = 0, ncGABAaList.count - 1 {
-        ncGABAaList.o(i).weight = 1
+        ncGABAaList.o(i).weight = 1.5
         ncGABAaList.o(i).delay = 0
         // print(nc.weight)
     }

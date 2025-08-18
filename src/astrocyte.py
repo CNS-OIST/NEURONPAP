@@ -144,6 +144,7 @@ class PAPModel(ResultsPAPModel):
         self.seed = seed
         h.setSeed(seed)
         # print(self.PAPLen)
+        self.PAPCount = PAPCount
         if self.Node:
             PAPCount = 3
         for i in range(PAPCount):
