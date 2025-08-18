@@ -91,9 +91,9 @@ for i in $( # for ten random PAPs
 ); do
   # fig 2,3
   echo "Running K comparison experiments" >>$output
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --GluT 0 --stimCount 10 $i  #Fig 2ABCD
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i # Fig 3CD
-  for j in 0.5 10; do                                                                        # for extracellular potassium condition 0.5 and 10
+  mpiexec -n $np python NEURONPAP.py --kComp --GluT 0 --stimCount 10 $i  #Fig 2ABCD
+  mpiexec -n $np python NEURONPAP.py --kComp --stimGlu --stimCount 10 $i # Fig 3CD
+  for j in 0.5 10; do                                                    # for extracellular potassium condition 0.5 and 10
     echo "seed $i-Ko$j" >>$output
     for k in 1 10; do                                                                                                                # for stimCoutn
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i               # Fig 3A
