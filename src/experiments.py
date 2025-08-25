@@ -207,7 +207,6 @@ class plotFigures:
                         second = False
                         startStim = int(cell.initTstop)
                         endStim = max(cell.time)
-                    print(max(cell.time))
                     fig, (ax, ax2) = plt.subplots(1, 2)
                 else:
                     fig, ax = plt.subplots()
@@ -348,7 +347,7 @@ class plotFigures:
                         ax.add_patch(r)
                     else:
                         ax.hlines(
-                            -55,
+                            -50,
                             startStim,
                             endStim,
                             color=self.returnColor(self.locality),
@@ -579,8 +578,7 @@ class plotFigures:
                     total = np.array(total)
                     total = np.unique(total)
 
-                    print(recVal)
-                    print(total.mean(), total.std())
+                    mprint(total.mean(), total.std())
                 for cell in AllRes[compVal].values():
                     alpha = 1
                     if getattr(cell, merge) != selected:
@@ -658,13 +656,14 @@ class plotFigures:
     def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
         plt.cla()
         plt.clf()
-        for PAPattr in ['vPAP','vSoma']:
+        for PAPattr in ["vPAP", "vSoma"]:
             if Kir:
                 if self.GluT:
                     imArray = np.zeros(
                         (
                             2 * int(self.KirMax / self.KirStep) + 1,
-                            2 * int(self.channelCompareMax / self.channelCompareStep) + 1,
+                            2 * int(self.channelCompareMax / self.channelCompareStep)
+                            + 1,
                         )
                     )
 
@@ -674,7 +673,7 @@ class plotFigures:
                             2 * int(self.KirMax / self.KirStep) + 1,
                             int(self.channelCompareMax / self.channelCompareStep) + 1,
                         )
-                )
+                    )
             elif self.GABAR:
                 imArray = np.zeros(
                     (
@@ -697,7 +696,7 @@ class plotFigures:
                                 / self.channelCompareStep
                             ),
                         ] += (
-                            max(getattr(res[0],PAPattr)) - res[0].RMP
+                            max(getattr(res[0], PAPattr)) - res[0].RMP
                         )
 
                     else:
@@ -706,7 +705,7 @@ class plotFigures:
                             int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
                             int(res[0].comparecount / self.channelCompareStep),
                         ] += (
-                            max(getattr(res[0],PAPattr)) - res[0].RMP
+                            max(getattr(res[0], PAPattr)) - res[0].RMP
                         )
                 elif self.GABAR:
                     # if not Kir and GABA i.e. GABA vs. NMDAR do this
@@ -714,7 +713,7 @@ class plotFigures:
                         int(res[0].GABACount / self.channelCompareStep),
                         int(res[0].comparecount / self.channelCompareStep),
                     ] += (
-                        max(getattr(res[0],PAPattr)) - res[0].RMP
+                        max(getattr(res[0], PAPattr)) - res[0].RMP
                     )
 
                 else:
@@ -722,7 +721,7 @@ class plotFigures:
                         int(res[0].PAPLen / 0.3) - 1,
                         int(res[0].comparecount / self.channelCompareStep) - 1,
                     ] += (
-                        max(getattr(res[0],PAPattr)) - res[0].RMP
+                        max(getattr(res[0], PAPattr)) - res[0].RMP
                     )
 
             cmap = "magma"
@@ -754,7 +753,8 @@ class plotFigures:
                 plt.xticks(
                     range(
                         0,
-                        2 * int(self.channelCompareMax / self.channelCompareStep) + addChan,
+                        2 * int(self.channelCompareMax / self.channelCompareStep)
+                        + addChan,
                         skip,
                     ),
                     xlabels,
@@ -766,7 +766,8 @@ class plotFigures:
             if not self.GluT:
                 plt.xticks(
                     range(
-                        0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                        0,
+                        int(self.channelCompareMax / self.channelCompareStep) + addChan,
                     ),
                     np.arange(
                         chanStart,
@@ -798,7 +799,8 @@ class plotFigures:
             elif self.GABAR:
                 plt.yticks(
                     range(
-                        0, int(self.channelCompareMax / self.channelCompareStep) + addChan
+                        0,
+                        int(self.channelCompareMax / self.channelCompareStep) + addChan,
                     ),
                     np.arange(
                         chanStart,
@@ -826,7 +828,9 @@ class plotFigures:
                 cbarMax = 20
             else:
                 cbarMax = 50
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, cbarMax, 10), extend="max")
+            plt.colorbar(
+                label="Voltage (mV)", ticks=np.arange(0, cbarMax, 10), extend="max"
+            )
             plt.clim((0, cbarMax))
             if stdLabels:
                 self.setLabelColors(
@@ -840,7 +844,12 @@ class plotFigures:
                     },
                 )
 
-            plt.savefig(os.path.join("../results/paperRes", f"FullComparison{tag}_{PAPattr}.pdf"))
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes", f"FullComparison{tag}_{PAPattr}.pdf"
+                )
+            )
+
 
 #        plt.cla()
 #        plt.clf()
@@ -1277,7 +1286,6 @@ class procedure(plotFigures):
     def SomaVC(self):
         funcArgs = []
         vClampList = comm.bcast(list(np.arange(-95, -40, 5)), root=0)
-        print(vClampList)
         plt.cla()
         plt.clf()
         funcArgs.append(
@@ -1305,7 +1313,6 @@ class procedure(plotFigures):
         if rank == 0:
             for cells in results:
                 for cell in cells:
-                    print(cell.voltageClamp)
                     plt.plot(cell.time, cell.vSoma, color="black")
 
             plt.xlabel("time (ms)")
@@ -1853,7 +1860,6 @@ class procedure(plotFigures):
         plt.ylabel("Membrane potential change (mV)")
         plt.xlabel("extracellular [K] (mM)")
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
-        print(koList)
 
     def KOComp(self, papCount=15, koCond=6):
         for transmitter in ["GABAR", "NMDAR"]:
@@ -2157,12 +2163,12 @@ class procedure(plotFigures):
             ax.axhline(
                 val_means["confined"][0],
                 linestyle="--",
-                c=cm.twilight(controlIndex / len(iterations)),
+                c=cm.twilight_shifted(controlIndex / len(iterations)),
             )
             ax.axhline(
                 val_means["spillover"][0],
                 linestyle="--",
-                c=cm.twilight(maxIndex / len(iterations)),
+                c=cm.twilight_shifted(maxIndex / len(iterations)),
             )
 
             with open(
@@ -2485,7 +2491,7 @@ class procedure(plotFigures):
                 video = False
             else:
                 video = True
-            cells.setKBath(8, dur=500, video=video, isolate=isolate)
+            cells.setKBath(10, dur=500, video=video, isolate=isolate)
             cells.run()
 
         cells = cells.copyAttr()
@@ -2866,7 +2872,7 @@ class procedure(plotFigures):
                         0
                     ]  # get index of PAPLen position in iterations
                     cindex = i / len(iterations)
-                    color = cm.twilight(cindex)
+                    color = cm.twilight_shifted(cindex)
                     initStep = int((cell.initTstop - 10) / cell.dt)
                     plt.plot(
                         np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
@@ -2913,7 +2919,7 @@ class procedure(plotFigures):
             ax.scatter(
                 iterations,
                 vList,
-                cmap="twilight",
+                cmap="twilight_shifted",
                 c=[i / len(iterations) for i in range(len(iterations))],
             )
             # plot control as diamond
@@ -2921,9 +2927,9 @@ class procedure(plotFigures):
                 ax.scatter(
                     self.PAPLen,
                     controlV,
-                    color=cm.twilight(controlIndex / len(iterations)),
+                    color=cm.twilight_shifted(controlIndex / len(iterations)),
                     marker="D",
-                    markeredgecolor='black'
+                    edgecolor="black",
                     label="Confined",
                     zorder=10,
                 )
@@ -2941,7 +2947,7 @@ class procedure(plotFigures):
             ax.scatter(
                 iterations[maxIndex],
                 vList[maxIndex],
-                color=cm.twilight(maxIndex / len(iterations)),
+                color=cm.twilight_shifted(maxIndex / len(iterations)),
                 label="Spillover",
                 zorder=11,
             )
@@ -2950,7 +2956,7 @@ class procedure(plotFigures):
                     self.peakLen,
                     ymax=vList[maxIndex] / maxY,
                     linestyle="--",
-                    color=cm.twilight(maxIndex / len(iterations)),
+                    color=cm.twilight_shifted(maxIndex / len(iterations)),
                     zorder=-2,
                 )
                 if maxIndex < (len(iterations) - 1):
