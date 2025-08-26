@@ -196,8 +196,8 @@ class PAPModel(ResultsPAPModel):
                 self.GABACount = GABACount
 
         if "kir2" in kwargs.keys():
-            print(kwargs["kir2"])
-            print(type(kwargs["kir2"]))
+            # print(kwargs["kir2"])
+            # print(type(kwargs["kir2"]))
             if kwargs["kir2"] > 400:
                 self.dt = dt / 3
                 h.dt = self.dt
@@ -224,7 +224,7 @@ class PAPModel(ResultsPAPModel):
             self.comparecount = self.multiple
             # print(self.multiple)
 
-        print(self.comparecount)
+        # print(self.comparecount)
         # scale the number at the end
         if PAPLen > 0.3:
             self.multiple = int(

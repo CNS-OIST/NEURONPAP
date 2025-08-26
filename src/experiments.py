@@ -829,7 +829,7 @@ class plotFigures:
             else:
                 cbarMax = 50
             plt.colorbar(
-                label="Voltage (mV)", ticks=np.arange(0, cbarMax, 10), extend="max"
+                label="Voltage (mV)", ticks=np.arange(0, cbarMax, 2), extend="max"
             )
             plt.clim((0, cbarMax))
             if stdLabels:
@@ -960,7 +960,7 @@ class plotFigures:
 class procedure(plotFigures):
     leak = 3e5
     optKir = 0  # std * optkir  + mean
-    optNMDAR = 5
+    optNMDAR = 10
     optGABAR = 50
     optGluT = 0  # std * optGluT + mean
     channelCompareMax = 10
@@ -1465,7 +1465,7 @@ class procedure(plotFigures):
 
     def kvPhasePlane(self):
         self.KirNMDAPhase()
-        ##self.duramplenPhase()
+        # self.duramplenPhase()
 
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
@@ -1580,10 +1580,7 @@ class procedure(plotFigures):
                             zorder=z,
                         )
                         if i == len(results) - 1:
-                            x = np.linspace(
-                                min(list(cell.KoPAP)[initStep:]),
-                                max(list(cell.KoPAP)[initStep:]),
-                            )
+                            x = np.linspace(1, 25)
                             plt.plot(
                                 x,
                                 self.nernst(x, cell.kin),
@@ -1672,7 +1669,7 @@ class procedure(plotFigures):
                 iterations = comm.bcast(
                     [
                         (kircount, conc)
-                        for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 20.0])
+                        for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 16.0])
                     ],
                     root=0,
                 )
@@ -1686,6 +1683,7 @@ class procedure(plotFigures):
                         ccList,
                         [["initialize", "multiSpike", "run"]],
                         [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
+                        randomize=False,
                     )
 
                 else:
@@ -1722,10 +1720,7 @@ class procedure(plotFigures):
                                 zorder=z,
                             )
                             if i == len(results) - 1:
-                                x = np.linspace(
-                                    min(list(cell.KoPAP)[initStep:]),
-                                    max(list(cell.KoPAP)[initStep:]),
-                                )
+                                x = np.linspace(1, 25)
                                 plt.plot(
                                     x,
                                     self.nernst(x, cell.kin),
@@ -1740,7 +1735,7 @@ class procedure(plotFigures):
                                     plt.legend()
                                 plt.ylabel("Voltage (mV)")
                                 plt.xlabel("[K]o (mM)")
-                                plt.ylim((-90, -50))
+                                plt.ylim((-90, -30))
                                 plt.xlim((2, 25))
                                 plt.savefig(
                                     os.path.join(
@@ -1887,8 +1882,7 @@ class procedure(plotFigures):
             if i == 0:
                 self.GluT = True
                 setattr(self, transmitter, True)
-                controlKir = self.optKir
-                self.optKir = controlKir
+                self.optKir = 0
                 controlLeak = self.leak
                 tmpdt = self.dt
             elif i < 3:
@@ -1896,18 +1890,18 @@ class procedure(plotFigures):
                 setattr(self, transmitter, True)
                 if i == 1:
                     # Kir OE
-                    self.optKir = controlKir * 6.0  # from experiment
+                    self.optKir = self.KirMax  # from experiment
                     self.dt *= 0.1
                     self.leak = controlLeak
                 else:
                     self.leak = 8455
                     # match findings of Djukic et al. (2007) of -76.3 mV
                     self.dt = tmpdt
-                    self.optKir = 0  # from experiment
+                    self.optKir = -self.KirMax  # from experiment
             else:
                 self.leak = controlLeak
                 self.dt = tmpdt
-                self.optKir = controlKir
+                self.optKir = 0
                 if i == 3:
                     # NMDARKO
                     self.GluT = True
@@ -1958,7 +1952,7 @@ class procedure(plotFigures):
 
             comm.Barrier()
             if self.peakLen == None:
-                self.peakLen = 2
+                self.peakLen = 5
             else:
                 mprint(self.peakLen)
             iterations = comm.bcast(
@@ -1991,7 +1985,7 @@ class procedure(plotFigures):
                     if cell.multiple > 0 or (
                         hasattr(cell, "GABACount") and cell.GABACount > 0
                     ):
-                        if cell.GENEDict["kir2"] == controlKir:
+                        if cell.GENEDict["kir2"] == 0:
                             if (
                                 "GluTrans" in cell.GENEDict.keys()
                                 and cell.GENEDict["GluTrans"] != None
@@ -2005,7 +1999,7 @@ class procedure(plotFigures):
                                 setattr(self, transmitter, True)
                                 k = 4
                                 self.addChannelTag()
-                        elif cell.GENEDict["kir2"] > controlKir:
+                        elif cell.GENEDict["kir2"] > 0:
                             # Kir OE
                             k = 1
                             self.addChannelTag()
@@ -2115,7 +2109,7 @@ class procedure(plotFigures):
                 multiplier += 1
             plt.xticks(x + width / len(val_means.keys()), category[0:1] + category[3:])
             plt.legend()
-            plt.ylabel("Voltage (mV)")
+            plt.ylabel("Membrane potential change (mV)")
             plt.ylim(0, 70)
             plt.savefig(
                 os.path.join(
@@ -2892,7 +2886,7 @@ class procedure(plotFigures):
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
             )
-            plt.xlim((140, 160))
+            plt.xlim((0.140, 0.160))
             plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
             plt.savefig(
                 os.path.join(
@@ -2943,7 +2937,7 @@ class procedure(plotFigures):
             maxIndex = vList.index(max(vList))
             maxY = max(vList) + 5
 
-            self.peakLen = iterations[maxIndex]
+            # self.peakLen = iterations[maxIndex]
             ax.scatter(
                 iterations[maxIndex],
                 vList[maxIndex],
@@ -2952,21 +2946,26 @@ class procedure(plotFigures):
                 zorder=11,
             )
             if self.GluStim and self.KStim:
-                ax.axvline(
-                    self.peakLen,
-                    ymax=vList[maxIndex] / maxY,
-                    linestyle="--",
-                    color=cm.twilight_shifted(maxIndex / len(iterations)),
-                    zorder=-2,
-                )
-                if maxIndex < (len(iterations) - 1):
-                    ax.text(
-                        self.peakLen * 1.1, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm"
+                if self.peakLen is not None:
+                    ax.axvline(
+                        self.peakLen,
+                        ymax=vList[maxIndex] / maxY,
+                        linestyle="--",
+                        color=cm.twilight_shifted(maxIndex / len(iterations)),
+                        zorder=-2,
                     )
-                else:
-                    ax.text(
-                        self.peakLen * 0.8, 0.1 * maxY, f"{self.peakLen:.2f} \u03bcm"
-                    )
+                    if maxIndex < (len(iterations) - 1):
+                        ax.text(
+                            self.peakLen * 1.1,
+                            0.1 * maxY,
+                            f"{self.peakLen:.2f} \u03bcm",
+                        )
+                    else:
+                        ax.text(
+                            self.peakLen * 0.8,
+                            0.1 * maxY,
+                            f"{self.peakLen:.2f} \u03bcm",
+                        )
             ax.legend()
             ax.set_ylim((0, maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -4109,7 +4108,7 @@ class procedure(plotFigures):
                 range(int(spikeNumMax / spikeNumStep) + 1),
                 np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 35, 10), extend="max")
+            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 30, 5), extend="max")
             plt.clim((0, 35))
             plt.savefig(
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")

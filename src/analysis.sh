@@ -60,13 +60,15 @@ else
 fi
 
 # Prepare directories
-rm ../morphResults/video/* intermediaryData/*
+echo "remove intermediary files?"
+rm -rI ../morphResults/video/ intermediaryData/
 if [ ! -d "../results" ]; then
   echo "Directory ../results does not exist"
   mkdir ../results
 fi
 
-rm -r ../results/paperRes
+echo "remove results?"
+rm -rI ../results/paperRes
 mkdir ../results/paperRes
 
 # of paps
@@ -124,11 +126,11 @@ for i in $( # for ten random PAPs
 done
 
 {
-  if (($np >= 10)); then
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 6BCD
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 1 --GluT 1 --GABAR 0 $seed
-    mpiexec -n 10 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed
+  if (($np >= 6)); then
+    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 6BCD
+    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed
+    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 1 --GluT 1 --GABAR 0 $seed
+    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed
   else
     echo "Skipped Phase plane analysees and bath experiments"
     echo "They take quite long so run them individually or with more processes"
