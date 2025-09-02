@@ -1,42 +1,51 @@
-# Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs) 
-## Active enhancement of synapse driven depolarization of perisynaptic astrocytic processes
-- Ryo J. Nakatani(ryo.nakatani@oist.jp)
+# Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs)
+
+## Mechanisms of perisynaptic astrocyte depolarization in response to neuronal activity
+
+- Ryo J. Nakatani(<ryo.nakatani@oist.jp>)
 
 Last Modified: Fri, 1 Nov 15:01:54 JST 2024
 
 # introduction
-Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs) 
+
+Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs)
 This model tries to explore the electrophysiolgical properties at PAPs.
 It is the model used in the paper,
 
-"Active enhancement of synapse driven depolarization of perisynaptic astrocytic processes"
+"Mechanisms of perisynaptic astrocyte depolarization in response to neuronal activity"
 by RJ Nakatani and E De Schutter
 
 # installation
-Clone this git repository to your computer. The software runs using NEURON and python3.
-The model has been tested on NEURON ver 8.2 and python 3.10 using MacOSX Ventura 13.0 on a Apple M1 Ultra cpu.
 
+Clone this git repository to your computer. The software runs using NEURON and python3.
+The model has been tested on NEURON ver 8.2 and python 3.10 using MacOSX Ventura 13.0 on a Apple M1 Ultra cpu and Ubuntu Jammy Jellyfish (22.04.4) on a AMD Ryzen Threadripper PRO 7955WX.
 
 # quick start usage
+
 To run the simulations and acquire the main figures of the paper run the command
+
 ```bash
  % cd src
  % bash analysis.sh
 ```
+
 It is recommended to run in parallel with a machine that has over 8 processes.
 The ```analysis.sh``` will try to access the number of available processes before running suitable experimental protocols in parallel.
 If you have ```nproc``` command installed use it to check the number of processes available.
 
 # program capabilities
+
 The model called by ```NEURONPAP.py``` runs various experiments used in the paper.
 For explanation of experiments use,
+
 ```bash
 % python NEURONPAP.py -h
 ```
+
 Which should explain the various command arguments you can utilize to trigger specific experiments.
 
 To run in parallized mode (only specific experimental protocols will utilize paralization),
-run the code with ``` mpiexec -n [numProc] python NEURONPAP.py [args]```
+run the code with ```mpiexec -n [numProc] python NEURONPAP.py [args]```
 
 ```
 usage: NEURONPAP.py [-h] [-r] [-o] [-s] [-n] [-d] [-c] [--spillOver] [--kComp] [--ekComp] [--koComp] [--gluSpill] [-v] [-b] [-p] [--vClamp] [--debug] [--ko KO] [--PAPCount PAPCOUNT] [--stimCount STIMCOUNT] [--ExpVm] [--ek EK]
@@ -82,6 +91,7 @@ options:
 ```
 
 # directory explantion
+
     - src
       - NEURONPAP.py  
         The main program that takes arguments to run the experimental protocols  
@@ -122,20 +132,24 @@ options:
           print message formatter  
     
 # Requirements
+
 The model uses NEURON ver 8.2 and python 3.10.
 Please install,
+
 - NEURON 8.2 >=
 - python 3.10 >=
 
 Any other version has not been tested.
 
 ## Python Requirements
+
 Below is a list of python dependencies
+
 - neuron 8.2 >=
-- matplotlib 3.8.4 >= 
-- json 2.0.9 >= 
+- matplotlib 3.8.4 >=
+- json 2.0.9 >=
 - mpi4py 3.1.4 >=
 - scipy 1.11.4 >=
-- numpy 1.26.4 >= 
+- numpy 1.26.4 >=
 - pandas 2.2.2 >=
 - tqdm 4.66.4 >=
