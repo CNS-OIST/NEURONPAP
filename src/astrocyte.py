@@ -195,7 +195,7 @@ class PAPModel(ResultsPAPModel):
             else:
                 self.GABACount = GABACount
 
-        if "kir2" in kwargs.keys():
+        if "kir2" in kwargs.keys() and kwargs["kir2"] is not None:
             # print(kwargs["kir2"])
             # print(type(kwargs["kir2"]))
             if kwargs["kir2"] > 400:

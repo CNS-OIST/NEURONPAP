@@ -1857,7 +1857,7 @@ class procedure(plotFigures):
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
 
     def KOComp(self, papCount=15, koCond=6):
-        for transmitter in ["GABAR", "NMDAR"]:
+        for transmitter in ["NMDAR", "GABAR"]:
             self.NMDAR = False
             self.GABAR = False
             self.GluT = True
@@ -1891,13 +1891,13 @@ class procedure(plotFigures):
                 if i == 1:
                     # Kir OE
                     self.optKir = self.KirMax  # from experiment
-                    self.dt *= 0.1
+                    # self.dt *= 0.1
                     self.leak = controlLeak
                 else:
                     self.leak = 8455
                     # match findings of Djukic et al. (2007) of -76.3 mV
                     self.dt = tmpdt
-                    self.optKir = -self.KirMax  # from experiment
+                    self.optKir = -2 * self.KirMax  # from experiment
             else:
                 self.leak = controlLeak
                 self.dt = tmpdt
@@ -1928,15 +1928,15 @@ class procedure(plotFigures):
                     "dt": self.dt,
                 }
             )
-            if i == 1:
-                krule = {"kuptake": True}
-            elif i == 2:
-                # nonspecific K+ block
-                # funcArgs[-1]['twik'] = 0
-                # funcArgs[-1]['kleak'] = 0
-                krule = {"kblock": True}
-            else:
-                krule = {}
+            #            if i == 1:
+            #                krule = {"kuptake": True}
+            #            elif i == 2:
+            #                # nonspecific K+ block
+            #                # funcArgs[-1]['twik'] = 0
+            #                # funcArgs[-1]['kleak'] = 0
+            #                krule = {"kblock": True}
+            #            else:
+            krule = {}
 
             if self.NMDAR:
                 funcArgs[-1]["multiple"] = self.optNMDAR
