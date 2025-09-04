@@ -2464,8 +2464,6 @@ class procedure(plotFigures):
         if self.OE:
             funcArgs[-1]["kir2"] = 5
 
-        if funcArgs[-1]["kir2"] > 5:  # to compensate for mathematical unstability
-            funcArgs[-1]["dt"] *= 0.2
         funcArgs[-1]["multiple"] = None
         funcArgs[-1]["Glu"] = False
         funcArgs[-1]["GABACount"] = 0

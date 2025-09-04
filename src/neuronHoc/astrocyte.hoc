@@ -540,7 +540,7 @@ proc plot_varMorph() {localobj rando, sref,slPAP,ps
     ps = new PlotShape(sref)
     ps.variable($s1) // plot variable 2
     if (strcmp($s1,"v")==0){
-        ps.scale(-80,-50)
+        ps.scale(-90,-10)
     } else if (strcmp($s1,"ko")==0) {
         ps.scale(3,10)
     } else if (strcmp($s1,"Ri_inputRes")==0) {
