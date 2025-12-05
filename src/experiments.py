@@ -30,6 +30,78 @@ font = {
 
 plt.rcParams.update(font)
 
+class gl: # global_labels
+    unit_mV = '(mV)'
+    unit_s = '(s)'
+    unit_ms = '(ms)'
+    unit_mM = '(mM)'
+    unit_micron_raw = '$\mu$m'
+    unit_micron = f'({unit_micron_raw})'
+    ms = 'Time ' + unit_ms
+    s = 'Time' + unit_s
+    volt = 'Voltage '+ unit_mV
+    d_volt = 'Membrane potential change ' + unit_mV
+    ek = 'E$_K$ ' + unit_mV
+    durstim = "Stim. duration " + unit_ms
+    pap_affect = "Affected PAP length " + unit_micron
+    seed_num = "Seed number"
+    pap_len = "PAP length " + unit_micron 
+
+    @staticmethod
+    def ion_o (ion):
+        return f"Extracellular [{ion}] " + gl.unit_mM
+
+    @staticmethod
+    def delta_ion_o(ion):
+        return "$\Delta$" + gl.ion_o(ion)
+
+    @staticmethod
+    def chan_num(chan):
+        return f'# of {chan} Channels'
+
+    @staticmethod
+    def free(label):
+        # TODO: add rules to implement like sentence case
+        #
+        gl.correct_sentence_case(label)
+        return label
+
+    @staticmethod
+    def correct_sentence_case(label):
+        s = label
+        if not s:
+            return s
+
+        first_alpha_index = -1
+        for i, char in enumerate(s):
+            # Check if the character is an ASCII letter (a-z, A-Z)
+            if char in string.ascii_letters:
+                first_alpha_index = i
+                break
+
+        # If no alphabetical character is found, return the original string
+        if first_alpha_index == -1:
+            return s
+
+        # Reconstruct the string:
+        # 1. Characters before the first letter (preserved as is)
+        prefix = s[:first_alpha_index]
+        # 2. The first letter (capitalized)
+        first_letter_upper = s[first_alpha_index].upper()
+        # 3. Characters after the first letter (all lowercase)
+        suffix_lower = s[first_alpha_index + 1:].lower()
+        
+        return prefix + first_letter_upper + suffix_lower
+
+# global labels
+#ms = 
+#volt =
+
+
+ 
+
+
+
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -283,13 +355,13 @@ class plotFigures:
                     ax.set_ylim((0, 20))
                 if bath:
                     if second:
-                        ax.set_xlabel("time (s)")
+                        ax.set_xlabel(gl.s)
                     else:
-                        ax.set_xlabel("time (ms)")
+                        ax.set_xlabel(gl.ms)
                 else:
-                    ax.set_xlabel("time (ms)")
+                    ax.set_xlabel(gl.ms)
 
-                ax.set_ylabel("extracellular [K] (mM)")
+                ax.set_ylabel(gl.ion_o('K'))
                 ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
 
@@ -371,14 +443,14 @@ class plotFigures:
                             label=f"{self.locality} stim",
                         )
                     if second:
-                        ax.set_xlabel("time (s)")
+                        ax.set_xlabel(gl.s)
                     else:
-                        ax.set_xlabel("time (ms)")
+                        ax.set_xlabel(gl.ms)
 
                 else:
-                    ax.set_xlabel("time (ms)")
+                    ax.set_xlabel(gl.ms)
 
-                ax.set_ylabel("Voltage (mV)")
+                ax.set_ylabel(gl.volt)
                 ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
@@ -424,8 +496,8 @@ class plotFigures:
                     label=f"PAP Cai",
                     color=self.returnColor("Ca"),
                 )
-                ax.set_xlabel("time (ms)")
-                ax.set_ylabel("Conc. (mM)")
+                ax.set_xlabel(gl.ms)
+                ax.set_ylabel(gl.free("Conc. (mM)"))
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
                 if zoom:
@@ -489,8 +561,8 @@ class plotFigures:
                         label="iGluT",
                         color=self.returnColor("GluT"),
                     )
-                ax.set_xlabel("time (ms)")
-                ax.set_ylabel("Currents at PAP (pA)")
+                ax.set_xlabel(gl.ms)
+                ax.set_ylabel(gl.free("Currents at PAP (pA)"))
                 if setyLim != None:
                     ax.set_ylim(setyLim)
                     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -540,8 +612,8 @@ class plotFigures:
                         label="iGluT",
                         color=self.returnColor("GluT"),
                     )
-                ax.set_xlabel("time (ms)")
-                ax.set_ylabel("Currents at Soma (pA)")
+                ax.set_xlabel(gl.ms)
+                ax.set_ylabel(gl.free("Currents at Soma (pA)"))
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend(loc="lower right")
 
@@ -554,7 +626,7 @@ class plotFigures:
                     label="Soma",
                     color=self.returnColor("Soma"),
                 )
-                ax3.set_ylabel("Voltage")
+                ax3.set_ylabel(gl.volt)
                 ax3.set_ylim((-90, -70))
                 if zoom:
                     ax.set_xlim((initStep * cell.dt, initStep * cell.dt + 30))
@@ -615,9 +687,9 @@ class plotFigures:
                 if zoom:
                     plt.xlim((cell.initTstop - 10, cell.initTstop + 10))
                 plt.legend(title="seed", title_fontsize="x-small", fontsize="xx-small")
-                plt.xlabel("time (ms)")
+                plt.xlabel(gl.ms)
                 if recVal == "vPAP":
-                    plt.ylabel("Voltage (mV)")
+                    plt.ylabel(gl.volt)
                 else:
                     plt.ylabel(recVal)
                 plt.savefig(
@@ -812,7 +884,7 @@ class plotFigures:
                     range(2 * int(self.KirMax / self.KirStep) + 1),
                     ytick_labels,
                 )
-                plt.ylabel("# of Kir Channels")
+                plt.ylabel(gl.chan_num("Kir"))
             elif self.GABAR:
                 plt.yticks(
                     range(
@@ -826,21 +898,21 @@ class plotFigures:
                     )
                     * self.channelCompareStep,
                 )
-                plt.ylabel("# of GABA Channels / um2")
+                plt.ylabel(gl.chan_num("GABA") +  f" /{gl.unit_micron_raw}$^2$")
             else:
                 plt.yticks(
                     range(0, 5),
                     [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
                 )
-                plt.ylabel("Affected PAP length (um)")
+                plt.ylabel(gl.pap_affect)
             if self.NMDAR:
-                plt.xlabel("# of NMDAR Channels in PAP")
+                plt.xlabel(gl.chan_num("NMDAR"))
             elif self.GluT:
                 # plt.xlabel("Multiple of estimated GluT density")
-                plt.xlabel("# of GLT-1 Channels in PAP")
+                plt.xlabel(gl.chan_num("GLT-1")
             elif self.GABAR and Kir:
                 # plt.xlabel("# of GABAR channels / um2")
-                plt.xlabel("# of GABAR channels in PAP")
+                plt.xlabel(gl.chan_num("GABAR"))
             if self.NMDAR or (self.GABAR and Kir):
                 cbarMax = 20
             else:
@@ -1205,13 +1277,11 @@ class procedure(plotFigures):
                 ax.scatter3D(dList, cList, v, c=v, cmap="viridis")
 
                 # Set labels and title
-                ax.set_xlabel("distance")
-                ax.set_ylabel("channel Count")
                 if i == 0:
                     name = "soma"
                 else:
                     name = "PAP"
-                ax.set_zlabel(f"Voltage Change{name}")
+                ax.set_zlabel(gl.d_volt)
 
                 # Show the plot
                 j = ""
@@ -1347,8 +1417,8 @@ class procedure(plotFigures):
                 for cell in cells:
                     plt.plot(cell.time, cell.vSoma, color="black")
 
-            plt.xlabel("time (ms)")
-            plt.ylabel("Voltage (mV)")
+            plt.xlabel(gl.ms)
+            plt.ylabel(gl.volt)
             plt.xlim((140, 260))
             plt.savefig(os.path.join("../results/paperRes", f"VoltageClampSoma.pdf"))
 
@@ -1408,7 +1478,7 @@ class procedure(plotFigures):
         else:
             plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
             plt.clim((0, 20))
-        plt.xlabel("normalized distance")
+        plt.xlabel(gl.free("Normalized distance"))
         plt.xticks(
             range(0, 11, 2), [0, 0.2, 0.4, 0.6, 0.8, 1.0]
         )  # float point generated by np.linspace
@@ -1416,10 +1486,10 @@ class procedure(plotFigures):
         if max_time > 1e3:
             steps_per_time = int(10e3 / cells.dt)  # every 2 s
             cells.dt *= 1e-3
-            plt.ylabel("Time (s)")
+            plt.ylabel(gl.s)
         else:
             steps_per_time = int(20 / cells.dt)  # every 20 ms
-            plt.ylabel("Time (ms)")
+            plt.ylabel(gl.ms)
 
         plt.yticks(
             np.arange(
@@ -1621,8 +1691,8 @@ class procedure(plotFigures):
                                 linestyle="--",
                             )
                             plt.legend()
-                            plt.ylabel("Voltage (mV)")
-                            plt.xlabel("[K]o (mM)")
+                            plt.ylabel(gl.volt)
+                            plt.xlabel(gl.ion_o("K"))
                             if self.PAPLen <= 0.3:
                                 plt.ylim((-90, -50))
                             plt.xlim((2, 14))
@@ -1765,8 +1835,8 @@ class procedure(plotFigures):
                                     and chanCount == self.optNMDAR
                                 ):
                                     plt.legend()
-                                plt.ylabel("Voltage (mV)")
-                                plt.xlabel("[K]o (mM)")
+                                plt.ylabel(gl.volt)
+                                plt.xlabel(gl.ion_o("K"))
                                 plt.ylim((-90, -30))
                                 plt.xlim((2, 25))
                                 plt.savefig(
@@ -1838,8 +1908,8 @@ class procedure(plotFigures):
                 )
 
         plt.legend()
-        plt.xlabel("time (ms)")
-        plt.ylabel("Vm - ek (mV)")
+        plt.xlabel(gl.ms)
+        plt.ylabel(gl.free("Voltage - ek (mV)"))
         plt.savefig(os.path.join("../results/paperRes", "ekDepolarcompTraces.pdf"))
         for cells in AllCells:
             for cell in cells:
@@ -1865,8 +1935,8 @@ class procedure(plotFigures):
                         color=self.returnColor("GluT"),
                     )
                 plt.legend()
-                plt.xlabel("time (ms)")
-                plt.ylabel("current (pA)")
+                plt.xlabel(gl.ms)
+                plt.ylabel(gl.free("current (pA)"))
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -1877,15 +1947,15 @@ class procedure(plotFigures):
         plt.cla()
         plt.clf()
         plt.scatter(ekList, depList, color="black")
-        plt.ylabel("Membrane potential change (mV)")
-        plt.xlabel("ek (mV)")
+        plt.ylabel(gl.d_volt)
+        plt.xlabel(gl.ek)
         plt.savefig(os.path.join("../results/paperRes", "ekDepolarcomp.pdf"))
 
         plt.cla()
         plt.clf()
         plt.scatter(koList, depList, color="black")
-        plt.ylabel("Membrane potential change (mV)")
-        plt.xlabel("extracellular [K] (mM)")
+        plt.ylabel(gl.d_volt)
+        plt.xlabel(gl.ion_o("K"))
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
 
     def KOComp(self, papCount=15, koCond=6):
@@ -2142,7 +2212,7 @@ class procedure(plotFigures):
                 multiplier += 1
             plt.xticks(x + width / len(val_means.keys()), category[0:1] + category[3:])
             plt.legend()
-            plt.ylabel("Membrane potential change (mV)")
+            plt.ylabel(gl.d_volt)
             plt.ylim(0, 70)
             plt.savefig(
                 os.path.join(
@@ -2205,7 +2275,7 @@ class procedure(plotFigures):
             # for k,v in val_test.items():
             #     if v.pvalue < 0.05:
             #         index = category.index(k)
-            ax.set_ylabel("Voltage (mV)")
+            ax.set_ylabel(gl.volt)
             ax.set_ylim(0, 70)
             ax.set_xticks(x[:3] + width / len(val_means.keys()), category[:3])
             ax.legend(loc="upper left", ncols=2)
@@ -2254,8 +2324,8 @@ class procedure(plotFigures):
         kbath[kbath == 0] = np.nan
         _, ax = plt.subplots(figsize=(11, 6))
         ax.plot(list(cells.time)[initStep:], np.divide(flux, kbath))
-        ax.set_xlabel("time (ms)")
-        ax.set_ylabel("Ratio of\ninflux / diffusion\nfor potassium")
+        ax.set_xlabel(gl.ms)
+        ax.set_ylabel(gl.free("Ratio of\ninflux / diffusion\nfor potassium"))
         plt.savefig(os.path.join("../results/paperRes", "fluxRatioOvertime.pdf"))
 
     @read_data
@@ -2415,8 +2485,8 @@ class procedure(plotFigures):
             if self.GluT and GluTime:
                 if hasattr(cells, "GluTGlu"):
                     plt.xlim((150, 300))
-                    plt.xlabel("time (ms)")
-                    plt.ylabel("[Glu]o (mM)")
+                    plt.xlabel(gl.ms)
+                    plt.ylabel(gl.ion_o("Glu"))
                     plt.plot(list(cells.time), list(cells.GluTGlu))
                     plt.savefig(
                         os.path.join(
@@ -2432,8 +2502,8 @@ class procedure(plotFigures):
                 plt.plot(list(cells.time), list(cells.GluTC5), label="C5")
                 plt.plot(list(cells.time), list(cells.GluTC6), label="C6")
                 plt.legend()
-                plt.xlabel("time (ms)")
-                plt.ylabel("Ratio of states")
+                plt.xlabel(gl.ms)
+                plt.ylabel(gl.free("Ratio of states"))
                 plt.savefig(
                     os.path.join("../results/paperRes", f"GluTstates{self.tag}.pdf")
                 )
@@ -2917,8 +2987,8 @@ class procedure(plotFigures):
                 0
             ]  # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex]) / sampleNum
-            plt.xlabel("time (s)")
-            plt.ylabel("Membrane Potential Change (mV)")
+            plt.xlabel(gl.s)
+            plt.ylabel(gl.d_volt)
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
             )
@@ -3005,10 +3075,9 @@ class procedure(plotFigures):
             ax.legend()
             ax.set_ylim((0, maxY))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.set_xlabel("Affected PAP length (\u03bcm)")
-            self.GluT = False  # just to force setLabelColors to highlight PAPLen
-            self.setLabelColors(0, Kir=False, y=True)
-            ax.set_ylabel("Peak Voltage (mV)")
+            
+            ax.set_xlabel(gl.pap_affect)
+            ax.set_ylabel(gl.free("Peak Voltage (mV)"))
             plt.savefig(
                 os.path.join(
                     "../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf"
@@ -3177,17 +3246,17 @@ class procedure(plotFigures):
                 skip = 1
                 dec = 0
                 printType = int
-                plt.xlabel("stim. duration (ms)")
+                plt.xlabel(gl.durstim)
             elif comparison == "seed":
                 skip = 0
                 dec = 0
                 printType = int
-                plt.xlabel("seed number")
+                plt.xlabel(gl.seed_num)
             else:
                 skip = 0
                 dec = 1
                 printType = float
-                plt.xlabel("PAP Length (\u03bcm)")
+                plt.xlabel(gl.pap_len)
             if logx is not None:
                 logx_label = [
                     f"{val:.1f}" if val < 10 else str(np.round(val).astype(int))
@@ -3209,7 +3278,7 @@ class procedure(plotFigures):
             printType = int
             maxStep = self.KoCompMax
             intermStep = self.KoCompStep
-            plt.ylabel("$\Delta$extracellular [K] (mM)")
+            plt.ylabel(gl.delta_ion_o("K"))
             plt.yticks(
                 np.arange(0, int(maxStep / intermStep) + 1, 1),
                 np.round(
@@ -3354,29 +3423,29 @@ class procedure(plotFigures):
                 ylabels,
             )
             if comparison == "PAPLen":
-                plt.ylabel("# of Kir Channels / PAP length (\u03bcm$^{-1}$)")
+                plt.ylabel(gl.chan_num('Kir')+"/ PAP length (\u03bcm$^{-1}$)")
             else:
-                plt.ylabel("# of Kir Channels")
+                plt.ylabel(gl.chan_num('Kir'))
             if comparison == "KoSize":
                 skip = 1
                 dec = 0
                 printType = int
-                plt.xlabel("$\Delta$extracellular [K] (mM)")
+                plt.xlabel(gl.delta_ion_o("K"))
             elif comparison == "durStim":
                 skip = 2
                 dec = 0
                 printType = int
-                plt.xlabel("stim. duation (ms)")
+                plt.xlabel(gl.durstim)
             elif comparison == "seed":
                 skip = 1
                 dec = 0
                 printType = int
-                plt.xlabel("seed number")
+                plt.xlabel(gl.seed_num)
             else:
                 skip = 2
                 dec = 1
                 printType = float
-                plt.xlabel("PAP Length (\u03bcm)")
+                plt.xlabel(gl.pap_len)
             if comparison == "durStim":
                 plt.xticks(
                     np.arange(0, int(maxStep / intermStep), 1),
@@ -3790,13 +3859,13 @@ class procedure(plotFigures):
                     plt.figure(i)
                     plt.xlim((100, 500))
                     plt.legend()
-                    plt.xlabel("Time (ms)")
+                    plt.xlabel(gl.ms)
                     if i == 0:
-                        plt.ylabel("Membrane potential change (mV)")
+                        plt.ylabel(gl.d_volt)
                         plt.ylim((0, ylim_value))
                         Fname += "memb_potential"
                     else:
-                        plt.ylabel("$\Delta F/F_0$ (%)")
+                        plt.ylabel(gl.free("$\Delta F/F_0$ (%)"))
                         plt.ylim((0, ylim_value * -1 / 10))
                         Fname = "fluor"
                     plt.savefig(f"../results/paperRes/{Fname}.pdf")
@@ -4162,8 +4231,8 @@ class procedure(plotFigures):
                 interpolation="nearest",
                 aspect="equal",
             )
-            plt.ylabel("Number of stimuli")
-            plt.xlabel("Frequency (Hz)")
+            plt.ylabel(gl.free("Number of stimuli"))
+            plt.xlabel(gl.free("Frequency (Hz)"))
             plt.xticks(
                 range(0, int(spikeFreqMax / spikeFreqStep) + 1, 2),
                 np.arange(0, spikeFreqMax + 1, spikeFreqStep * 2),
