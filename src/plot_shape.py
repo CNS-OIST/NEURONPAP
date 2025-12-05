@@ -1,10 +1,72 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from neuron import h
+from matplotlib.animation import FuncAnimation
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+
+def animate_morphology(
+    tstop=100,
+    dt=1,
+    rangevar="v",
+    colormap_name="viridis",
+    outfile="morphology_animation.mp4",
+    zoom=None,
+):
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    h.tstop = tstop
+
+    if dt < h.dt:
+        h.dt = dt
+
+    frames = int(tstop / dt)
+
+    plot_3d_morphology(
+        rangevar=rangevar,
+        colormap_name=colormap_name,
+        fig=fig,
+        ax=ax,
+        add_colorbar=True,
+        zoom=zoom,
+    )
+
+    def update(frame_t):
+        ax.cla()  # fully clear axes
+        print(f"rendering {frame_t}/{frames}")
+
+        # draw without creating new colorbars
+        plot_3d_morphology(
+            rangevar=rangevar,
+            colormap_name=colormap_name,
+            fig=fig,
+            ax=ax,
+            add_colorbar=False,
+            zoom=zoom,
+        )
+
+        for i in range(int(dt / h.dt)):
+            h.fadvance()
+
+    anim = FuncAnimation(fig, update, frames=frames, interval=1, repeat=False)
+
+    anim.save(outfile, fps=30)
+    print(f"Saved animation → {outfile}")
 
 
 def plot_3d_morphology(
-    rangevar="v", colormap_name="viridis", fig=None, ax=None, show=False
+    rangevar="v",
+    colormap_name="magma",
+    fig=None,
+    ax=None,
+    add_colorbar=True,
+    show=False,
+    zoom=None,
+    clim=None,
 ):
     """
     Plot NEURON morphology in 3D with diameter scaling and a RANGE variable as color.
@@ -43,25 +105,47 @@ def plot_3d_morphology(
         zlist.append(np.array(zs))
         dlist.append(np.array(ds))
         varlist.append(rv)
+    sm = plt.cm.ScalarMappable(cmap=cmap)
 
-    # Normalize RANGEVAR to colormap
-    vmin = min(varlist)
-    vmax = max(varlist)
-    normed = [(v - vmin) / (vmax - vmin + 1e-12) for v in varlist]
+    if clim:
+        vmin, vmax = clim
+    else:
+        # Normalize RANGEVAR to colormap
+        vmin = min(varlist)
+        vmax = max(varlist)
+    sm.set_clim(vmin=vmin, vmax=vmax)
 
-    # === SCALING CODE ===
-    all_x = np.concatenate(xlist)
-    all_y = np.concatenate(ylist)
-    all_z = np.concatenate(zlist)
+    if zoom:
+        size = 10
+        # get average center of PAP
+        count = 0
+        x = 0
+        y = 0
+        z = 0
+        for sec in zoom:
+            x += h.x3d(0.5, sec=sec)
+            y += h.y3d(0.5, sec=sec)
+            z += h.z3d(0.5, sec=sec)
+            count += 1
 
-    xmin, xmax = all_x.min(), all_x.max()
-    ymin, ymax = all_y.min(), all_y.max()
-    zmin, zmax = all_z.min(), all_z.max()
+        mid_x = x / count
+        mid_y = y / count
+        mid_z = z / count
+        max_range = size
+    else:
+        # === SCALING CODE ===
+        all_x = np.concatenate(xlist)
+        all_y = np.concatenate(ylist)
+        all_z = np.concatenate(zlist)
 
-    max_range = max(xmax - xmin, ymax - ymin, zmax - zmin)
-    mid_x = (xmax + xmin) / 2
-    mid_y = (ymax + ymin) / 2
-    mid_z = (zmax + zmin) / 2
+        xmin, xmax = all_x.min(), all_x.max()
+        ymin, ymax = all_y.min(), all_y.max()
+        zmin, zmax = all_z.min(), all_z.max()
+
+        max_range = max(xmax - xmin, ymax - ymin, zmax - zmin)
+        mid_x = (xmax + xmin) / 2
+        mid_y = (ymax + ymin) / 2
+        mid_z = (zmax + zmin) / 2
 
     ax.set_xlim(mid_x - max_range / 2, mid_x + max_range / 2)
     ax.set_ylim(mid_y - max_range / 2, mid_y + max_range / 2)
@@ -69,25 +153,23 @@ def plot_3d_morphology(
     # === END SCALING ===
 
     # Plot each section with diameter scaling and color mapping
-    for xs, ys, zs, ds, rv_norm in zip(xlist, ylist, zlist, dlist, normed):
-        color = cmap(rv_norm)
+    for xs, ys, zs, ds, rv in zip(xlist, ylist, zlist, dlist, varlist):
+        color = sm.to_rgba(rv)
         ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2)
-
-    # Colorbar
-    sm = plt.cm.ScalarMappable(cmap=cmap)
-    sm.set_array([vmin, vmax])
-    cbar = plt.colorbar(sm, ax=ax)
-    cbar.set_label(rangevar)
 
     # Integer ticks
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.zaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
-    ax.set_title(f"3D Morphology Colored by {rangevar}")
+    # === Colorbar (optional) ===
+    if add_colorbar:
+        cbar = plt.colorbar(sm, ax=ax)
+        cbar.set_label(rangevar)
+
+    ax.set_xlabel("x ($\mu$m)")
+    ax.set_ylabel("y ($\mu$m)")
+    ax.set_zlabel("z ($\mu$m)")
 
     plt.tight_layout()
     if show:

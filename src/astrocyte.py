@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import math
 from textSDIO import *
+from plot_shape import *
 
 
 class PAPModel(ResultsPAPModel):
@@ -628,31 +629,17 @@ class PAPModel(ResultsPAPModel):
             self.frames = []
         if stop == None:
             stop = self.tstop
-        while h.t < stop:
-            if int(h.t / self.dt) % interval == 0:
-                for v in var:
-                    fname = f"astro{v}_{int(h.t / self.dt)}.psf"
-                    self.plotWholecellVariable(
-                        v, os.path.join("../morphResults/video", fname)
-                    )
-                    if zoom:
-                        fname = f"pap{v}_{int(h.t / self.dt)}.psf"
-                        self.plotWholecellVariable(
-                            v, os.path.join("../morphResults/video", fname), zoom=zoom
-                        )
-            h.fadvance()
-        for v in var:
-            subprocess.call(
-                f"convert -delay 2 -loop 0 ../morphResults/video/astro{v}*.psf ../morphResults/video/{v}Morph_{self.seed}_{self.Ko}.gif",
-                shell=True,
-            )
-            subprocess.call(f"rm -f ../morphresults/video/astro{v}*.psf ", shell=True)
-            if zoom:
-                subprocess.call(
-                    f"convert -delay 2 -loop 0 ../morphResults/video/pap{v}*.psf ../morphResults/video/{v}PAPMorph_{self.seed}_{self.Ko}.gif",
-                    shell=True,
-                )
-                subprocess.call(f"../morphresults/video/pap{v}*.psf", shell=True)
+        if zoom:
+            pap = self.flattenPAP()
+        else:
+            pap = None
+        animate_morphology(
+            tstop=stop,
+            dt=interval * self.dt,
+            rangevar=var,
+            outfile=f"morph{var}.mp4",
+            zoom=pap,
+        )
         return
 
     def flattenPAP(self):
@@ -664,9 +651,11 @@ class PAPModel(ResultsPAPModel):
 
     def plotWholecellVariable(self, var, frameName, zoom=False):
         if zoom:
-            ps = h.plotPAP_varMorph(var, frameName, self.flattenPAP())
+            plot_3d_morphology(rangevar=var, zoom=self.flattenPAP())
         else:
-            ps = h.plot_varMorph(var, frameName)
+            # ps = h.plot_varMorph(var, frameName)
+            plot_3d_morphology(rangevar=var)
+            plt.savefig(frameName)
 
     def plot_topology(self, zoom=False):
         if rank == 0:
@@ -686,8 +675,15 @@ class PAPModel(ResultsPAPModel):
                 )
 
     def plotMorphParms(self):
-        h.plot_varMorph("diam", "DiamMap.psf")
-        h.plot_varMorph("nseg", "nsegMap.psf")
+        plot_3d_morphology(rangevar="diam")
+        plt.savefig("DiamMap.pdf")
+        plt.cla()
+        plt.clf()
+        plot_3d_morphology(rangevar="nseg")
+        plt.savefig("nsegMap.pdf")
+
+        # h.plot_varMorph("diam", "DiamMap.psf")
+        # h.plot_varMorph("nseg", "nsegMap.psf")
 
     def morph(self, isolate=False, printTopology=False):
         print("function morph is depracated")
@@ -1153,14 +1149,18 @@ class PAPModel(ResultsPAPModel):
                     self.saveRiDict()
         else:
             h.getAllRi()
-            h.plot_varMorph("Ri", "RiMap.psf")
+            # h.plot_varMorph("Ri", "RiMap.psf")
+            plot_3d_morphology(rangevar="Ri")
+            plt.savefig("RiMap.pdf")
 
     def mapRi(self, sectionDict):
         for k, v in sectionDict.items():
             RiSec = self.getSecbyName(k)
             RiSec.insert("inputRes")
             RiSec.Ri_inputRes = v
-        h.plot_varMorph("Ri_inputRes", "RiMap.psf")
+        # h.plot_varMorph("Ri_inputRes", "RiMap.psf")
+        plot_3d_morphology(rangevar="Ri_inputRes")
+        plt.savefig("RiMap.pdf")
 
     def saveRiDict(self):
         for sName, v in self.RiDict.items():
