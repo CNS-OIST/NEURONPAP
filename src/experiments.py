@@ -16,6 +16,7 @@ from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline as spline
 import json
 import pandas as pd
+import inspect
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -50,6 +51,19 @@ class plotFigures:
         "local": "white",
         "global": "darkgray",
     }
+
+    def save_src_Data(plot_func):
+        def wrapper(self,*args,**kwargs):
+            caller = inspect.stack()[1]
+            func_name = plot_func.__name__
+            fName = f'{caller}_{func_name}_{self.tag}'
+            AllCells = args[0]
+            if os.path.isfile(os.path.join("intermediaryData", fName)):
+                with open(os.path.join("intermediaryData", fName), "wb") as handle:
+                    pickle.dump(AllCells, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            res = plot_func(*args,**kwargs)
+            return res
+        return wrapper
 
     def resetTag(self, cell):
         # reset figure tag based on result parms
@@ -117,6 +131,7 @@ class plotFigures:
         cells = PAPModel(**funcArgs[-1])
         cells.plotMorphParms()
 
+    @save_src_Data
     def GABANMDARTrace(
         self, AllCells, NMDARCount, GABACount, fName="NMDAR_GABAR_TraceComp"
     ):
@@ -165,6 +180,7 @@ class plotFigures:
         if "OPT_" not in fName:
             self.GABANMDARTrace(AllCells, 10, 40, fName=f"OPT_{fName}")
 
+    @save_src_Data
     def plotIKSeries(
         self,
         AllCells,
@@ -552,6 +568,7 @@ class plotFigures:
 
                 plt.close("all")
 
+    @save_src_Data
     def mergePlotsIK(self, AllCells, comparison, merge, selected=1, zoom=True):
         AllRes = {}
         AllRecVals = ["vPAP", "KoPAP", "ekPAP"]
@@ -991,6 +1008,21 @@ class procedure(plotFigures):
         self.seed = seed
         self.ko = ko
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
+
+    def read_data(exp_func):
+        def wrapper(self,*args,**kwargs):
+            func_name = exp_func.__name__
+            intermediary_files = os.listdir(os.path.join("intermediaryData"))
+            for f in intermediary_files:
+                if func_name in f and self.tag in f:
+                    with open(os.path.join("intermediaryData", f), "rb") as handle:
+                        AllCells = pickle.load(handle)
+                        # override simulation and just output result
+                        def parallizeFor(*args,**kwargs):
+                            return AllCells
+                        exp_func(*args,**kwargs)
+                    break
+            return
 
     def addChannelTag(self):
         self.tag = ""
@@ -1873,6 +1905,7 @@ class procedure(plotFigures):
                 self.NMDAR = True
             self.runKOComp(transmitter, papCount, koCond)
 
+    @read_data
     def runKOComp(self, transmitter, papCount, koCond):
         AllCells = []
         # single run
@@ -2225,6 +2258,7 @@ class procedure(plotFigures):
         ax.set_ylabel("Ratio of\ninflux / diffusion\nfor potassium")
         plt.savefig(os.path.join("../results/paperRes", "fluxRatioOvertime.pdf"))
 
+    @read_data
     def singleRun(self, *args, expOverlay=False, GluTime=False, nearSoma=False):
         # add multispike ek clamp
         self.addChannelTag()
@@ -2434,6 +2468,7 @@ class procedure(plotFigures):
             else:
                 self.kbathExperiment(invivo, isolate)
 
+    @read_data
     def kbathExperiment(self, invivo, isolate):
         # add multispike ek clamp
         self.addChannelTag()
@@ -2508,6 +2543,7 @@ class procedure(plotFigures):
         results = AllCells[0][0]
         # print(max(list(results.vPAP)))
 
+    @read_data
     def gababathExperiment(self):
         # add multispike ek clamp
         self.addChannelTag()
@@ -2661,6 +2697,7 @@ class procedure(plotFigures):
             # self.plotHeatmap(results, tag=self.tag,Kir=False)
             self.GABANMDARTrace(results, self.channelCompareMax, self.channelCompareMax)
 
+    @read_data
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
@@ -2774,7 +2811,8 @@ class procedure(plotFigures):
                 totResults += results
 
     #            self.plotHeatmap(totResults, divedend=len(resFiles))
-
+    #
+    @read_data
     def glutamateSpillOver(self, sampleNum=10):
         self.addChannelTag()
         if self.GluStim:
@@ -3054,6 +3092,7 @@ class procedure(plotFigures):
                     comparison, iterations, maxStep=compMax, intermStep=compStep
                 )
 
+    @read_data
     def runAmpLenComparison(
         self, comparison, iterations, maxStep, intermStep, logx=None
     ):
@@ -3200,6 +3239,7 @@ class procedure(plotFigures):
             elif comparison == "seed":
                 self.mergePlotsIK(results, "KoSize", "seed", selected=1)
 
+    @read_data
     def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):
         comm.Barrier()
         funcArgs = []
