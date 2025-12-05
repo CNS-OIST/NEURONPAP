@@ -41,7 +41,6 @@ lenUnits = 0.3
         // insert nai_acc
         insert ca_acc
         insert GEVI
-        insert kdrglia
         // insert GluTrans
         // insert kdifl
         // ki0_kdifl = 110
@@ -133,8 +132,7 @@ obfunc get_midAstrocytePAP() {localobj candidate
     soma { distance(0,0.5) } // set origin at root
     forall {if (diam < $1 && distance(0.5) < $2) {
         candidate = new SectionRef()
-    }}
-    return candidate
+    }} return candidate
 }
 
 
@@ -378,7 +376,7 @@ FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 
 //initialize Ko
 proc initIon(){local iki,inai
-    iki = 80 //ek set to -92
+    iki = 120 //ek set to -92
     inai = 15 // Verhratsky A 2019 review
     
     // set global Ki

@@ -3487,27 +3487,53 @@ class procedure(plotFigures):
         # maybe bug for result fit check how parms should change with diffrenet leak value
         forcedAccum = None
         if PAP:
-            k = 500
-            mprint(x)
-            NMDAR, s, d, tau2 = x
-            tau1 = 1.69
-            Kir = 0
-            funcArgs.append(
-                {
-                    "mode": 0,
-                    "ComplexMorph": True,
-                    "Glu": True,
-                    "kir2": Kir,
-                    "twik": TWIK,
-                    "clleak": 0,
-                    "naleak": leak,
-                    "dt": self.dt,
-                    "seed": self.seed,
-                    "multiple": NMDAR,
-                    "GluTrans": self.optGluT,
-                    "KoSize": 3,
-                }
-            )
+            if self.GABAR:
+                k = 500
+                mprint(x)
+                GABAR, s, d, tau2 = x
+                tau1 = 1.69
+                Kir = 0
+                funcArgs.append(
+                    {
+                        "mode": 0,
+                        "ComplexMorph": True,
+                        "Glu": False,
+                        "GABA":True,
+                        "GABACount":GABAR,
+                        "kir2": Kir,
+                        "twik": TWIK,
+                        "clleak": 0,
+                        "naleak": leak,
+                        "dt": self.dt,
+                        "seed": self.seed,
+                        "multiple": None,
+                        "GluTrans": None,
+                        "KoSize": 0.5,
+                    }
+                )
+ 
+            else:
+                k = 500
+                mprint(x)
+                NMDAR, s, d, tau2 = x
+                tau1 = 1.69
+                Kir = 0
+                funcArgs.append(
+                    {
+                        "mode": 0,
+                        "ComplexMorph": True,
+                        "Glu": True,
+                        "kir2": Kir,
+                        "twik": TWIK,
+                        "clleak": 0,
+                        "naleak": leak,
+                        "dt": self.dt,
+                        "seed": self.seed,
+                        "multiple": NMDAR,
+                        "GluTrans": self.optGluT,
+                        "KoSize": 3,
+                    }
+                )
         else:
             mprint(x)
             if len(x) == 4:
@@ -3568,7 +3594,7 @@ class procedure(plotFigures):
             stim=stim,
             PAP=PAP,
             showFig=showFig,
-            Fname=f"fit{PAP=}{forcedAccum=}",
+            Fname=f"fit{PAP=}{forcedAccum=}{self.GABAR=}",
             correctArtifact=True,
         )
 
@@ -4162,9 +4188,15 @@ if __name__ == "__main__":
                 exp = procedure(3, 0)
                 kwargs = {"PAP": PAP, "showFig": False}
                 if PAP:
+
                     # initParms = (5, -72.5, 10, 19,0.5)
-                    initParms = (8, -67, 10, 19)
                     bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
+                    if forcedAccum:
+                        initParms = (45, -67, 10, 19)
+                        exp.GABAR = True
+                    else:
+                        initParms = (8, -67, 10, 19)
+                        exp.GABAR = False
                 else:
                     # initParms = (5, -72.5, 10, 19,0.5)
                     #        glt, kir, PAPLen, KoSize, tau2, slowing
