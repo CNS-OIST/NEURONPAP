@@ -18,7 +18,7 @@ UNITS {
 
 PARAMETER {    
     ko0 = 2.5 (mM)
-    fhspace = 100 (angstrom) : effective thickness 
+    fhspace = 200 (angstrom) : effective thickness 
     tauk_0 = 4.0 (ms) :Ransom C.B. (2000) Journal of Physiology
     flag  = 0 (1)
     slowing = 1 (1)

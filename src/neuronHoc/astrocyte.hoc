@@ -7,8 +7,8 @@ celsius = 34
 double lenUnits[1]
 lenUnits = 0.3
 
-// clear morphology
-
+// clear morphologyto
+total_surf = 0
 {
     forall {
         delete_section()
@@ -25,25 +25,26 @@ lenUnits = 0.3
         cm = 0.8
         insert pas
         e_pas = -85
-        g_pas = 1 /  11150
+        //g_pas = 1 / 1450 
+        g_pas = 2.15 // fitted from Zhou 3.6 um
         
         insert kir2
+        insert nakpump
         // insert ncx
         // imax_ncx = 10
         insert twik
+        for (x) total_surf = total_surf + area(x)
         insert kleak
         insert naleak
         insert clleak
         //optimized for -80 mV
         
         insert k_acc
-        insert na_acc
-        // insert nai_acc
-        insert ca_acc
+        insert kdifl
+        //insert na_acc
+        //insert nai_acc
+        //insert ca_acc
         insert GEVI
-        // insert GluTrans
-        // insert kdifl
-        // ki0_kdifl = 110
         
         if (L > lenUnits) {
             nseg = int(L/lenUnits)
@@ -51,6 +52,8 @@ lenUnits = 0.3
     }
 }
 //psection()
+//print total_surf
+forall total_area_twik = total_surf
 
 objref r
 
@@ -378,6 +381,7 @@ FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 proc initIon(){local iki,inai
     iki = 120 //ek set to -92
     inai = 15 // Verhratsky A 2019 review
+    ko0 = 3
     
     // set global Ki
     ki0_k_ion = iki
@@ -388,12 +392,17 @@ proc initIon(){local iki,inai
     forall {
         nao = 140
         nai = inai
-        ko = 2
+        //nai0_nai_acc = inai
+        ko = ko0 
         ki = iki
+        ki0_kdifl = iki 
+        ko0_k_acc = ko0
         clo = 130
         cli = 30
-        cao = 2
-        cai = 50e-6 // 50 nM
+        //cao = 2
+        //cai = 50e-6 // 50 nM
+        km_na_nakpump = inai
+        km_k_nakpump = ko0 
     }
 }
 

@@ -27,7 +27,7 @@ UNITS {
 
 PARAMETER {    
     nao0 = 140 (mM)
-    fhspace = 100 (angstrom) : effective thickness 
+    fhspace = 200 (angstrom) : effective thickness 
     tauna = 3 (ms) : Halnes chapter 9 the NEURON book  of Halnes
     flag  = 0 (1)
 }

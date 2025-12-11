@@ -1,9 +1,6 @@
 TITLE sodium leak model
 
 COMMENT
-This is kinetics of Kir4.1 channels used in the Janic et al. 2022 paper.
-MAYBE needs electrode current statement
-
 
 ENDCOMMENT
 NEURON {

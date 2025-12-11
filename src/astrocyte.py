@@ -863,8 +863,8 @@ class PAPModel(ResultsPAPModel):
         self.NaoPAP.record(self.PAP(0.5)._ref_nao)
         self.CloPAP = h.Vector()
         self.CloPAP.record(self.PAP(0.5)._ref_clo)
-        self.CaiPAP = h.Vector()
-        self.CaiPAP.record(self.PAP(0.5)._ref_cai)
+        # self.CaiPAP = h.Vector()
+        # self.CaiPAP.record(self.PAP(0.5)._ref_cai)
         self.KiPAP = h.Vector()
         self.KiPAP.record(self.PAP(0.5)._ref_ki)
 
@@ -877,9 +877,9 @@ class PAPModel(ResultsPAPModel):
         self.iKPAP = h.Vector()
         self.iKPAP.record(self.PAP(0.5)._ref_ik)
 
-        if hasattr(self.PAP(0.5), "_ref_ica"):
-            self.iCaPAP = h.Vector()
-            self.iCaPAP.record(self.PAP(0.5)._ref_ica)
+        # if hasattr(self.PAP(0.5), "_ref_ica"):
+        #    self.iCaPAP = h.Vector()
+        #    self.iCaPAP.record(self.PAP(0.5)._ref_ica)
 
         if hasattr(self.PAP(0.5), "_ref_ina"):
             self.iNaPAP = h.Vector()

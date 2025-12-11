@@ -531,12 +531,12 @@ class plotFigures:
                     label=f"PAP Cl",
                     color=self.returnColor("Cl"),
                 )
-                ax.plot(
-                    list(cell.time)[initStep:],
-                    list(cell.CaiPAP)[initStep:],
-                    label=f"PAP Cai",
-                    color=self.returnColor("Ca"),
-                )
+                # ax.plot(
+                #    list(cell.time)[initStep:],
+                #    list(cell.CaiPAP)[initStep:],
+                #    label=f"PAP Cai",
+                #    color=self.returnColor("Ca"),
+                # )
                 ax.set_xlabel(gl.ms)
                 ax.set_ylabel(gl.free("Conc. (mM)"))
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
