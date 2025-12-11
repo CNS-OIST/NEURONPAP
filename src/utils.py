@@ -3,17 +3,39 @@ Library of conveninet utils such as parallizeFor
 """
 
 import math
+import os
+import pickle
 from mpi4py import MPI
 import tqdm
 import numpy as np
 from textSDIO import *
 import copy
 import random
+import sys
+from contextlib import contextmanager
 
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
+
+
+@contextmanager
+def global_function_override_runtime(
+    function_name, new_function, module_name="__main__"
+):
+    """Temporarily override a function in the __main__ namespace."""
+    main_module = sys.modules[module_name]
+    original_function = getattr(main_module, function_name, None)
+
+    # Rebind the name in the __main__ module to the new function upon entry
+    setattr(main_module, function_name, new_function)
+
+    try:
+        yield
+    finally:
+        # Crucial: Rebind the name back to the original function upon exit
+        setattr(main_module, function_name, original_function)
 
 
 def MPIReadlines(fName):

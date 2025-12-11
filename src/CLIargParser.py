@@ -44,11 +44,11 @@ def argParser(rangeInt=100):
     )
     parser.add_argument(
         "-n",
-        "--nonhoc",
-        dest="nonhoc",
+        "--no_read_data",
+        dest="nonReadData",
         action="store_true",
         default=False,
-        help="Used to run a single simulation in nonhoc",
+        help="Used to specifiy if not to read from intermediary Data",
     )
 
     parser.add_argument(

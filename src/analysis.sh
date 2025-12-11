@@ -16,6 +16,11 @@ fn_exists() {
   fi
 
 }
+check_modlunit() {
+  for file in $(ls neuronMOD | grep .mod); do
+    uv run modlunit neuronMOD/$file
+  done
+}
 if fn_exists nproc; then
   np=$(nproc)
   echo "$np processes found; Use half"
@@ -55,13 +60,14 @@ fi
 # requires nrnivmodl installation
 if fn_exists nrnivmodl; then
   nrnivmodl neuronMOD
+  check_modlunit
 else
   echo "No NEURON; INSTALL NEURON"
 fi
 
 # Prepare directories
 echo "remove intermediary files?"
-rm -rI ../morphResults/video/ intermediaryData/
+rm -rI ../morphResults/video/ intermediaryData/*
 if [ ! -d "../results" ]; then
   echo "Directory ../results does not exist"
   mkdir ../results

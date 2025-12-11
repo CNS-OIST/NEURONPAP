@@ -499,7 +499,13 @@ class PAPModel(ResultsPAPModel):
             print(nc.syn())
 
     def initialize(
-        self, saveState=False, video=False, kblock=False, kuptake=False, krule=None
+        self,
+        saveState=False,
+        video=False,
+        kblock=False,
+        kuptake=False,
+        krule=None,
+        voltageClamp=True,
     ):
         # print('initializing')
         # sys.stdout.flush()
@@ -541,6 +547,10 @@ class PAPModel(ResultsPAPModel):
         self.record(**recordDictArgs)
         # print('setup Record')
         # sys.stdout.flush()
+        if voltageClamp:
+            h.tstop = self.initTstop
+            h.clampSwitch(1, -80)
+            h.tstop = self.tstop
         h.finitialize(self.v_init)
         h.fcurrent()
         self.getKirCountPAP()
@@ -1118,6 +1128,7 @@ class PAPModel(ResultsPAPModel):
         return (rm * d / ra / 4) ** 0.5  # um
 
     def spaceConstant(self):
+        # TODO: double check if this is correct
         # h.clampSwitch(4, self.voltageClamp)
         # h.run()
         self.initialize()

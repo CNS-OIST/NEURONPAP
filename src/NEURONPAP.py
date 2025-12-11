@@ -43,6 +43,11 @@ def callExperimentMode(**kwargs):
     if "spill" in kwargs.keys() and kwargs["spill"]:
         exp.PAPLen = 5
 
+    if "nonReadData" in kwargs.keys() and kwargs["nonReadData"]:
+        exp.no_read_data = True
+    else:
+        exp.no_read_data = False
+
     if "single" in kwargs.keys() and kwargs["single"]:
         # singleRun
         print("single run")

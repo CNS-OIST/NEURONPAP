@@ -2,9 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from neuron import h
 from matplotlib.animation import FuncAnimation
+from mpi4py import MPI
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
+
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
 
 
 def animate_morphology(
@@ -15,6 +21,8 @@ def animate_morphology(
     outfile="morphology_animation.mp4",
     zoom=None,
 ):
+    if rank != 0:
+        return
 
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
@@ -71,6 +79,8 @@ def plot_3d_morphology(
     """
     Plot NEURON morphology in 3D with diameter scaling and a RANGE variable as color.
     """
+    if rank != 0:
+        return
 
     # Get colormap
     cmap = plt.colormaps[colormap_name]
