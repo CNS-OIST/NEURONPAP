@@ -25,6 +25,10 @@ import matplotlib.cm as cm
 import matplotlib.patches as patches
 import matplotlib.text as mtext
 import matplotlib.colors as mcolors
+import matplotlib.gridspec as gridspec
+
+
+from global_labels import gl
 
 font = {
     "font.family": "sans-serif",
@@ -33,70 +37,6 @@ font = {
 }
 
 plt.rcParams.update(font)
-
-
-class gl:  # global_labels
-    unit_mV = "(mV)"
-    unit_s = "(s)"
-    unit_ms = "(ms)"
-    unit_mM = "(mM)"
-    unit_micron_raw = "$\mu$m"
-    unit_micron = f"({unit_micron_raw})"
-    # label
-    ms = "Time " + unit_ms
-    s = "Time" + unit_s
-    volt = "Voltage " + unit_mV
-    d_volt = "Membrane potential change " + unit_mV
-    ek = "E$_K$ " + unit_mV
-    durstim = "Stim. duration " + unit_ms
-    pap_affect = "Affected PAP length " + unit_micron
-    seed_num = "Seed number"
-    pap_len = "PAP length " + unit_micron
-
-    @staticmethod
-    def clim_zoom(initStep, dt):
-        return (initStep * dt, initStep * dt + 20)
-
-    @staticmethod
-    def ion_o(ion):
-        return f"Extracellular [{ion}] " + gl.unit_mM
-
-    @staticmethod
-    def delta_ion_o(ion):
-        return "$\Delta$" + gl.ion_o(ion)
-
-    @staticmethod
-    def chan_num(chan):
-        return f"# of {chan} Channels"
-
-    @staticmethod
-    def free(label):
-        # TODO: add rules to implement like sentence case
-        #
-        gl.correct_sentence_case(label)
-        return label
-
-    @staticmethod
-    def correct_sentence_case(label):
-        s = label
-        if not s:
-            return s
-
-        first_alpha_index = -1
-        for i, char in enumerate(s):
-            # Check if the character is an ASCII letter (a-z, A-Z)
-            if char in string.ascii_letters:
-                first_alpha_index = i
-                break
-
-        if first_alpha_index == -1:
-            return s
-
-        prefix = s[:first_alpha_index]
-        first_letter_upper = s[first_alpha_index].upper()
-        suffix_lower = s[first_alpha_index + 1 :].lower()
-
-        return prefix + first_letter_upper + suffix_lower
 
 
 comm = MPI.COMM_WORLD
@@ -111,11 +51,18 @@ class LegendTitle(object):
 
     def legend_artist(self, legend, orig_handle, fontsize, handlebox):
         x0, y0 = handlebox.xdescent, handlebox.ydescent
+        if "10" in orig_handle:
+            color = "tab:blue"
+        elif "5" in orig_handle:
+            color = "tab:orange"
+        else:
+            color = "tab:green"
         title = mtext.Text(
             x0,
             y0,
-            r"\033[1m" + orig_handle + r"\033[0m",
+            r"\textbf{" + orig_handle + "}",
             usetex=True,
+            color=color,
             **self.text_props,
         )
         handlebox.add_artist(title)
@@ -130,7 +77,7 @@ class plotFigures:
         "iK": "orange",
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
-        "fluor": "darkorange",
+        "fluor": "black",
         "Na": "gold",
         "Cl": "chocolate",
         "Ca": "olive",
@@ -150,7 +97,7 @@ class plotFigures:
         @wraps(plot_func)
         def wrapper(self, *args, **kwargs):
             caller = inspect.stack()[1].function
-            if rank == 0:
+            if self.global_rw_data or rank == 0:
                 AllCells = args[0]
                 if type(AllCells) is list:
                     tmpCells = AllCells
@@ -159,9 +106,12 @@ class plotFigures:
                 else:
                     tmpCells = AllCells
                 fName = f"{caller}{self.tag}.pickle"
-                with open(os.path.join("intermediaryData", fName), "wb") as handle:
-                    pickle.dump(AllCells, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                print(f"Saved src data file {fName}")
+                # default no overwrite
+                fPath = os.path.join("intermediaryData", fName)
+                if not os.path.isfile(fPath):
+                    with open(fPath, "wb") as handle:
+                        pickle.dump(AllCells, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                    print(f"Saved src data file {fName}")
             res = plot_func(self, *args, **kwargs)
             return res
 
@@ -253,7 +203,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
-                        label=f"NMDAR Vm({cell.multiple})",
+                        label=f"NMDAR {gl.vm}({cell.multiple})",
                         color=self.returnColor("NMDAR"),
                     )
                     ax.plot(
@@ -267,7 +217,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
-                        label=f"GABAR Vm({int(cell.GABADensity)})",
+                        label=f"GABAR {gl.vm}({int(cell.GABADensity)})",
                         color=self.returnColor("GABAR"),
                     )
                     ax.plot(
@@ -300,9 +250,6 @@ class plotFigures:
         bath=False,
         tagReset=False,
     ):
-        if rank != 0:
-            return
-
         for cells in AllCells:
             for cell in cells:
                 if tagReset:
@@ -324,8 +271,8 @@ class plotFigures:
                     self.tag = tmpTag
 
                 if initStep == None:
-                    initStep = 0
-                    # initStep = int((cell.initTstop - 10) / cell.dt)
+                    # make globally defined
+                    initStep = int((cell.initTstop - 10) / cell.dt)
                 if bath:
                     if max(cell.time) > 2e3:
                         cell.time *= 1e-3
@@ -391,9 +338,9 @@ class plotFigures:
                     if ymax > 30:
                         ax.set_ylim((0, 60))
                     else:
-                        ax.set_ylim((0, 30))
+                        ax.set_ylim(gl.lim_ko)
                 else:
-                    ax.set_ylim((0, 20))
+                    ax.set_ylim(gl.lim_ko)
                 if bath:
                     if second:
                         ax.set_xlabel(gl.s)
@@ -407,7 +354,7 @@ class plotFigures:
                 ax.legend()
 
                 if zoom:
-                    ax.set_xlim(gl.clim_zoom(initStep, cell.dt))
+                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
 
                 if not bath:
                     plt.savefig(
@@ -420,7 +367,7 @@ class plotFigures:
                 if bath:
                     ax = ax2
                     ax.tick_params(
-                        "y", right=True, labelright=True, left=False, labelleft=False
+                        "y", right=False, labelright=False, left=True, labelleft=True
                     )
                 else:
                     plt.cla()
@@ -430,13 +377,13 @@ class plotFigures:
                 ax.plot(
                     list(cell.time)[initStep:],
                     list(cell.vPAP)[initStep:],
-                    label="PAP Vm",
+                    label=f"PAP {gl.vm}",
                     color=self.returnColor("PAP"),
                 )
                 ax.plot(
                     list(cell.time)[initStep:],
                     list(cell.ekPAP)[initStep:],
-                    label="PAP eK",
+                    label=f"PAP {gl.ek_raw}",
                     color=self.returnColor("PAP"),
                     linestyle="--",
                 )
@@ -452,13 +399,13 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vSoma)[initStep:],
-                        label="Soma Vm",
+                        label=f"Soma {gl.vm}",
                         color=self.returnColor("Soma"),
                     )
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.ekSoma)[initStep:],
-                        label="Soma eK",
+                        label=f"Soma {gl.ek_raw}",
                         color=self.returnColor("Soma"),
                         linestyle="--",
                     )
@@ -495,13 +442,10 @@ class plotFigures:
                 ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax.legend()
-                if setekylim:
-                    ax.set_ylim((-90, -10))
-                else:
-                    ax.set_ylim((-84, -77))
+                ax.set_ylim(gl.lim_ek)
 
                 if zoom:
-                    ax.set_xlim(gl.clim_zoom(initStep, cell.dt))
+                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
 
                 if not bath:
                     plt.savefig(
@@ -542,7 +486,7 @@ class plotFigures:
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
                 if zoom:
-                    ax.set_xlim(gl.clim_zoom(initStep, cell.dt))
+                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -603,7 +547,7 @@ class plotFigures:
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
-                ax.set_ylabel(gl.free("Currents at PAP (pA)"))
+                ax.set_ylabel(gl.curr)
                 if setyLim != None:
                     ax.set_ylim(setyLim)
                     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -614,7 +558,7 @@ class plotFigures:
                     ax.legend(loc="lower right")
 
                 if zoom:
-                    ax.set_xlim(gl.clim_zoom(initStep, cell.dt))
+                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -653,7 +597,7 @@ class plotFigures:
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
-                ax.set_ylabel(gl.free("Currents at Soma (pA)"))
+                ax.set_ylabel(gl.curr)
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend(loc="lower right")
 
@@ -667,9 +611,9 @@ class plotFigures:
                     color=self.returnColor("Soma"),
                 )
                 ax3.set_ylabel(gl.volt)
-                ax3.set_ylim((-90, -70))
+                ax3.set_ylim(gl.lim_Vmemb)
                 if zoom:
-                    ax.set_xlim(gl.clim_zoom(initStep, cell.dt))
+                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
 
                 plt.savefig(
                     os.path.join(
@@ -687,8 +631,8 @@ class plotFigures:
 
         total = []
         if zoom:
-            self.mergePlotsIK(
-                AllCells, comparison, merge, selected=selected, zoom=False
+            self.mergePlotsIK.__wrapped__(
+                self, AllCells, comparison, merge, selected=selected, zoom=False
             )
         for cells in AllCells:
             for cell in cells:
@@ -725,13 +669,14 @@ class plotFigures:
                         ),
                     )
                 if zoom:
-                    plt.xlim(gl.clim_zoom(initStep, cell.dt))
+                    plt.xlim(gl.lim_zoom(initStep, cell.dt))
                 plt.legend(title="seed", title_fontsize="x-small", fontsize="xx-small")
                 plt.xlabel(gl.ms)
                 if recVal == "vPAP":
                     plt.ylabel(gl.volt)
                 else:
                     plt.ylabel(recVal)
+                plt.ylim(gl.lim_Vmemb)
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -829,7 +774,7 @@ class plotFigures:
                             max(getattr(res[0], PAPattr)) - res[0].RMP
                         )
 
-                    else:
+                    elif res[0].comparecount:
                         # bug when stimulus but not GABAR
                         imArray[
                             int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
@@ -955,12 +900,10 @@ class plotFigures:
                 # plt.xlabel("# of GABAR channels / um2")
                 plt.xlabel(gl.chan_num("GABAR"))
             if self.NMDAR or (self.GABAR and Kir):
-                cbarMax = 20
+                _, cbarMax = gl.clim_volt
             else:
                 cbarMax = 50
-            plt.colorbar(
-                label="Voltage (mV)", ticks=np.arange(0, cbarMax, 2), extend="max"
-            )
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, cbarMax, 2), extend="max")
             plt.clim((0, cbarMax))
             if stdLabels:
                 self.setLabelColors(
@@ -1090,14 +1033,13 @@ class plotFigures:
 class procedure(plotFigures):
     leak = 3e5
     optKir = 0  # std * optkir  + mean
-    optNMDAR = 10
-    optGABAR = 50
+    optNMDAR = 400
+    optGABAR = 800
     optGluT = 0  # std * optGluT + mean
-    channelCompareMax = 10
-    channelCompareStep = 2
+    # default NMDAR counts
+    channelCompareMax = 500
+    channelCompareStep = 100
     # max 390
-    KirMax = 300
-    KirStep = 60
     seed = int()
     ko = float()
     tag = str()
@@ -1116,12 +1058,25 @@ class procedure(plotFigures):
     ek = None
     PAPLen = 0.3
     peakLen = None
+
     no_read_data = False
+    global_rw_data = False  # default False only for bath exp
 
     def __init__(self, seed, ko):
         self.seed = seed
         self.ko = ko
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
+        self._KirMax = 300
+        self._KirStep = 60
+
+    # no write access to KirMax
+    @property
+    def KirMax(self):
+        return self._KirMax
+
+    @property
+    def KirStep(self):
+        return self._KirStep
 
     def addChannelTag(self):
         self.tag = ""
@@ -1168,18 +1123,24 @@ class procedure(plotFigures):
                     func_name = inspect.stack()[1].function
 
                 intermediary_files = os.listdir(os.path.join("intermediaryData"))
+                # TODO: rough way to compare tags, think of smarter
+                # Mainly aims to keep additional information added during function
+                tmptag = self.tag
                 self.addChannelTag()
+                if len(tmptag) > len(self.tag):
+                    self.tag = tmptag
                 for f in intermediary_files:
-                    if func_name in f and self.tag in f:
-                        mprint("found intermediary file")
+                    if f == f"{func_name}{self.tag}.pickle":
+                        mprint(f"found intermediary file {f}")
                         AllCells = [[]]
-                        if rank == 0:
+                        if self.global_rw_data or rank == 0:
                             with open(
                                 os.path.join("intermediaryData", f), "rb"
                             ) as handle:
                                 AllCells = pickle.load(handle)
 
-                        comm.Barrier()
+                        if not self.global_rw_data:
+                            comm.Barrier()
                         AllCells = comm.bcast(AllCells, root=0)
 
                         # temporarily override simulation and just output result
@@ -1468,13 +1429,14 @@ class procedure(plotFigures):
 
     @read_data
     def SomaVC(self):
+        # acutally current injection
         funcArgs = []
-        vClampList = comm.bcast(list(np.arange(-95, -40, 5)), root=0)
+        vClampList = comm.bcast(list(np.arange(-40, 461, 50)), root=0)
         plt.cla()
         plt.clf()
         funcArgs.append(
             {
-                "mode": 2,
+                "mode": 3,
                 "ComplexMorph": True,
                 "dt": self.dt,
                 "naleak": self.leak,
@@ -1483,9 +1445,10 @@ class procedure(plotFigures):
                 "multiple": self.optNMDAR,
                 "seed": self.seed,
                 "GluTrans": self.optGluT,
+                "somaCheck": True,
             }
         )
-        ccList = ["voltageClamp"]
+        ccList = ["currentClamp"]
         results = parallizeFor(
             vClampList,
             [PAPModel],
@@ -1496,42 +1459,37 @@ class procedure(plotFigures):
         )
         self.free_figure(results)
         if rank == 0:
-            fig, main_ax = plt.figure((6, 5))
+            fig = plt.figure(figsize=(10, 5))
+            gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
+            ax1 = fig.add_axes([0.1, 0.75, 0.85, 0.2])
+            for v in vClampList:
+                x = np.linspace(140, 260, 1000)
+                holdingpotentials = self.pseudotrace(x, v)
+                ax1.plot(x, holdingpotentials, color="grey", label=f"{v}")
+            ax1.set_ylabel(gl.curr, color="grey")
+            ax1.set_xlim((140, 260))
+            for spine in ax1.spines.values():
+                spine.set_visible(False)
+            ax1.tick_params(bottom=False, left=True, colors="grey")
+            ax1.set_xticks([])
+
+            ax2 = fig.add_axes([0.1, 0.1, 0.85, 0.6])
+
             for cells in results:
                 for cell in cells:
-                    main_ax.plot(cell.time, cell.vSoma, color="black")
+                    ax2.plot(list(cell.time), list(cell.vSoma), color="black")
 
-            main_ax.xlabel(gl.ms)
-            main_ax.ylabel(gl.volt)
-            main_ax.xlim((140, 260))
-            inset_bounds = [0.6, 0.6, 0.35, 0.35]
-            ax_sub = main_ax.inset_axes(inset_bounds)
-            ax_sub.axis("off")
-            ax_sub.annotate(
-                "Holding potential",
-                (0.5, 0.5),
-                xycoords="axes fraction",
-                va="center",
-                ha="left",
-                fontsize=10,
-                color="black",
-                bbox=dict(
-                    boxstyle="round,pad=0.5", fc="white", alpha=0.5
-                ),  # Add a subtle background box
-            )
-            for v in vClampList:
-                x = np.linspace(140, 260, 1)
-                holdingpotentials = self.pseudotrace(x, v)
-                ax_sub.plot(holdingpotentials, color="grey", label=f"{v}")
-                ax_sub.legend()
-
+            ax2.set_xlabel(gl.ms)
+            ax2.set_ylabel(gl.volt)
+            ax2.set_xlim((140, 260))
+            ax2.set_ylim(gl.lim_Vmemb)
             plt.savefig(os.path.join("../results/paperRes", f"VoltageClampSoma.pdf"))
 
     def pseudotrace(self, x, v):
         tmp = []
         for t in x:
             if t < 150 or t > 240:
-                tmp.append(-80)
+                tmp.append(0)
             else:
                 tmp.append(v)
         return tmp
@@ -1587,11 +1545,11 @@ class procedure(plotFigures):
         # Plot the array using a heatmap
         plt.imshow(timeVoltageArray, cmap="magma", interpolation="none", aspect="auto")
         if replay:
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 10, 2), extend="max")
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, 10, 2), extend="max")
             plt.clim((0, 10))
         else:
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
-            plt.clim((0, 20))
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.clim(gl.clim_volt)
         plt.xlabel(gl.free("Normalized distance"))
         plt.xticks(
             range(0, 11, 2), [0, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -1818,7 +1776,7 @@ class procedure(plotFigures):
                             plt.plot(
                                 x,
                                 self.nernst(x, cell.kin),
-                                label="eK",
+                                label=f"{gl.ek_raw}",
                                 color="black",
                                 linestyle="--",
                             )
@@ -1826,8 +1784,8 @@ class procedure(plotFigures):
                             plt.ylabel(gl.volt)
                             plt.xlabel(gl.ion_o("K"))
                             if self.PAPLen <= 0.3:
-                                plt.ylim((-90, -50))
-                            plt.xlim((2, 14))
+                                plt.ylim(gl.lim_Vmemb)
+                            plt.xlim(gl.lim_ko)
                             plt.savefig(
                                 os.path.join(
                                     "../results/paperRes",
@@ -1933,7 +1891,7 @@ class procedure(plotFigures):
                         [[{}, {}]],
                     )
                 comm.Barrier()
-                self.free_figure(AllCells)
+                self.free_figure(results)
 
                 if rank == 0:
                     # self.mergePlotsIK(results)
@@ -1961,7 +1919,7 @@ class procedure(plotFigures):
                                 plt.plot(
                                     x,
                                     self.nernst(x, cell.kin),
-                                    label="eK",
+                                    label=f"{gl.ek_raw}",
                                     color="black",
                                     linestyle="--",
                                 )
@@ -1972,8 +1930,8 @@ class procedure(plotFigures):
                                     plt.legend()
                                 plt.ylabel(gl.volt)
                                 plt.xlabel(gl.ion_o("K"))
-                                plt.ylim((-90, -30))
-                                plt.xlim((2, 25))
+                                plt.ylim(gl.lim_Vmemb)
+                                plt.xlim(gl.lim_ko)
                                 plt.savefig(
                                     os.path.join(
                                         "../results/paperRes",
@@ -2071,7 +2029,7 @@ class procedure(plotFigures):
                     )
                 plt.legend()
                 plt.xlabel(gl.ms)
-                plt.ylabel(gl.free("current (pA)"))
+                plt.ylabel(gl.curr)
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -2110,11 +2068,12 @@ class procedure(plotFigures):
                 self.NMDAR = True
             self.runKOComp(transmitter, papCount, koCond)
 
-    @read_data
     def runKOComp(self, transmitter, papCount, koCond):
         AllCells = []
         for i in range(koCond):
             funcArgs = []
+            tmpTag = self.tag
+            self.addChannelTag()
             # Order is important
             if i == 0:
                 self.GluT = True
@@ -2126,11 +2085,13 @@ class procedure(plotFigures):
                 self.GluT = True
                 setattr(self, transmitter, True)
                 if i == 1:
+                    self.tag += "_KirOE"
                     # Kir OE
                     self.optKir = self.KirMax  # from experiment
                     # self.dt *= 0.1
                     self.leak = controlLeak
                 else:
+                    self.tag += "_KirKO"
                     self.leak = 8455
                     # match findings of Djukic et al. (2007) of -76.3 mV
                     self.dt = tmpdt
@@ -2141,14 +2102,17 @@ class procedure(plotFigures):
                 self.optKir = 0
                 if i == 3:
                     # NMDARKO
+                    self.tag += f"_{transmitter}KO"
                     self.GluT = True
                     setattr(self, transmitter, False)
                 elif i == 4:
                     # NMDARKO
+                    self.tag += "_GluTKO"
                     setattr(self, transmitter, True)
                     self.GluT = False
                 elif i == 5:
                     # NMDARKO
+                    self.tag += f"_GluTKO_{transmitter}KO"
                     setattr(self, transmitter, False)
                     self.GluT = False
 
@@ -2206,11 +2170,17 @@ class procedure(plotFigures):
                 {},
             ]
 
-            results = parallizeFor(
-                iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs
-            )
+            if not self.free_read_data():
+                results = parallizeFor(
+                    iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs
+                )
+                self.free_figure(results)
+            else:
+                results = self.free_read_data()
+            self.tag = tmpTag
 
             comm.Barrier()
+
             if rank == 0:
                 cells = results
                 AllCells += cells
@@ -2347,7 +2317,7 @@ class procedure(plotFigures):
             plt.xticks(x + width / len(val_means.keys()), category[0:1] + category[3:])
             plt.legend()
             plt.ylabel(gl.d_volt)
-            plt.ylim(0, 70)
+            plt.ylim(gl.lim_d_volt)
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -2394,12 +2364,12 @@ class procedure(plotFigures):
             ax.axhline(
                 val_means["confined"][0],
                 linestyle="--",
-                c=cm.twilight_shifted(controlIndex / len(iterations)),
+                c=cm.winter(controlIndex / len(iterations)),
             )
             ax.axhline(
                 val_means["spillover"][0],
                 linestyle="--",
-                c=cm.twilight_shifted(maxIndex / len(iterations)),
+                c=cm.winter(maxIndex / len(iterations)),
             )
 
             with open(
@@ -2409,8 +2379,8 @@ class procedure(plotFigures):
             # for k,v in val_test.items():
             #     if v.pvalue < 0.05:
             #         index = category.index(k)
-            ax.set_ylabel(gl.volt)
-            ax.set_ylim(0, 70)
+            ax.set_ylabel(gl.d_volt)
+            ax.set_ylim(gl.lim_d_volt)
             ax.set_xticks(x[:3] + width / len(val_means.keys()), category[:3])
             ax.legend(loc="upper left", ncols=2)
             plt.savefig(
@@ -2647,6 +2617,8 @@ class procedure(plotFigures):
                 )
 
     def bathExperiment(self, runAll=True, invivo=False, isolate=False, gaba=False):
+        self.global_rw_data = True
+        # call to set global rw data i.e. each indicidual rank will read and write src_data for plots instead of waiting for all
         if runAll:
             if invivo:
                 invivoRunConds = [True, False]
@@ -2747,7 +2719,7 @@ class procedure(plotFigures):
             setKoylim=setKoylim,
             setekylim=True,
             setyLim=[-20, 10],
-            initStep=0,
+            initStep=10,
             bath=True,
         )
         # results = AllCells[0][0]
@@ -2797,7 +2769,6 @@ class procedure(plotFigures):
             #     AllCells = comm.gather(cells, root=0)
             # else:
             AllCells.append([cells])
-            self.free_figure(AllCells)
         else:
             AllCells = self.free_read_data()
         setKoylim = True
@@ -2914,8 +2885,8 @@ class procedure(plotFigures):
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
-            self.channelCompareMax *= 5
-            self.channelCompareStep *= 5
+            self.channelCompareMax *= 3
+            self.channelCompareStep *= 3
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 5
             self.channelCompareStep = int(self.channelCompareMax / 5)
@@ -3104,7 +3075,7 @@ class procedure(plotFigures):
                         0
                     ]  # get index of PAPLen position in iterations
                     cindex = i / len(iterations)
-                    color = cm.twilight_shifted(cindex)
+                    color = cm.winter(cindex)
                     initStep = int((cell.initTstop - 10) / cell.dt)
                     plt.plot(
                         np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
@@ -3151,7 +3122,7 @@ class procedure(plotFigures):
             ax.scatter(
                 iterations,
                 vList,
-                cmap="twilight_shifted",
+                cmap="winter",
                 s=10,
                 edgecolor="black",
                 linewidth=1,
@@ -3162,7 +3133,7 @@ class procedure(plotFigures):
                 ax.scatter(
                     self.PAPLen,
                     controlV,
-                    color=cm.twilight_shifted(controlIndex / len(iterations)),
+                    color=cm.winter(controlIndex / len(iterations)),
                     marker="D",
                     edgecolor="black",
                     label="Confined",
@@ -3172,7 +3143,7 @@ class procedure(plotFigures):
                 #     self.PAPLen,
                 #     ymax=controlV/top,
                 #     linestyle='--',
-                #     color=cm.twilight(controlIndex/len(iterations)),
+                #     color=cm.winter(controlIndex/len(iterations)),
                 #     zorder=-1,
                 # )
             maxIndex = vList.index(max(vList))
@@ -3182,7 +3153,7 @@ class procedure(plotFigures):
             ax.scatter(
                 iterations[maxIndex],
                 vList[maxIndex],
-                color=cm.twilight_shifted(maxIndex / len(iterations)),
+                color=cm.winter(maxIndex / len(iterations)),
                 label="Spillover",
                 zorder=-1,
             )
@@ -3192,7 +3163,7 @@ class procedure(plotFigures):
                         self.PAPLen,
                         ymax=vList[0] / maxY,
                         linestyle="--",
-                        color=cm.twilight_shifted(maxIndex / len(iterations)),
+                        color=cm.winter(maxIndex / len(iterations)),
                         zorder=-2,
                     )
             ax.legend()
@@ -3200,7 +3171,7 @@ class procedure(plotFigures):
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
             ax.set_xlabel(gl.pap_affect)
-            ax.set_ylabel(gl.free("Peak Voltage (mV)"))
+            ax.set_ylabel(gl.free("Peak Voltage Change (mV)"))
             plt.savefig(
                 os.path.join(
                     "../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf"
@@ -3217,6 +3188,7 @@ class procedure(plotFigures):
                 self.tag += f"_PAPLen{cell[0][0].PAPLen}"
                 self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
 
+    
     def potassiumComparison(self):
         self.KoCompMax = 16
         self.KoCompStep = 2
@@ -3262,6 +3234,8 @@ class procedure(plotFigures):
                     )
                     logx = None
 
+                self.addChannelTag()
+                self.tag += f"_{comparison}"
                 self.runAmpLenComparison(
                     comparison, iterations, compMax, compStep, logx=logx
                 )
@@ -3280,6 +3254,8 @@ class procedure(plotFigures):
             )
             # # Adjust the range for the last process
             if comparison != "seed":
+                self.addChannelTag()
+                self.tag += f"_{comparison}"
                 self.runPotassiumComparison(
                     comparison, iterations, maxStep=compMax, intermStep=compStep
                 )
@@ -3288,9 +3264,6 @@ class procedure(plotFigures):
     def runAmpLenComparison(
         self, comparison, iterations, maxStep, intermStep, logx=None
     ):
-        self.addChannelTag()
-
-        comm.Barrier()
         funcArgs = []
         funcArgs.append(
             {
@@ -3372,7 +3345,7 @@ class procedure(plotFigures):
                 printType = int
                 plt.xlabel(gl.durstim)
             elif comparison == "seed":
-                skip = 0
+                skip = 1
                 dec = 0
                 printType = int
                 plt.xlabel(gl.seed_num)
@@ -3409,8 +3382,8 @@ class procedure(plotFigures):
                     np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                 ).astype(printType),
             )
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
-            plt.clim((0, 20))
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
             self.setLabelColors(
@@ -3434,7 +3407,7 @@ class procedure(plotFigures):
 
     @read_data
     def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):
-        comm.Barrier()
+        # reset tag to current status
         funcArgs = []
         funcArgs.append(
             {
@@ -3465,6 +3438,7 @@ class procedure(plotFigures):
         #            funcArgs[-1]["dt"] = self.dt / 2
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
+
         if self.KStim:
             results = parallizeFor(
                 iterations,
@@ -3486,7 +3460,9 @@ class procedure(plotFigures):
             )
 
         comm.Barrier()
+        AllCells = results
         self.free_figure(AllCells)
+        results = AllCells
         if rank == 0:
             plt.cla()
             plt.clf()
@@ -3585,8 +3561,8 @@ class procedure(plotFigures):
                         np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                     ).astype(printType),
                 )
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 20, 2), extend="max")
-            plt.clim((0, 20))
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
                 chanOverride = {
@@ -3623,6 +3599,7 @@ class procedure(plotFigures):
     def SCeq(self, x, a, l, c):
         return a * np.exp(-x / l) + c
 
+    @read_data
     def spaceConstant(self):
         # add multispike ek clamp
         self.addChannelTag()
@@ -3642,24 +3619,76 @@ class procedure(plotFigures):
                 "seed": self.seed,
             }
         )
-        cells = PAPModel(**funcArgs[-1])
-        if rank == 0:
-            LambdaList, VList, LenList = cells.spaceConstant()
-            plt.scatter(LenList, LambdaList, label="Section Space Constant")
-            plt.title(f"avg:{sum(LambdaList) / len(LambdaList)}")
+        ccList = ["g_pas"]
+        iterations = [x for x in np.geomspace(2.60, 0.69, num=15)]
+        results = parallizeFor(
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ccList,
+            [
+                ["initialize", "setDualPatch", "run", "getDualPatch_lambda"],
+            ],
+            [[{}, {}, {}]],
+        )
+        comm.Barrier()
+        self.free_figure(results)
 
-            plt.savefig(os.path.join("../results/paperRes", "SpaceConstant.pdf"))
+        if rank == 0:
+            sensitivity = []
+            test_conductance = []
+            tolerance = 0.1
+            inject_x = 0.01
+            for cells in results:
+                for cell in cells:
+                    sensitivity.append(cell.spaceConstant)
+                    test_conductance.append(cell.g_pas)
+                    if abs(3.6 - sensitivity[-1]) < tolerance:
+                        maxVal = max(cell.soma_atten) - cell.RMP
+                        inject_site = cell.soma_L * inject_x
+                        plt.scatter(
+                            cell.lenUnits * np.arange(len(cell.soma_atten))
+                            - inject_site,
+                            (np.array(cell.soma_atten) - cell.RMP) / maxVal,
+                        )
+                        plt.axvline(
+                            -0.08,
+                            ymin=0,
+                            ymax=1 / 1.05,
+                            color="lightgrey",
+                            linestyle="--",
+                        )
+                        plt.axhline(
+                            1 / np.e,
+                            xmin=0,
+                            xmax=1,
+                            label="1/e",
+                            color="grey",
+                            linestyle="--",
+                        )
+                        plt.xlabel("distance ($\mu$m)")
+                        plt.ylabel("V(d)/V(0)")
+                        plt.title(f"Rm ($\Omega$ cm$^2$) = {cell.g_pas:.2f}")
+                        plt.savefig("dual_patch.pdf")
             plt.cla()
             plt.clf()
-            plt.scatter(LenList, VList)
-            popt, pcov = curve_fit(self.SCeq, LenList, VList)
-            plt.plot(
-                LenList,
-                self.SCeq(np.array(LenList), *popt),
-                label=f"{popt[0]}exp(-x/{popt[1]}+{popt[2]}",
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(test_conductance, sensitivity)
+            ax.set_xlabel("Rm ($\Omega$ cm$^2$)")
+            ax.set_ylabel("Projected $\lambda$")
+            ax.axhline(y=3.6, xmin=0, xmax=1, label="3.6", color="grey", linestyle="--")
+
+            inset = inset_axes(ax, width="35%", height="35%", loc="upper right")
+            inset.plot(test_conductance, sensitivity)
+            inset.axhline(
+                3.6, xmin=0, xmax=1, label="1/e", color="grey", linestyle="--"
             )
-            plt.legend()
-            plt.savefig(os.path.join("../results/paperRes", "spaceConstantFit.pdf"))
+            inset.set_ylim(0, 5)
+            inset.set_xlim(2, 2.60)
+            mark_inset(ax, inset, loc1=2, loc2=4, fc="none", ec="0.5")
+
+            plt.tight_layout()
+            plt.savefig("dual_patch_sensitivity.pdf")
 
     def optDepolarizationSearch(self, x, optmV=4.0):
         # 28.812 mV for block
@@ -3713,6 +3742,7 @@ class procedure(plotFigures):
         return df
 
     def fitExpDepolarization(self, x, showFig=False, PAP=True):
+        self.global_rw_data = True
         self.addChannelTag()
         AllCells = []
         funcArgs = []
@@ -3722,6 +3752,7 @@ class procedure(plotFigures):
         forcedAccum = None
         if PAP:
             if self.GABAR:
+                self.tag += "_PAP_GABAR"
                 k = 500
                 mprint(x)
                 GABAR, s, d, tau2 = x
@@ -3747,6 +3778,7 @@ class procedure(plotFigures):
                 )
 
             else:
+                self.tag += "_PAP_NMDAR"
                 k = 500
                 mprint(x)
                 NMDAR, s, d, tau2 = x
@@ -3776,6 +3808,7 @@ class procedure(plotFigures):
                 slowing = 1
                 forcedAccum = False
             else:
+                self.tag += "_forced_accum"
                 glt, kir, PAPLen, KoSize, tau2, slowing = x
                 forcedAccum = True
             funcArgs.append(
@@ -3803,25 +3836,46 @@ class procedure(plotFigures):
             stim = 5
         else:
             stim = 10
-        cells = PAPModel(**funcArgs[-1])
-        cells.setTstop(500)
-        if not PAP:
-            cells.setGLT_TC(0.61, tau2)
-        cells.initialize()
 
-        if PAP:
-            cells.setNMDA_Mgblock(k, d, s)
-            cells.setNMDA_TC(tau1, tau2)
-            # cells.setSlowing(slow)
+        # match rank to iteration
+        rankDict = {}
+        stimList = comm.gather(stim, root=0)
+        if rank == 0:
+            for i, s in enumerate(stimList):
+                rankDict[s] = i
+        rankDict = comm.bcast(rankDict, root=0)
+        comm.Barrier()
+
+        if not self.free_read_data():
+            cells = PAPModel(**funcArgs[-1])
+            cells.setTstop(500)
+            if not PAP:
+                cells.setGLT_TC(0.61, tau2)
+            cells.initialize()
+
+            if PAP:
+                cells.setNMDA_Mgblock(k, d, s)
+                cells.setNMDA_TC(tau1, tau2)
+                # cells.setSlowing(slow)
+            else:
+                cells.setSlowing(slowing)
+            cells.multiSpike(number=stim, freq=100)
+            if not PAP:
+                cells.setGLT_TC(0.61, 5.8)
+                cells.setSlowing(1)  # return to normal after neuro activity
+
+            cells.run()
+            cells = cells.copyAttr()
+            print(f"ran_sim {rank}")
+            comm.Barrier()
+            AllCells = comm.gather(cells, root=0)
+            if rank == 0:
+                self.free_figure(AllCells)
         else:
-            cells.setSlowing(slowing)
-        cells.multiSpike(number=stim, freq=100)
-        if not PAP:
-            cells.setGLT_TC(0.61, 5.8)
-            cells.setSlowing(1)  # return to normal after neuro activity
-
-        cells.run()
-        cells = cells.copyAttr()
+            AllCells = self.free_read_data()
+            cells = AllCells[rank]
+            # if rank == 0:
+            #    self.plotIKSeries([[cells]])
 
         return self.plotExpFit(
             cells,
@@ -3830,6 +3884,7 @@ class procedure(plotFigures):
             showFig=showFig,
             Fname=f"fit{PAP=}{forcedAccum=}{self.GABAR=}",
             correctArtifact=True,
+            rankDict=rankDict,
         )
 
     def artifactCurve(self, x, a, l, c):
@@ -3855,6 +3910,7 @@ class procedure(plotFigures):
         Fname="FitResult",
         correctArtifact=True,
         split=False,
+        rankDict={10: 0, 5: 1, 1: 2},
     ):
         plt.close("all")
         if split:
@@ -3905,8 +3961,8 @@ class procedure(plotFigures):
         expF = np.array(expF)
         expSTD = np.absolute(expSTD)
         if correctArtifact:
-            singleStimBaseline = comm.bcast(expF, root=2)
-            singleStimBaselineT = comm.bcast(expT, root=2)
+            singleStimBaseline = comm.bcast(expF, root=rankDict[1])
+            singleStimBaselineT = comm.bcast(expT, root=rankDict[1])
             spl = spline(singleStimBaselineT, singleStimBaseline)
             simF += spl(expT)
         loss = np.absolute(expF - simF)
@@ -3939,7 +3995,7 @@ class procedure(plotFigures):
             if split:
                 for l in loss:
                     total += l
-                color = {10: "tab:blue", 5: "tab:orange", 1: "tab:green"}
+                color = {10: "tab:green", 5: "tab:orange", 1: "tab:blue"}
                 for i, t, f, yerr, sim_v, sim_f in zip(
                     stim, expT, expF, expSTD, simV, fluorTrace
                 ):
@@ -3977,7 +4033,6 @@ class procedure(plotFigures):
                         color=color[i],
                         zorder=201 + i,
                     )
-                ylim_value = 80  # mv
                 if correctArtifact:
                     Fname += "_correctedArtifact"
                 for i in range(2):
@@ -3986,12 +4041,13 @@ class procedure(plotFigures):
                     plt.legend()
                     plt.xlabel(gl.ms)
                     if i == 0:
-                        plt.ylabel(gl.d_volt)
-                        plt.ylim((0, ylim_value))
+                        plt.ylabel(gl.volt)
+                        plt.ylim(gl.lim_Vmemb)
                         Fname += "memb_potential"
                     else:
-                        plt.ylabel(gl.free("$\Delta F/F_0$ (%)"))
-                        plt.ylim((0, ylim_value * -1 / 10))
+                        _, ymax = gl.clim_volt
+                        plt.ylabel(gl.fluor)
+                        plt.ylim((0, ymax * -1 / 10))
                         Fname = "fluor"
                     plt.savefig(f"../results/paperRes/{Fname}.pdf")
                 if np.isnan(total):
@@ -4002,34 +4058,35 @@ class procedure(plotFigures):
             else:
                 fig, ax1 = plt.subplots(figsize=(9, 6))
                 ax2 = ax1.twinx()
-
                 for l in loss:
                     total += l
                 color = {10: "tab:blue", 5: "tab:orange", 1: "tab:green"}
                 plotObjects = []
+                plotObjects_ax2 = []
                 for i, t, f, yerr, sim_v, sim_f in zip(
                     stim, expT, expF, expSTD, simV, fluorTrace
                 ):
-                    ax2.plot(
+                    [tmp] = ax2.plot(
                         sim_time,
                         sim_v,
-                        label=f"{i} stim simulation",
+                        label=f"{gl.vm} simulation",
                         linestyle="-",
-                        color=plotFigures.forceAlpha(color[i], 0.5),
-                        zorder=i,
+                        color=plotFigures.forceAlpha(color[i], 0.3),
+                        zorder=rankDict[i],
                     )
+                    plotObjects_ax2.append(tmp)
                     if correctArtifact:
                         sim_f += spl(sim_time)
                         label = f"{i} stim simulation"
                     else:
                         label = f"{i} stim simulation"
-                    tmp = ax1.plot(
+                    [tmp] = ax1.plot(
                         sim_time,
                         sim_f,
                         label=label,
                         linestyle="--",
                         color=color[i],
-                        zorder=100 + i,
+                        zorder=500 + rankDict[i],
                     )
                     plotObjects.append(tmp)
                     ax1.errorbar(
@@ -4041,32 +4098,53 @@ class procedure(plotFigures):
                         f,
                         label=f"{i} stim experiment",
                         color=color[i],
-                        zorder=201 + i,
+                        zorder=201 + rankDict[i],
                     )
                     plotObjects.append(tmp)
+                ax1.set_zorder(ax2.get_zorder() + 1)
+                ax1.patch.set_visible(False)
                 ax2.set_xlim((100, 500))
-                ax2.legend(loc="upper left", edgecolor=self.returnColor("model"))
+                legend = ax2.legend(
+                    # [
+                    #    "10 stim",
+                    #    plotObjects_ax2[0],
+                    #    "5 stim",
+                    #    plotObjects_ax2[1],
+                    #    "1 stim",
+                    #    plotObjects_ax2[2],
+                    # ],
+                    # ["", "Simulation"] * 3,
+                    title=r"$\bf{Membrane\ potential}$",
+                    title_fontsize="large",
+                    loc="upper right",
+                    edgecolor=self.returnColor("model"),
+                    # handler_map={str: LegendTitle({"fontsize": 16})},
+                )
+                legend.get_title().set_color(self.returnColor("model"))
+                plt.setp(legend.texts, color=self.returnColor("model"))
                 ax1.legend(
                     [
-                        "10 stim",
-                        plotObjects[0],
-                        plotObjects[1],
-                        "5 stim",
-                        plotObjects[2],
-                        plotObjects[3],
                         "1 stim",
                         plotObjects[4],
                         plotObjects[5],
+                        "5 stim",
+                        plotObjects[2],
+                        plotObjects[3],
+                        "10 stim",
+                        plotObjects[0],
+                        plotObjects[1],
                     ],
-                    ["", "Simulation", "experiment"] * 3,
-                    loc="upper right",
+                    ["", "Simulation", "Experiment"] * 3,
+                    title=r"$\bf{Fluorescence}$",
+                    title_fontsize="large",
+                    loc="upper left",
                     edgecolor=self.returnColor("fluor"),
-                    handler_map={str: LegendTitle({"fontsize": 18})},
+                    handler_map={str: LegendTitle({"fontsize": 16})},
                 )
-                ax2.set_xlabel(gl.ms)
-                ax2.set_ylabel(gl.delta_ion_o("K"))
-                ax1.set_ylabel(gl.free("$\Delta F/F_0$ (%)"))
-                ylim_value = 80  # mv
+                ax1.set_xlabel(gl.ms)
+                ax2.set_ylabel(gl.d_volt)
+                ax1.set_ylabel(gl.fluor)
+                _, ylim_value = gl.lim_d_volt  # mv
                 ax1.set_ylim((0, ylim_value * -1 / 10))
                 ax2.set_ylim((0, ylim_value))
                 for axObj, label in {ax2: "model", ax1: "fluor"}.items():
@@ -4082,7 +4160,8 @@ class procedure(plotFigures):
                 elif verbose:
                     print(f"{total=}")
 
-                self.plotIKSeries(
+                self.plotIKSeries.__wrapped__(
+                    self,
                     [AllCells],
                     setKoylim=True,
                     setekylim=True,
@@ -4386,8 +4465,8 @@ class procedure(plotFigures):
                 range(int(spikeNumMax / spikeNumStep) + 1),
                 np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
-            plt.colorbar(label="Voltage (mV)", ticks=np.arange(0, 30, 5), extend="max")
-            plt.clim((0, 35))
+            plt.colorbar(label=gl.volt, ticks=np.arange(0, 30, 5), extend="max")
+            plt.clim(gl.clim_volt)
             plt.savefig(
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")
             )
@@ -4438,7 +4517,7 @@ if __name__ == "__main__":
         mprint("exp fit")
         testBools = [True, False]
         for PAP in testBools:
-            for forcedAccum in [True, False]:
+            for forcedAccum in testBools:
                 exp = procedure(3, 0)
                 kwargs = {"PAP": PAP, "showFig": False}
                 if PAP:
@@ -4446,10 +4525,10 @@ if __name__ == "__main__":
                     # initParms = (5, -72.5, 10, 19,0.5)
                     bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
                     if forcedAccum:
-                        initParms = (45, -67, 10, 19)
+                        initParms = (800, -67, 10, 19)
                         exp.GABAR = True
                     else:
-                        initParms = (8, -67, 10, 19)
+                        initParms = (400, 100, 0.1, 3.97)
                         exp.GABAR = False
                 else:
                     # initParms = (5, -72.5, 10, 19,0.5)
@@ -4463,7 +4542,7 @@ if __name__ == "__main__":
                         # initParms[1] = 1
                         initParms = tuple(initParms)
 
-                        initParms += (10, 10)
+                        initParms += (500, 500)
                         bounds = [
                             (5.8, 800),
                             (0, 10000),
@@ -4477,7 +4556,7 @@ if __name__ == "__main__":
                 #                    bounds=bounds,
                 #                )
                 #                exp.fitExpDepolarization(res.x, showFig=True, PAP=PAP)
-                if PAP:
+                if not PAP:
                     break
     elif size == 5 or size == 2 or size == 4:
         mprint("running bathExp")

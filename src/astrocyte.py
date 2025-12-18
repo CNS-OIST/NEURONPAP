@@ -581,6 +581,7 @@ class PAPModel(ResultsPAPModel):
             if self.somaCheck:
                 h.clampSwitch(3, self.currentClamp)
                 h.ic.delay = h.t
+                h.ic.dur = self.tstop - self.initTstop - 20
             else:
                 h.clampSwitch(2, self.currentClamp)
                 h.ic.delay = h.t
@@ -643,13 +644,18 @@ class PAPModel(ResultsPAPModel):
             pap = self.flattenPAP()
         else:
             pap = None
-        animate_morphology(
-            tstop=stop,
-            dt=interval * self.dt,
-            rangevar=var,
-            outfile=f"morph{var}.mp4",
-            zoom=pap,
-        )
+
+        if type(var) is not list:
+            var = [var]
+
+        for v in var:
+            animate_morphology(
+                tstop=stop,
+                dt=interval * self.dt,
+                rangevar=v,
+                outfile=os.path.join("../morphResults/", f"morph{v}.mp4"),
+                zoom=pap,
+            )
         return
 
     def flattenPAP(self):
