@@ -479,7 +479,14 @@ objref ic,vc,electrodeList
 {electrodeList = new List()}
 
 proc clampSwitch() {
-    if ($1 > 3) {
+  if ($1 > 4){
+        // voltage clamp
+        soma {vc = new SEClamp(0.01)}
+        vc.dur[0] = tstop
+        vc.amp[0] = $2  // mV depolarization (dV = 20)
+        electrodeList.append(vc)
+        //---------------------------------------------------
+     } else if ($1 > 3) {
         getLeaf(slPAP) {vc = new VClamp(0.5)}
         vc.dur[0] = tstop
         vc.amp[0] = $2   // mV depolarization (dV = 20)
@@ -673,3 +680,5 @@ proc set_kobase(){
         ko0_k_acc = $1
     }
 }
+
+

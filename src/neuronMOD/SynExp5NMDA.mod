@@ -44,8 +44,8 @@ tau1_0 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be 
 a1 = 0.09 (ms)
 b1 = 0.03 (1/mV)
 : parameters control exponential rise to a maximum of tau2
-: tau2_0 = 3.97	(ms)
-tau2_0 = 19 (ms)
+ tau2_0 = 3.97	(ms)
+:tau2_0 = 19 (ms)
 	a2 = 0.70		(ms)
 	b2 = 0.0243		(1/mV)
 	wtau2= 0.95		<1e-9,1> : Hestrin90 0.65
@@ -92,8 +92,8 @@ tau2_0 = 19 (ms)
 	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
         K0 = 500               (mM)
         : shift = 0             (1) : theoretical shift from 0 mV Mg block
-        shift = -70 (mV)
-        delta = 10 (1)
+        shift = 100 (mV)
+        delta = 0.1 (1)
 	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab

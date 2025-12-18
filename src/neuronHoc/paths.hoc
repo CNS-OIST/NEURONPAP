@@ -1,0 +1,102 @@
+// ============================================================
+// Containers
+objref paths_away, path_toward
+paths_away   = new List()
+path_toward = new List()
+
+// ============================================================
+// -------- PATHS AWAY FROM SOMA (soma -> leaves) -------------
+// ============================================================
+
+objref _cur_path
+_cur_path = new List()
+
+proc _dfs_away() { local i localobj sr,saved
+    sr = new SectionRef()
+    _cur_path.append(sr)
+
+    if (sr.nchild == 0) {
+        saved = new List()
+        for i = 0, _cur_path.count-1 {
+            saved.append(_cur_path.object(i))
+        }
+        paths_away.append(saved)
+    } else {
+        for i = 0, sr.nchild-1 {
+            sr.child[i] {
+                _dfs_away()
+            }
+        }
+    }
+
+    _cur_path.remove(_cur_path.count-1)
+}
+
+proc get_paths_away_from_soma() {
+    paths_away.remove_all()
+    _cur_path.remove_all()
+
+    $o1 {
+        _dfs_away()
+    }
+}
+
+// ============================================================
+// -------- PATHS TOWARD SOMA (leaf/section -> soma) ----------
+// ============================================================
+
+proc get_path_toward_soma() {localobj sr
+    path_toward.remove_all()
+
+    // start section
+    $o1 {
+        sr = new SectionRef()
+    }
+
+
+    // walk parents until soma
+    while (1) {
+        path_toward.append(sr)
+
+        if (!sr.has_parent()) {
+            break   // safety: reached root but not soma
+        }
+
+        sr.parent sr = new SectionRef()
+        
+    }
+}
+
+proc print_path_toward() { local i localobj sr
+
+    for i = 0, $o1.count - 1 {
+        sr = $o1.o(i)
+        sr.sec printf("%d: %s\n", i, secname())
+    }
+}
+
+proc print_paths_away() { local i, j localobj path, sr
+
+    for (i = 0; i < $o1.count; i += 1) {
+        path = $o1.object(i)
+
+        for (j = 0; j < path.count; j += 1) {
+            sr = path.object(j)
+            sr.sec printf("  %d: %s\n", j, secname())
+        }
+    }
+}
+
+//objref soma_sr
+//
+//print "___to_leaf___"
+//soma soma_sr = new SectionRef()
+//get_paths_away_from_soma(soma_sr)
+//print_paths_away(paths_away)
+//
+//print "___to_soma___"
+//objref soma_sr
+//soma soma_sr = new SectionRef()
+//
+//get_path_toward_soma(soma_sr)
+//print_path_toward(path_toward)
