@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 import json
 import pandas as pd
 import math
+import numpy as np
 from textSDIO import *
 from plot_shape import *
+from global_labels import gl
 
 
 class PAPModel(ResultsPAPModel):
@@ -70,6 +72,7 @@ class PAPModel(ResultsPAPModel):
         PAPLen=0.3,
         RiSec=None,
         v_init=-85,
+        g_pas=2.15,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -111,6 +114,7 @@ class PAPModel(ResultsPAPModel):
         self.PAPLen = PAPLen
         self.RiSec = str(RiSec)
         self.getPeriphery = True
+        self.g_pas = g_pas
 
         # subsitute
         # morphology
@@ -242,6 +246,55 @@ class PAPModel(ResultsPAPModel):
         h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
 
         # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
+        #
+
+    def plot_path_attenuation(self, origin=None):
+        h.load_file("./neuronHoc/paths.hoc")
+        if not origin:
+            origin = self.soma
+        h.get_paths_away_from_soma(origin)
+        plot_paths(
+            "v",
+            origin,
+            h.paths_away,
+            fname=f"soma_attenuation_{self.voltageClamp=}",
+        )
+        plot_combined("v", origin, h.paths_away, h.path_toward)
+
+    def setDualPatch(self):
+        h.tstop = 50
+        # set g_pas
+        for sec in h.allsec():
+            for seg in sec:
+                setattr(seg, "g_pas", self.g_pas)
+
+        h.clampSwitch(5, self.voltageClamp)
+        self.lenUnits = h.lenUnits
+        self.soma_L = getattr(self.soma, "L")
+        # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
+
+    def getDualPatch_lambda(self):
+        # get v atten
+        tmpV = []
+        for seg in self.soma:
+            tmpV.append(getattr(seg, "v"))
+        self.soma_atten = tmpV
+        maxVal = max(tmpV) - self.RMP
+        self.spaceConstant = self._find_interpolate(
+            (np.array(tmpV) - self.RMP) / maxVal, 1 / np.e
+        )
+
+    def _find_nearest(self, array, value):
+        idx = (np.abs(array - value)).argmin()
+        if value - array[idx] > 0:
+            return idx, idx + 1
+        else:
+            return idx - 1, idx
+
+    def _find_interpolate(self, array, value):
+        id_start, id_end = self._find_nearest(array, value)
+        b = array[id_end] - (array[id_end] - array[id_start]) * id_start
+        return (value - b) * h.lenUnits / (array[id_end] - array[id_start])
 
     def channelDist(self, **channelDict):
         # change the density of a certain channel by xfold
@@ -321,6 +374,49 @@ class PAPModel(ResultsPAPModel):
                     )
                 else:
                     h.continuerun(ISI * ms + currTime)
+
+    def TBS(
+        self,
+        KoSize=None,
+        video=False,
+        dur=0.5,
+        amp=None,
+        initvoltageClamp=True,
+    ):
+        if KoSize == None:
+            KoSize = self.KoSize
+        if dur == None:
+            dur = self.durStim
+
+        # custom initialization
+        #
+        # initSpike at current T
+        totalT = [float(self.initTstop)]
+        while totalT[-1] < self.tstop:
+            for _ in range(3):
+                # 4 spikes of 100 Hz
+                totalT.append(totalT[-1] + 10)
+
+            # rest of 5 Hz
+            totalT.append(totalT[-1] + 200)
+
+        self.initialize(video=video, voltageClamp=initvoltageClamp, TBS=totalT)
+
+        if amp is not None:
+            for nc in self.NCs:
+                nc.weight[0] = amp
+        else:
+            for t in totalT:
+                self.setK(KoSize=KoSize, dur=dur)
+                if video:
+                    self.makeVideo(
+                        self.varMorph,
+                        stop=t,
+                        interval=5 / self.dt,  # sample at half 10 ms interval
+                        zoom=True,
+                    )
+                else:
+                    h.continuerun(t)
 
     def setkin(self, kin):
         h.setkin(kin)
@@ -479,13 +575,22 @@ class PAPModel(ResultsPAPModel):
         self.PAPKirCount = self.PAPKirCount
         self.PAPKirCount_std = self.PAPKirCount_std
 
-    def setStimStart(self):
+    def setstimstart(self):
         h("objref stim")
-        h("stim = new NetStim(.5)")
-        h(f"stim.start = {(self.initTstop + self.stimdelay) * ms}")
+        h("stim = new netstim(.5)")
+        h(f"stim.start = {(self.inittstop + self.stimdelay) * ms}")
         h("stim.noise = 0")
         h("stim.number = 1")
         h("stim.interval = 0")
+
+    def setVecStim(self, time):
+        # rewrite stim object
+        h("objref stimTime")
+        h("stimTime = new Vector()")
+        h.stimTime.from_python(time)
+        h("objref stim")
+        h("stim = new VecStim(.5)")
+        h("stim.play(stimTime)")
 
     def setTstop(self, tstop=500):
         h.tstop = tstop
@@ -506,6 +611,7 @@ class PAPModel(ResultsPAPModel):
         kuptake=False,
         krule=None,
         voltageClamp=True,
+        TBS=None,
     ):
         # print('initializing')
         # sys.stdout.flush()
@@ -518,7 +624,10 @@ class PAPModel(ResultsPAPModel):
                 krule = 1 / math.exp(700)
             h.kbath_rule(krule)
 
-        self.setStimStart()
+        if TBS:
+            self.setVecStim(TBS)
+        else:
+            self.setStimStart()
         # print('setStim')
         # sys.stdout.flush()
         # print('placing GluChannel')
@@ -573,7 +682,7 @@ class PAPModel(ResultsPAPModel):
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
 
-    def run(self, printRes=False, video=False, koclamp=None):
+    def run(self, printRes=False, video=False, koclamp=None, noclear=False):
         # print('running')
         # sys.stdout.flush()
         # Clamp settings
@@ -621,7 +730,8 @@ class PAPModel(ResultsPAPModel):
         # print('finish run')
         if printRes:
             self.printRec()
-        self.cleanMorphology()
+        if not noclear:
+            self.cleanMorphology()
         # print('ran simulation')
         # sys.stdout.flush()
 
@@ -649,12 +759,26 @@ class PAPModel(ResultsPAPModel):
             var = [var]
 
         for v in var:
+            if v == "v":
+                clim = gl.lim_Vmemb
+            elif v == "ko":
+                clim = gl.lim_ko
+            else:
+                clim = None
+            outfile = os.path.join(
+                "../morphResults/",
+                f"morph{v}_{zoom=}_{self.seed=}_{self.PAPCount=}_{self.tstop=}",
+            )
+            if hasattr(self, "SpikeFreq"):
+                outfile += f"_{self.SpikeFreq}Hz_{self.spikeNum=}"
+            outfile += ".mp4"
             animate_morphology(
                 tstop=stop,
                 dt=interval * self.dt,
                 rangevar=v,
-                outfile=os.path.join("../morphResults/", f"morph{v}.mp4"),
+                outfile=outfile,
                 zoom=pap,
+                clim=clim,
             )
         return
 
@@ -666,11 +790,17 @@ class PAPModel(ResultsPAPModel):
         return h.SectionList(flattenPap)
 
     def plotWholecellVariable(self, var, frameName, zoom=False):
+        if "v" in var:
+            clim = gl.lim_Vmemb
+        elif v == "ko":
+            clim = gl.lim_ko
+        else:
+            clim = None
         if zoom:
-            plot_3d_morphology(rangevar=var, zoom=self.flattenPAP())
+            plot_3d_morphology(rangevar=var, zoom=self.flattenPAP(), clim=clim)
         else:
             # ps = h.plot_varMorph(var, frameName)
-            plot_3d_morphology(rangevar=var)
+            plot_3d_morphology(rangevar=var, clim=clim)
             plt.savefig(frameName)
 
     def plot_topology(self, zoom=False):

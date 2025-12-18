@@ -249,6 +249,7 @@ class plotFigures:
         initStep=None,
         bath=False,
         tagReset=False,
+        panelF=True,
     ):
         for cells in AllCells:
             for cell in cells:
@@ -621,6 +622,81 @@ class plotFigures:
                         f"iSomaPlot{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
                     )
                 )
+
+                if (
+                    panelF
+                    and cell.GENEDict["kir2"] == 0
+                    and not self.NMDAR
+                    and not self.GABAR
+                ):
+                    plt.cla()
+                    plt.clf()
+                    fig, ax = plt.subplots(figsize=(6, 12))
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.vPAP)[initStep:],
+                        label=f"PAP {gl.vm}",
+                        color=self.returnColor("PAP"),
+                    )
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.ekPAP)[initStep:],
+                        label=f"PAP {gl.ek_raw}",
+                        color=self.returnColor("PAP"),
+                        linestyle="--",
+                    )
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.vSoma)[initStep:],
+                        label=f"Soma {gl.vm}",
+                        color=self.returnColor("Soma"),
+                    )
+                    ax.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.ekSoma)[initStep:],
+                        label=f"Soma {gl.ek_raw}",
+                        color=self.returnColor("Soma"),
+                        linestyle="--",
+                    )
+
+                    ax.set_xlabel(gl.ms)
+                    ax.set_ylabel(gl.volt)
+                    ax.legend()
+                    ax.set_ylim(gl.lim_ek)
+
+                    ax_inset = ax.inset_axes(
+                        [0, -0.45, 1, 1],
+                        width="100%",
+                        height="30%",
+                        loc="lower left",
+                        bbox_transform=ax.transAxes,
+                        borderpad=0,
+                    )
+                    ax_inset.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.vPAP)[initStep:],
+                        label=f"PAP {gl.vm}",
+                        color=self.returnColor("PAP"),
+                    )
+                    ax_inset.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.ekPAP)[initStep:],
+                        label=f"PAP {gl.ek_raw}",
+                        color=self.returnColor("PAP"),
+                        linestyle="--",
+                    )
+                    ax_inset.set_xlabel(gl.ms)
+                    ax_inset.set_ylabel(gl.volt)
+                    ax_inset.legend()
+                    ax_inset.set_xlim((155, 165))
+                    ax_inset.set_ylim(gl.lim_ek)
+
+                    plt.savefig(
+                        os.path.join(
+                            "../results/paperRes",
+                            f"panelFPlot{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
+                        )
+                    )
 
                 plt.close("all")
 
@@ -1454,8 +1530,8 @@ class procedure(plotFigures):
             [PAPModel],
             funcArgs,
             ccList,
-            [["setTstop", "initialize", "run"]],
-            [[{"tstop": 260}, {}, {}]],
+            [["setTstop", "initialize", "run", "plot_path_attenuation"]],
+            [[{"tstop": 260}, {}, {"noclear": True}, {}]],
         )
         self.free_figure(results)
         if rank == 0:
@@ -1523,17 +1599,24 @@ class procedure(plotFigures):
         else:
             funcArgs[-1]["GABACount"] = 0
 
-        cells = PAPModel(**funcArgs[-1])
-        cells.initialize()
-        if replay:
-            cells.replayK("./Data/invivo_K.csv", isolate=True, setStop=60e3)
-            # cells.replayK("./Data/invivo_test.csv", isolate=True)
-        else:
-            cells.multiSpike(number=self.stimCount, freq=self.freq, KoSize=self.ko)
-        cells.run()
-        initStep = int(cells.initTstop / cells.dt)
-        cells = cells.copyAttr()
+        if not self.free_read_data():
+            cells = PAPModel(**funcArgs[-1])
+            cells.initialize()
+            if replay:
+                cells.replayK("./Data/invivo_K.csv", isolate=True, setStop=60e3)
+                # cells.replayK("./Data/invivo_test.csv", isolate=True)
+            else:
+                cells.multiSpike(number=self.stimCount, freq=self.freq, KoSize=self.ko)
+            cells.run()
+            cells = cells.copyAttr()
+            AllCells = [[cells]]
+            self.free_figure(AllCells)
 
+        else:
+            AllCells = self.free_read_data()
+            cells = AllCells[0][0]
+
+        initStep = int(cells.initTstop / cells.dt)
         timeVoltageArray = list()
         for x in cells.branchAtten:
             # print(list(x))
@@ -3188,11 +3271,10 @@ class procedure(plotFigures):
                 self.tag += f"_PAPLen{cell[0][0].PAPLen}"
                 self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
 
-    
     def potassiumComparison(self):
         self.KoCompMax = 16
         self.KoCompStep = 2
-        for comparison in ["seed"]:  # , "PAPLen", "KoSize", "durStim"]:
+        for comparison in ["seed", "PAPLen", "KoSize", "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep

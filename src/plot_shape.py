@@ -6,6 +6,8 @@ from mpi4py import MPI
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from global_labels import gl
+import os
 
 
 comm = MPI.COMM_WORLD
@@ -17,9 +19,10 @@ def animate_morphology(
     tstop=100,
     dt=1,
     rangevar="v",
-    colormap_name="viridis",
+    colormap_name="magma",
     outfile="morphology_animation.mp4",
     zoom=None,
+    clim=None,
 ):
     if rank != 0:
         return
@@ -33,6 +36,10 @@ def animate_morphology(
         h.dt = dt
 
     frames = int(tstop / dt)
+    if zoom and "zoom" not in outfile:
+        fPath = outfile.split(".mp4")[0]
+        fPath += "_zoom.mp4"
+        outfile = fPath
 
     plot_3d_morphology(
         rangevar=rangevar,
@@ -41,6 +48,7 @@ def animate_morphology(
         ax=ax,
         add_colorbar=True,
         zoom=zoom,
+        clim=clim,
     )
 
     def update(frame_t):
@@ -55,6 +63,7 @@ def animate_morphology(
             ax=ax,
             add_colorbar=False,
             zoom=zoom,
+            clim=clim,
         )
 
         for i in range(int(dt / h.dt)):
@@ -126,7 +135,7 @@ def plot_3d_morphology(
     sm.set_clim(vmin=vmin, vmax=vmax)
 
     if zoom:
-        size = 10
+        size = 1
         # get average center of PAP
         count = 0
         x = 0
@@ -175,15 +184,114 @@ def plot_3d_morphology(
     # === Colorbar (optional) ===
     if add_colorbar:
         cbar = plt.colorbar(sm, ax=ax)
-        cbar.set_label(rangevar)
+        if rangevar == "v":
+            cbar.set_label(gl.volt)
 
-    ax.set_xlabel("x ($\mu$m)")
-    ax.set_ylabel("y ($\mu$m)")
-    ax.set_zlabel("z ($\mu$m)")
+    ax.set_xlabel(gl.free("x ") + gl.unit_micron)
+    ax.set_ylabel(gl.free("y ") + gl.unit_micron)
+    ax.set_zlabel(gl.free("z ") + gl.unit_micron)
+    if zoom:
+        ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
     plt.tight_layout()
     if show:
         plt.show()
+
+
+def plot_combined(rangevar, origin, paths_away, path_toward):
+    plt.cla()
+    plt.clf()
+    plt.figure(figsize=(10, 5))
+    total_dict = {}
+    tmp_dict = convert_list_section_to_python(paths_away)
+
+    total_dict.update(tmp_dict)
+    tmp_dict = convert_list_section_to_python(path_toward)
+    total_dict.update(tmp_dict)
+
+    xmin = np.inf
+    xmax = -np.inf
+    for key, sec_list in total_dict.items():
+        dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+        if "to_soma" in key:
+            plt.plot(dist, var, color="black")
+        else:
+            plt.plot(-1 * np.array(dist), var, color="black")
+            if xmin > np.min(-1 * np.array(dist)):
+                xmin = np.min(-1 * np.array(dist))
+            if xmax < np.max(-1 * np.array(dist)):
+                xmax = np.max(-1 * np.array(dist))
+
+    plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
+    if rangevar == "v":
+        plt.axhline(
+            y=1 / np.e, xmin=0, xmax=1, label="1/e", color="grey", linestyle="--"
+        )
+
+    plt.xlabel(gl.free("Distance ") + gl.unit_micron)
+    plt.ylabel(gl.volt)
+    plt.xlim((1.1 * xmin, 1.1 * xmax))
+    plt.legend()
+    plt.savefig(os.path.join("../morphResults", f"combined_{rangevar}_{origin=}.pdf"))
+
+
+def plot_paths(rangevar, origin, list_section, fname=""):
+    plt.cla()
+    plt.clf()
+    plt.figure(figsize=(10, 5))
+    section_dict = convert_list_section_to_python(list_section)
+    for key, sec_list in section_dict.items():
+        print(key)
+        dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+        plt.plot(dist, var, color="black")
+
+    plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
+    if rangevar == "v":
+        plt.axhline(
+            y=1 / np.e, xmin=0, xmax=1, label="1/e", color="grey", linestyle="--"
+        )
+
+    plt.legend()
+
+    plt.savefig(os.path.join("../morphResults", f"{fname}_{rangevar}.pdf"))
+
+
+def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True):
+    varList = []
+    distanceList = []
+    for i, sec in enumerate(sec_list):
+        if i == 0:
+            if normalize:
+                norm = getattr(origin(0.5), var)
+            else:
+                norm = 1
+            h.distance(sec=h.soma)
+        distanceList.append(h.distance(0.5, sec=sec) - h.distance(0.5, sec=origin))
+        try:
+            rv = (getattr(sec(0.5), var) + 85) / (norm + 85)
+        except:
+            rv = 0.0
+        varList.append(rv)
+
+    return distanceList, varList
+
+
+def convert_list_section_to_python(list_section):
+    tmp_section = {}
+    tmp_section["to_soma"] = []
+    for i, obj in enumerate(list_section):
+        try:
+            iter(obj)
+        except TypeError:
+            tmp_section["to_soma"].append(obj.sec)
+        else:
+            tmp_section[f"to_leaf{i}"] = []
+            for sr in obj:
+                tmp_section[f"to_leaf{i}"].append(sr.sec)
+
+    return tmp_section
 
 
 if __name__ == "__main__":
