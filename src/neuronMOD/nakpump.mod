@@ -10,7 +10,7 @@ NEURON {
 	SUFFIX nakpump
 	USEION k READ ko WRITE ik
 	USEION na READ nai WRITE ina
-	RANGE ik, ina, km_k, km_na, totalpump :qna, qk
+	RANGE ik_pump, ina_pump, km_k, km_na, totalpump :qna, qk
 }
 
 UNITS {
@@ -30,7 +30,7 @@ PARAMETER {
 	celsius		(degC)
 	km_k = 2		(mM) 
 	km_na = 10		(mM)
-	totalpump = 1	(mA/cm2)  
+	totalpump = 0.01	(mA/cm2)  
 	: set to 0 in hoc if this pump not wanted
 }
 
@@ -39,23 +39,28 @@ STATE { qna qk }
 ASSIGNED {
 	ik		(mA/cm2)
 	ina		(mA/cm2)
-	ko		(mM)
+	ik_pump	(mA/cm2)
+	ina_pump		(mA/cm2)
+  ko		(mM)
 	nai		(mM)
 	diam		(um)
 	L		(um)
 }
 
 BREAKPOINT {
-	ik = -2*totalpump*stroom(nai,ko)
-	ina = ik * -3/2
-
+	ik_pump = -2*totalpump*stroom(nai,ko)
+	ina_pump = ik_pump * -3/2
+  ik = ik_pump
+  ina = ina_pump
 }
 
 INITIAL {
 	qna=0
 	qk=0
-	ik = -2*totalpump*stroom(nai,ko)
-	ina = ik * -3/2
+	ik_pump = -2*totalpump*stroom(nai,ko)
+	ina_pump = ik_pump * -3/2
+  ik = ik_pump
+  ina = ina_pump
 }
 
 FUNCTION stroom(na (mM),k (mM)) {

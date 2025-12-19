@@ -69,6 +69,7 @@ NEURON {
 	SUFFIX kir2 			
 	USEION k READ ek,ko WRITE ik	
         RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
+        RANGE ik_kir
         GLOBAL linf,taul
         
         THREADSAFE
@@ -81,6 +82,7 @@ STATE {
 
 ASSIGNED {
         ik                              (mA/cm2)
+        ik_kir                          (mA/cm2)
         gk                              (pS/cm2)
         ek                              (mV)
         linf      (1)
@@ -117,7 +119,8 @@ BREAKPOINT {
 	: use state l to calulate gk
         : area will be multiplied per section resulting in single channel conductance per segment.
         : calculate gkbar from fitting single channel recording
-        ik = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+        ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+        ik = ik_kir
 }
 
 

@@ -87,12 +87,12 @@ b1 = 0.03 (1/mV)
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
-: Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
+                      : Parameters Control Mg block of NMDAR
 	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-        K0 = 500               (mM)
+        K0 = 10              (mM)
         : shift = 0             (1) : theoretical shift from 0 mV Mg block
-        shift = 100 (mV)
+        shift = 40 (mV) : lalo Jneuro
         delta = 0.1 (1)
 	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR

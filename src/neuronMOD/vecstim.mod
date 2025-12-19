@@ -86,7 +86,7 @@ NET_RECEIVE (w) {
         element()
         if (index > 0) {
             if (etime < t) {
-                printf("Warning in VecStim: spike time (%g ms) before current time (%g ms)\n",etime,t)
+                :printf("Warning in VecStim: spike time (%g ms) before current time (%g ms)\n",etime,t)
             } else {
                 net_send(etime - t, 1)
             }
