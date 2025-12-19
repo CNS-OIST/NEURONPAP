@@ -16,7 +16,6 @@ from scipy.interpolate import CubicSpline as spline
 import json
 import pandas as pd
 import inspect
-import string
 from functools import wraps
 import sys
 
@@ -26,6 +25,7 @@ import matplotlib.patches as patches
 import matplotlib.text as mtext
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+from matplotlib.patches import Rectangle, ConnectionPatch
 
 
 from global_labels import gl
@@ -631,7 +631,10 @@ class plotFigures:
                 ):
                     plt.cla()
                     plt.clf()
-                    fig, ax = plt.subplots(figsize=(6, 12))
+                    fig = plt.figure(figsize=(9, 9))
+
+                    ax = fig.add_axes([0.1, 0.52, 0.8, 0.40])
+                    ax_inset = fig.add_axes([0.1, 0.15, 0.8, 0.25])
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
@@ -660,24 +663,19 @@ class plotFigures:
                     )
 
                     ax.set_xlabel(gl.ms)
-                    ax.set_ylabel(gl.volt)
                     ax.legend()
                     ax.set_ylim(gl.lim_ek)
-
-                    ax_inset = ax.inset_axes(
-                        [0, -0.45, 1, 1],
-                        width="100%",
-                        height="30%",
-                        loc="lower left",
-                        bbox_transform=ax.transAxes,
-                        borderpad=0,
-                    )
                     ax_inset.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
                         label=f"PAP {gl.vm}",
                         color=self.returnColor("PAP"),
                     )
+
+                    x0, x1 = 155, 165
+                    y0, y1 = gl.lim_ek
+                    grey = "0.5"
+
                     ax_inset.plot(
                         list(cell.time)[initStep:],
                         list(cell.ekPAP)[initStep:],
@@ -685,11 +683,63 @@ class plotFigures:
                         color=self.returnColor("PAP"),
                         linestyle="--",
                     )
-                    ax_inset.set_xlabel(gl.ms)
-                    ax_inset.set_ylabel(gl.volt)
-                    ax_inset.legend()
-                    ax_inset.set_xlim((155, 165))
-                    ax_inset.set_ylim(gl.lim_ek)
+                    ax_inset.set_xlim((x0, x1))
+                    ax_inset.set_ylim(y0, y1)
+
+                    rect = Rectangle(
+                        (x0, y0),
+                        x1 - x0,
+                        y1 - y0,
+                        fill=False,
+                        linewidth=1.5,
+                        edgecolor=grey,
+                        zorder=2,
+                    )
+                    ax.add_patch(rect)
+
+                    ax.set_zorder(2)
+                    ax_inset.set_zorder(2)
+
+                    for spine in ax_inset.spines.values():
+                        spine.set_color(grey)
+                        spine.set_zorder(5)
+
+                    ax_inset.tick_params(colors=grey)
+
+                    con1 = ConnectionPatch(
+                        xyA=(x0, y0),
+                        coordsA=ax.transData,
+                        xyB=(x0, y1),
+                        coordsB=ax_inset.transData,
+                        color=grey,
+                        linewidth=1,
+                        zorder=3,
+                        linestyle="--",
+                    )
+                    con2 = ConnectionPatch(
+                        xyA=(x1, y0),
+                        coordsA=ax.transData,
+                        xyB=(x1, y1),
+                        coordsB=ax_inset.transData,
+                        color=grey,
+                        linewidth=1,
+                        zorder=3,
+                        linestyle="--",
+                        connectionstyle="arc3,rad=0.1",
+                    )
+
+                    fig.add_artist(con1)
+                    fig.add_artist(con2)
+
+                    ax.set_ylabel(gl.volt, zorder=4)
+                    ax_inset.set_xlabel(gl.ms, color=grey, zorder=4)
+                    ax_inset.set_ylabel(gl.volt, color=grey, zorder=4)
+
+                    for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+                        lbl.set_zorder(5)
+
+                    for lbl in ax_inset.get_xticklabels() + ax_inset.get_yticklabels():
+                        lbl.set_zorder(5)
 
                     plt.savefig(
                         os.path.join(
@@ -4610,7 +4660,7 @@ if __name__ == "__main__":
                         initParms = (800, -67, 10, 19)
                         exp.GABAR = True
                     else:
-                        initParms = (400, 100, 0.1, 3.97)
+                        initParms = (200, 40, 0.1, 3.97)
                         exp.GABAR = False
                 else:
                     # initParms = (5, -72.5, 10, 19,0.5)

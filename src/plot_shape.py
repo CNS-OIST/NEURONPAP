@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from neuron import h
 from matplotlib.animation import FuncAnimation
 from mpi4py import MPI
+import types
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -21,6 +22,7 @@ def animate_morphology(
     rangevar="v",
     colormap_name="magma",
     outfile="morphology_animation.mp4",
+    frame_num=None,
     zoom=None,
     clim=None,
 ):
@@ -32,10 +34,14 @@ def animate_morphology(
 
     h.tstop = tstop
 
+    frames = int(tstop / dt)
+    # override calc frames when frame num set
+    if frame_num:
+        dt = tstop / frame_num
+
     if dt < h.dt:
         h.dt = dt
 
-    frames = int(tstop / dt)
     if zoom and "zoom" not in outfile:
         fPath = outfile.split(".mp4")[0]
         fPath += "_zoom.mp4"
@@ -70,8 +76,9 @@ def animate_morphology(
             h.fadvance()
 
     anim = FuncAnimation(fig, update, frames=frames, interval=1, repeat=False)
+    real_fps = 2 / dt  # 2 ms in simulation per 1 second video
 
-    anim.save(outfile, fps=30)
+    anim.save(outfile, fps=real_fps)
     print(f"Saved animation → {outfile}")
 
 
@@ -114,10 +121,13 @@ def plot_3d_morphology(
         ds = [h.diam3d(i, sec=sec) for i in range(n3d)]
 
         # color uses section rangevar (segment midpoint)
-        try:
-            rv = getattr(sec(0.5), rangevar)
-        except:
-            rv = 0.0
+        if type(rangevar) == types.FunctionType:
+            rv = rangevar(sec(0.5))
+        else:
+            try:
+                rv = getattr(sec(0.5), rangevar)
+            except:
+                rv = np.nan
 
         xlist.append(np.array(xs))
         ylist.append(np.array(ys))
@@ -186,6 +196,8 @@ def plot_3d_morphology(
         cbar = plt.colorbar(sm, ax=ax)
         if rangevar == "v":
             cbar.set_label(gl.volt)
+        elif type(rangevar) == types.FunctionType:
+            cbar.set_label(rangevar.__name__)
 
     ax.set_xlabel(gl.free("x ") + gl.unit_micron)
     ax.set_ylabel(gl.free("y ") + gl.unit_micron)

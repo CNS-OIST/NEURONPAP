@@ -15,9 +15,9 @@ class gl:
     volt = "Voltage " + unit_mV
     curr = "Current " + unit_pA
     d_volt = "Membrane potential change " + unit_mV
-    ek_raw = "E$_K$"
+    ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
-    vm = "V$_m$"
+    vm = "V$_\mathrm{m}$"
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
     seed_num = "Seed number"

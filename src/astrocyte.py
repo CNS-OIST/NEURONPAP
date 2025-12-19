@@ -114,6 +114,8 @@ class PAPModel(ResultsPAPModel):
         self.PAPLen = PAPLen
         self.RiSec = str(RiSec)
         self.getPeriphery = True
+
+        # only used for dual patch protocol
         self.g_pas = g_pas
 
         # subsitute
@@ -575,10 +577,10 @@ class PAPModel(ResultsPAPModel):
         self.PAPKirCount = self.PAPKirCount
         self.PAPKirCount_std = self.PAPKirCount_std
 
-    def setstimstart(self):
+    def setStimStart(self):
         h("objref stim")
-        h("stim = new netstim(.5)")
-        h(f"stim.start = {(self.inittstop + self.stimdelay) * ms}")
+        h("stim = new NetStim(.5)")
+        h(f"stim.start = {(self.initTstop + self.stimdelay) * ms}")
         h("stim.noise = 0")
         h("stim.number = 1")
         h("stim.interval = 0")
@@ -774,11 +776,15 @@ class PAPModel(ResultsPAPModel):
             outfile += ".mp4"
             animate_morphology(
                 tstop=stop,
-                dt=interval * self.dt,
                 rangevar=v,
                 outfile=outfile,
                 zoom=pap,
                 clim=clim,
+                frame_num=(
+                    200
+                    if int(self.tstop / self.dt) > 200
+                    else int(self.tstop / self.dt) / interval
+                ),
             )
         return
 
