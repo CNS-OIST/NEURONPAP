@@ -9,3 +9,4 @@ flycheck*
 pyproject.toml
 uv.lock
 intermediaryData/
+*.mp4
