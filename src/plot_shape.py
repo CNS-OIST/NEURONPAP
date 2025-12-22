@@ -25,10 +25,10 @@ def animate_morphology(
     frame_num=None,
     zoom=None,
     clim=None,
+    no_advance=False,
 ):
     if rank != 0:
         return
-
     fig = plt.figure(figsize=(10, 8))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -72,8 +72,9 @@ def animate_morphology(
             clim=clim,
         )
 
-        for i in range(int(dt / h.dt)):
-            h.fadvance()
+        if not no_advance:
+            for i in range(int(dt / h.dt)):
+                h.fadvance()
 
     anim = FuncAnimation(fig, update, frames=frames, interval=1, repeat=False)
     real_fps = 2 / dt  # 2 ms in simulation per 1 second video

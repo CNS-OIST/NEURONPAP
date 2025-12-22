@@ -680,5 +680,12 @@ proc set_kobase(){
         ko0_k_acc = $1
     }
 }
+proc setNak_pump(){
+  forall {
+    if ($1 == 0) {
+      totalpump_nakpump = 0
+      }
+    }
+}
 
 

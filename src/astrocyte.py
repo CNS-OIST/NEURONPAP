@@ -458,24 +458,27 @@ class PAPModel(ResultsPAPModel):
                 for nc in list(h.ncNMDAList):
                     nc.active(False)
 
-    def setNMDA_TC(self, tau1, tau2):
+    def setNMDA_TC(self, *args):
+        names = ["tau1_0", "tau2_0"]
         if not hasattr(self, "NMDAs"):
             wMessage("NO NMDAs defined for setNMDA_TC")
             return
         if len(self.NMDAs) > 0:
             for sNMDA in self.NMDAs:
-                sNMDA.tau1_0 = tau1
-                sNMDA.tau2_0 = tau2
+                for i, parm in enumerate(args):
+                    if parm:
+                        setattr(sNMDA, names[i], parm)
 
-    def setNMDA_Mgblock(self, K0, delta, shift):
+    def setNMDA_Mgblock(self, *args):
+        names = ["K0", "delta", "shift"]
         if not hasattr(self, "NMDAs"):
             wMessage("NO NMDAs defined for setNMDA_Mgblock")
             return
         if len(self.NMDAs) > 0:
             for sNMDA in self.NMDAs:
-                sNMDA.K0 = K0
-                sNMDA.delta = delta
-                sNMDA.shift = shift
+                for i, parm in enumerate(args):
+                    if parm:
+                        setattr(sNMDA, names[i], parm)
 
     def initGABAas(self):
         if not hasattr(self, "GABAas"):
@@ -544,15 +547,17 @@ class PAPModel(ResultsPAPModel):
             for nc in list(h.ncGluList):
                 nc.active(False)
 
-    def setGLT_TC(self, tau1, tau2):
+    def setGLT_TC(self, *args):
+        names = ["tau1", "tau2"]
         if "GluTrans" not in self.GENEDict.keys() or self.GENEDict["GluTrans"] == None:
             wMessage("NO GluTs defined for setNMDA_TC")
             return
         if len(h.ncGluList) > 0:
             for s in list(h.ncGluList):
                 sGLT = s.syn()
-                sGLT.tau1 = tau1
-                sGLT.tau2 = tau2
+                for i, parm in enumerate(args):
+                    if parm:
+                        setattr(sGLT, names[i], parm)
 
     def getGLTCountPAP(self):
         self.PAPGluTCount = 0
@@ -593,6 +598,12 @@ class PAPModel(ResultsPAPModel):
         h("objref stim")
         h("stim = new VecStim(.5)")
         h("stim.play(stimTime)")
+
+    def NaKpumpOn(self, state):
+        if state:
+            h.setNak_pump(1)
+        else:
+            h.setNak_pump(0)
 
     def setTstop(self, tstop=500):
         h.tstop = tstop
@@ -1139,7 +1150,8 @@ class PAPModel(ResultsPAPModel):
         return sl
 
     def setSlowing(self, slow):
-        h.setSlowing(self.flattenPAP(), slow)
+        if slow:
+            h.setSlowing(self.flattenPAP(), slow)
 
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
         if dur == 0 or KoSize == 0:

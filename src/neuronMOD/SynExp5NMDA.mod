@@ -90,7 +90,7 @@ b1 = 0.03 (1/mV)
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
                       : Parameters Control Mg block of NMDAR
 	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-        K0 = 10              (mM)
+        K0 = 20              (mM)
         : shift = 0             (1) : theoretical shift from 0 mV Mg block
         shift = 40 (mV) : lalo Jneuro
         delta = 0.1 (1)

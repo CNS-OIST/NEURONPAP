@@ -34,6 +34,10 @@ class gl:
         return (initStep * dt, initStep * dt + 20)
 
     @staticmethod
+    def current_ion(ion):
+        return "I$_\mathrm{" + str(ion) + "}$"
+
+    @staticmethod
     def ion_o(ion):
         return f"Extracellular [{ion}] " + gl.unit_mM
 

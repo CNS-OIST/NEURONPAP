@@ -320,7 +320,7 @@ class plotFigures:
                             height=2,
                             fc="w",
                             ec="k",
-                            label=f"{self.locality} stim",
+                            label=f"Local stim",
                         )
                         ax.add_patch(r)
                     else:
@@ -330,7 +330,7 @@ class plotFigures:
                             endStim,
                             color=self.returnColor(self.locality),
                             linewidth=8,
-                            label=f"{self.locality} stim",
+                            label=f"Global stim",
                         )
 
                 if setKoylim:
@@ -419,7 +419,7 @@ class plotFigures:
                             height=16 / 5,
                             fc="w",
                             ec="k",
-                            label=f"{self.locality} stim",
+                            label=f"Local stim",
                         )
                         ax.add_patch(r)
                     else:
@@ -429,7 +429,7 @@ class plotFigures:
                             endStim,
                             color=self.returnColor(self.locality),
                             linewidth=8,
-                            label=f"{self.locality} stim",
+                            label=f"Global stim",
                         )
                     if second:
                         ax.set_xlabel(gl.s)
@@ -502,14 +502,14 @@ class plotFigures:
                 ax.plot(
                     list(cell.time)[initStep:],
                     list(cell.iKPAP)[initStep:],
-                    label="iK",
+                    label=gl.current_ion("K"),
                     color=self.returnColor("iK"),
                 )
                 if hasattr(cell, "iNaPAP"):
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iNaPAP)[initStep:],
-                        label="iNa",
+                        label=gl.current_ion("Na"),
                         color=self.returnColor("Na"),
                     )
                 # if hasattr(cell, "iCaPAP"):
@@ -530,21 +530,21 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iNMDA)[initStep:],
-                        label="iNMDA",
+                        label=gl.current_ion("NMDA"),
                         color=self.returnColor("NMDAR"),
                     )
                 if hasattr(cell, "iGABA") and self.GABAR:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGABA)[initStep:],
-                        label="iGABAa",
+                        label=gl.current_ion("GABAa"),
                         color=self.returnColor("GABAR"),
                     )
                 if hasattr(cell, "iGluT") and self.GluT:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluT)[initStep:],
-                        label="iGluT",
+                        label=gl.current_ion("GluT"),
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
@@ -573,28 +573,28 @@ class plotFigures:
                 ax.plot(
                     list(cell.time)[initStep:],
                     list(cell.iKSoma)[initStep:],
-                    label="ik",
+                    label=gl.current_ion("K"),
                     color=self.returnColor("iK"),
                 )
                 if hasattr(cell, "iNaSoma"):
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iNaSoma)[initStep:],
-                        label="iNa",
+                        label=gl.current_ion("Na"),
                         color=self.returnColor("Na"),
                     )
                 if hasattr(cell, "iClSoma"):
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iClSoma)[initStep:],
-                        label="iCl",
+                        label=gl.current_ion("Cl"),
                         color=self.returnColor("Cl"),
                     )
                 if hasattr(cell, "iGluTSoma") and self.GluT:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluTSoma)[initStep:],
-                        label="iGluT",
+                        label=gl.current_ion("GluT"),
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
@@ -1780,7 +1780,7 @@ class procedure(plotFigures):
             cellComparison.append(cells.copyAttr())
             print(f"complete{ratio}")
         for i, cell in enumerate(cellComparison):
-            plt.plot(cell.time, cell.vSoma, label=f"ratio to PAP:{ratioList[i]}")
+            plt.plot(cell.time, cell.vSoma, label=f"Ratio to PAP:{ratioList[i]}")
             # plt.legend()
             plt.savefig(
                 os.path.join(
@@ -2129,13 +2129,13 @@ class procedure(plotFigures):
                 plt.plot(
                     list(cell.time)[initStep:],
                     list(cell.vPAP)[initStep:] - cell.ek,
-                    label=f"ek {cell.ek}",
+                    label=f"{cell.ek}",
                     color=cm.magma(i / len(AllCells)),
                 )
 
         plt.legend()
         plt.xlabel(gl.ms)
-        plt.ylabel(gl.free("Voltage - ek (mV)"))
+        plt.ylabel(gl.free(f"Voltage - {gl.ek_raw} (mV)"))
         plt.savefig(os.path.join("../results/paperRes", "ekDepolarcompTraces.pdf"))
         for cells in AllCells:
             for cell in cells:
@@ -2144,20 +2144,20 @@ class procedure(plotFigures):
                 plt.plot(
                     list(cell.time)[initStep:],
                     list(cell.iKPAP)[initStep:],
-                    label=f"iK",
+                    label=gl.current_ion("K"),
                     color=self.returnColor("iK"),
                 )
                 plt.plot(
                     list(cell.time)[initStep:],
                     list(cell.iNMDA)[initStep:],
-                    label=f"iNMDAR",
+                    label=gl.current_ion("NMDA"),
                     color=self.returnColor("NMDAR"),
                 )
                 if hasattr(cell, "iGluT"):
                     plt.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluT)[initStep:],
-                        label=f"iGluT",
+                        label=gl.current_ion("GluT"),
                         color=self.returnColor("GluT"),
                     )
                 plt.legend()
@@ -3269,7 +3269,7 @@ class procedure(plotFigures):
                     color=cm.winter(controlIndex / len(iterations)),
                     marker="D",
                     edgecolor="black",
-                    label="Confined",
+                    label="Control",
                     zorder=10,
                 )
                 # ax.axvline(
@@ -3798,16 +3798,18 @@ class procedure(plotFigures):
                             color="grey",
                             linestyle="--",
                         )
-                        plt.xlabel("distance ($\mu$m)")
-                        plt.ylabel("V(d)/V(0)")
-                        plt.title(f"Rm ($\Omega$ cm$^2$) = {cell.g_pas:.2f}")
+                        plt.xlabel(gl.free("Distance ($\mu$m)"))
+                        plt.ylabel(gl.free("V(d)/V(0)"))
+                        plt.title(
+                            gl.free(f"Rm ($\Omega$ cm$^2$) = {int(1/cell.g_pas)}")
+                        )
                         plt.savefig("dual_patch.pdf")
             plt.cla()
             plt.clf()
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.plot(test_conductance, sensitivity)
-            ax.set_xlabel("Rm ($\Omega$ cm$^2$)")
-            ax.set_ylabel("Projected $\lambda$")
+            ax.set_xlabel(gl.free("1/Rm ($\Omega^{-1}$ cm$^{-2}$)"))
+            ax.set_ylabel(gl.free("Projected $\lambda$"))
             ax.axhline(y=3.6, xmin=0, xmax=1, label="3.6", color="grey", linestyle="--")
 
             inset = inset_axes(ax, width="35%", height="35%", loc="upper right")
@@ -3873,8 +3875,12 @@ class procedure(plotFigures):
         df["t"] = df["t"] + (results.initTstop + results.stimdelay) * ms
         return df
 
-    def fitExpDepolarization(self, x, showFig=False, PAP=True):
-        self.global_rw_data = True
+    def fitExpDepolarization(
+        self, x, showFig=False, PAP=True, use_tau=False, autosave=True
+    ):
+        self.foundFitExperiment = False
+        if autosave:
+            self.global_rw_data = True
         self.addChannelTag()
         AllCells = []
         funcArgs = []
@@ -3887,7 +3893,10 @@ class procedure(plotFigures):
                 self.tag += "_PAP_GABAR"
                 k = 500
                 mprint(x)
-                GABAR, s, d, tau2 = x
+                if use_tau:
+                    GABAR, s, d, tau2 = x
+                else:
+                    GABAR = x[0]
                 tau1 = 1.69
                 Kir = 0
                 funcArgs.append(
@@ -3913,7 +3922,10 @@ class procedure(plotFigures):
                 self.tag += "_PAP_NMDAR"
                 k = 500
                 mprint(x)
-                NMDAR, s, d, tau2 = x
+                if use_tau:
+                    NMDAR, s, d, tau2 = x
+                else:
+                    NMDAR = x[0]
                 tau1 = 1.69
                 Kir = 0
                 funcArgs.append(
@@ -3935,14 +3947,28 @@ class procedure(plotFigures):
         else:
             mprint(x)
             if len(x) == 4:
-                glt, kir, PAPLen, KoSize = x
+                if use_tau:
+                    glt, kir, PAPLen, KoSize = x
+                else:
+                    glt, kir = x
                 tau2 = 5.8
                 slowing = 1
                 forcedAccum = False
             else:
                 self.tag += "_forced_accum"
-                glt, kir, PAPLen, KoSize, tau2, slowing = x
+                if use_tau:
+                    glt, kir, PAPLen, KoSize, tau2, slowing = x
+                else:
+                    glt, kir = x
                 forcedAccum = True
+                if not use_tau:
+                    tau2 = None
+                    slowing = None
+
+            if not use_tau:
+                PAPLen = 0.3
+                KoSize = 0.5
+
             funcArgs.append(
                 {
                     "mode": 0,
@@ -3978,21 +4004,23 @@ class procedure(plotFigures):
         rankDict = comm.bcast(rankDict, root=0)
         comm.Barrier()
 
-        if not self.free_read_data():
+        if not autosave or not self.free_read_data():
             cells = PAPModel(**funcArgs[-1])
             cells.setTstop(500)
             if not PAP:
                 cells.setGLT_TC(0.61, tau2)
+                # cells.NaKpumpOn(False)
             cells.initialize()
 
-            if PAP:
-                cells.setNMDA_Mgblock(k, d, s)
-                cells.setNMDA_TC(tau1, tau2)
-                # cells.setSlowing(slow)
-            else:
-                cells.setSlowing(slowing)
+            if use_tau:
+                if PAP:
+                    cells.setNMDA_Mgblock(k, d, s)
+                    cells.setNMDA_TC(tau1, tau2)
+                    # cells.setSlowing(slow)
+                else:
+                    cells.setSlowing(slowing)
             cells.multiSpike(number=stim, freq=100)
-            if not PAP:
+            if not PAP and use_tau:
                 cells.setGLT_TC(0.61, 5.8)
                 cells.setSlowing(1)  # return to normal after neuro activity
 
@@ -4001,11 +4029,13 @@ class procedure(plotFigures):
             print(f"ran_sim {rank}")
             comm.Barrier()
             AllCells = comm.gather(cells, root=0)
-            if rank == 0:
+            if rank == 0 and autosave:
                 self.free_figure(AllCells)
         else:
-            AllCells = self.free_read_data()
-            cells = AllCells[rank]
+            if autosave:
+                self.foundFitExperiment = True
+                AllCells = self.free_read_data()
+                cells = AllCells[rank]
             # if rank == 0:
             #    self.plotIKSeries([[cells]])
 
@@ -4015,7 +4045,7 @@ class procedure(plotFigures):
             PAP=PAP,
             showFig=showFig,
             Fname=f"fit{PAP=}{forcedAccum=}{self.GABAR=}",
-            correctArtifact=True,
+            correctArtifact=False,
             rankDict=rankDict,
         )
 
@@ -4041,6 +4071,7 @@ class procedure(plotFigures):
         showFig=True,
         Fname="FitResult",
         correctArtifact=True,
+        normalize=True,
         split=False,
         rankDict={10: 0, 5: 1, 1: 2},
     ):
@@ -4055,6 +4086,10 @@ class procedure(plotFigures):
             plt.clf()
         AllCells = []
         sim_time = None
+        if hasattr(cells, "GABACount"):
+            print(f"{cells.GABACount=}")
+        else:
+            print(f"{cells.multiple=}")
         # get and tweak results
         tList, fList, stdList = procedure.getExpRes(f"./Data/{stim}stim.csv")
 
@@ -4098,6 +4133,8 @@ class procedure(plotFigures):
             spl = spline(singleStimBaselineT, singleStimBaseline)
             simF += spl(expT)
         loss = np.absolute(expF - simF)
+        if normalize:
+            loss /= max(expF)
 
         stdComp = loss - expSTD
         loss = sum(loss[(stdComp >= 0)] ** 2)
@@ -4648,6 +4685,7 @@ if __name__ == "__main__":
     if size == 3:
         mprint("exp fit")
         testBools = [True, False]
+        use_tau = False
         for PAP in testBools:
             for forcedAccum in testBools:
                 exp = procedure(3, 0)
@@ -4655,39 +4693,51 @@ if __name__ == "__main__":
                 if PAP:
 
                     # initParms = (5, -72.5, 10, 19,0.5)
-                    bounds = [(1, 10), (-80, -70), (10, 50), (4, 50)]
+                    bounds = [(1, 1000), (-80, 100), (0, 10), (3, 20)]
                     if forcedAccum:
                         initParms = (800, -67, 10, 19)
                         exp.GABAR = True
                     else:
-                        initParms = (200, 40, 0.1, 3.97)
+                        initParms = (150, 100, 0.1, 3.97)
                         exp.GABAR = False
+                    if not use_tau:
+                        initParms = tuple([initParms[0]])
+                        bounds = [bounds[0]]
+
                 else:
                     # initParms = (5, -72.5, 10, 19,0.5)
                     #        glt, kir, PAPLen, KoSize, tau2, slowing
-                    initParms = (150, 100, 5, 50)
-                    bounds = [(-1000, 1000), (90, 150), (1, 10), (0.5, 30)]
+                    initParms = (5000, 0, 10, 70)
+                    bounds = [(-5000, 5000), (0, 1500), (1, 10), (0.5, 30)]
 
-                    if forcedAccum:
+                    if forcedAccum and use_tau:
                         initParms = list(initParms)
                         # initParms[0] = 0
                         # initParms[1] = 1
                         initParms = tuple(initParms)
 
-                        initParms += (500, 500)
+                        initParms += (10000, 1000)
                         bounds = [
-                            (5.8, 800),
+                            (5.8, 10000),
                             (0, 10000),
                         ]
 
+                    if not use_tau:
+                        initParms = tuple(initParms[:2])
+                        bounds = list(bounds[:2])
+
+                kwargs = {"use_tau": use_tau, "autosave": False}
+
                 exp.fitExpDepolarization(initParms, showFig=True, PAP=PAP)
-                #                res = minimize(
-                #                    lambda x: exp.fitExpDepolarization(x, **kwargs),
-                #                    initParms,
-                #                    method="Nelder-Mead",
-                #                    bounds=bounds,
-                #                )
-                #                exp.fitExpDepolarization(res.x, showFig=True, PAP=PAP)
+                if not exp.foundFitExperiment:
+                    res = minimize(
+                        lambda x: exp.fitExpDepolarization(x, **kwargs),
+                        initParms,
+                        method="Nelder-Mead",
+                        bounds=bounds,
+                    )
+                    exp.fitExpDepolarization(res.x, showFig=True, PAP=PAP)
+                exp.foundFitExperiment = False
                 if not PAP:
                     break
     elif size == 5 or size == 2 or size == 4:
