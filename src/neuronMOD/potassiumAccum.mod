@@ -4,6 +4,7 @@ NEURON {
 	SUFFIX k_acc
 	USEION k READ ko, ik WRITE ko
         RANGE tauk_0, ko0, flag, kbath, flux, slowing
+        RANGE fhspace
 	THREADSAFE
 }
 
@@ -18,7 +19,7 @@ UNITS {
 
 PARAMETER {    
     ko0 = 2.5 (mM)
-    fhspace = 200 (angstrom) : effective thickness 
+    fhspace = 400 (angstrom) : effective thickness 
     tauk_0 = 4.0 (ms) :Ransom C.B. (2000) Journal of Physiology
     flag  = 0 (1)
     slowing = 1 (1)
@@ -71,13 +72,6 @@ PROCEDURE kbathRate(){
         tauk = slowing * tauk_0: slowing 
         kbath =  (ko0 - ko)/tauk
     }
-    : if ((iNMDA != 0 || iGluT < 0) && t > 150) {
-    :     : printf("%g\n",iNMDA)
-    :     : tauk = tauk_0 * slowing
-    :     tauk = tauk_0 * ((slowing - 1) * exp((t-500)/100) - slowing)
-    
-    
-
     
     if (flag == 1) {
         : instantaneous free bath mode for one step

@@ -7,41 +7,48 @@ time constants are voltage-dependent and temperature sensitive
 
 Mg++ voltage dependency from Spruston95 -> Woodhull, 1973 
 
-Desensitization is introduced in this model. Actually, this model has 4 differential equations
-becasue desensitization is solved analitically. It can be reduced to 3 by solving its A state analitically.
+Desensitization is introduced in this model. Actually, this model has 5 differential equations
+becasue desensitization is solved numerically. 
+It can be reduced to 3 by solving its A state analitically.
 For more info read the original paper. 
 
 Keivan Moradi 2012
 
+TODO
+[ ] check maximum VD change
+
 ENDCOMMENT
 
 NEURON {
-	POINT_PROCESS Exp5NMDA
-	NONSPECIFIC_CURRENT iNMDA
+    POINT_PROCESS Exp5NMDA_N2C
+    NONSPECIFIC_CURRENT iNMDA_N2C
 	RANGE tau1, tau1_0, tau2_0, a2, b2, wtau2, tau3_0, a3, b3, tauV, e, i, gVI, gVDst, gVDv0, Mg, K0, delta, tp, wf, tau_D1, d1,multiple, shift
 	THREADSAFE
 }
 
 UNITS {
 	(nA) = (nanoamp)
+	(fA) = (femtoamp)
 	(mV) = (millivolt)
 	(uS) = (microsiemens)
 	(mM) = (milli/liter)
-	(S)  = (siemens)
+	(uM) = (micro/liter)
 	(pS) = (picosiemens)
 	(um) = (micron)
 	(J)  = (joules)
 }
 
 PARAMETER {
-  multiple = 1 (1)
 : Parameters Control Neurotransmitter and Voltage-dependent gating of NMDAR
-	tau1 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
+tau1_0 = 1.69		(ms)	<1e-9,1e9>	: Spruston95 CA1 dend [Mg=0 v=-80 celcius=18] be careful: Mg can change these values
+a1 = 0.09 (ms)
+b1 = 0.03 (1/mV)
 : parameters control exponential rise to a maximum of tau2
-	tau2_0 = 3.97	(ms)
+ tau2_0 = 3.97	(ms)
+:tau2_0 = 19 (ms)
 	a2 = 0.70		(ms)
 	b2 = 0.0243		(1/mV)
-	wtau2= 0.65		<1e-9,1> : Hestrin90
+	wtau2= 0.95		<1e-9,1> : Hestrin90 0.65
 	
 : parameters control exponential rise to a maximum of tau3
 	tau3_0 = 41.62	(ms)
@@ -62,7 +69,9 @@ PARAMETER {
 : Parameters control desensitization of the channel
 	: these values are from Fig.3 in Varela et al. 1997
 	: the (1) is needed for the range limits to be effective
-	d1 = 0.2 	  	(1)		< 0, 1 >     : fast depression
+	: d1 = 0.2 	  	(1)		< 0, 1 >     : fast depression
+	: tau_D1 = 2500 	(ms)	< 1e-9, 1e9 >
+	d1 = 1	  	(1)		< 0, 1 >     : fast depression
 	tau_D1 = 2500 	(ms)	< 1e-9, 1e9 >
 : Parameters Control voltage-dependent gating of NMDAR
 	tauV = 7		(ms)	<1e-9,1e9>	: Kim11 
@@ -74,15 +83,26 @@ PARAMETER {
 	gVDst = 0.007	(1/mV)	: steepness of the gVD-V graph from Clarke08 -> 2 units / 285 mv
 	gVDv0 = -100	(mV)	: Membrane potential at which there is no voltage dependent current, from Clarke08 -> -90 or -100
 	gVI = 33			(pS)	: Maximum Conductance of Voltage Independent component, This value is used to calculate gVD
+        :additional change to fit -60 mV 33 pS = gVI no gVD for astrocyte NMDAR from Lalo Curve
 	Q10 = 1.52				: Kim11
 	T0 = 26			(degC)	: reference temperature 
 	celsius 		(degC)	: actual temperature for simulation, defined in Neuron
-: Parameters Control Mg block of NMDAR
 	Mg = 1			(mM)	: external magnesium concentration from Spruston95
-	K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
-	delta = 0.8 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
-: The Parameter Controls Ohm haw in NMDAR
-	e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
+                      : Parameters Control Mg block of NMDAR
+	: K0 = 4.1		(mM)	: IC50 at 0 mV from Spruston95
+        K0 = 20              (mM)
+        : shift = 0             (1) : theoretical shift from 0 mV Mg block
+        shift = 40 (mV) : lalo Jneuro
+        delta = 0.1 (1)
+	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
+        : The Parameter Controls Ohm haw in NMDAR
+        e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
+        multiple = 1 (1)
+        flag = 0 (1)
+        : glu = 1 (mM) 
+        gluEC = 4.3 (uM) : From Nahum-Levy et al. 2001 Biophysical Journal
+        hilln = 1.2 (1) : From Nahum-Levy et al. 2001 Biophysical Journal
+        synWeight = 0.56 : From Moradi
 }
 
 CONSTANT {
@@ -95,68 +115,96 @@ CONSTANT {
 ASSIGNED {
 	v		(mV)
 	dt		(ms)
-	iNMDA		(nA)
-	g		(uS)
-	factor
-	wf
+        maxI (nA)
+	iNMDA_N2C (nA)
+        prvI (nA)
+	g		(pS)
+	factor (1)
+	wf (1)
+        q10_tau1
 	q10_tau2
 	q10_tau3
-	inf		(uS)
+	inf		(pS)
 	tau		(ms)
+        tau1 (ms)
 	tau2	(ms)
 	tau3	(ms)
-	wtau3
+	wtau3 (1)
+        prvW (1)
+        prvA (1)
+        prvB (1)
+        prvC (1)
+        tPeak (ms)
+        area (um2)
 }
 
 STATE {
 	A		: Gating in response to release of Glutamate
 	B		: Gating in response to release of Glutamate
 	C		: Gating in response to release of Glutamate
-	gVD (uS): Voltage dependent gating
-}
-
-INITIAL { 
+	gVD (pS): Voltage dependent gating
+    }
+    
+    INITIAL {
+        prvW = 0
+        prvI = 0
 	Mgblock(v)
 	: temperature-sensitivity of the of NMDARs
-	tau1 = tau1 * Q10_tau1^((T0_tau - celsius)/10(degC))
+	q10_tau1 = Q10_tau1^((31.5 - celsius)/10(degC))
 	q10_tau2 = Q10_tau2^((T0_tau - celsius)/10(degC))
 	q10_tau3 = Q10_tau3^((T0_tau - celsius)/10(degC))
 	: temperature-sensitivity of the slow unblock of NMDARs
 	tau  = tauV * Q10^((T0 - celsius)/10(degC))
-	
-	rates(v)
+        
+        rates(v)
+        : factor should mirror at 0 mV
 	wtau3 = 1 - wtau2
 	: if tau3 >> tau2 and wtau3 << wtau2 -> Maximum conductance is determined by tau1 and tau2
-	: tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
-	
-	factor = -exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3)
-	factor = 1/factor
-
+	tp = tau1*tau2*log(tau2/(wtau2*tau1))/(tau2 - tau1)
+	factor = (-exp(-tp/tau1) + wtau2*exp(-tp/tau2) + wtau3*exp(-tp/tau3))
+	factor = 1/factor	
+        : printf("tau:%g,%g,%g\n",tau1,tau2,tau3)
+	: printf("factor:%g\n",factor)
+	: printf("tp:%g\n",tp)
+	: printf("T0:%g\n",T0_tau)
 	A = 0
 	B = 0
 	C = 0
 	gVD = 0
 	wf = 1
-}
+        flag = 0
+        maxI = 0
+    }
+    
+    BREAKPOINT {
 
-BREAKPOINT {
-	SOLVE state METHOD runge : derivimplicit : 
+	SOLVE state METHOD derivimplicit : 
 	: we found acceptable results with "runge" integration method
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
-
-	iNMDA = (wtau3*C + wtau2*B - A)*(gVI + gVD)*multiple*Mgblock(v)*(v - e)
-}
-
-DERIVATIVE state {
-	rates(v)
-	A' = -A/tau1
-	B' = -B/tau2
-	C' = -C/tau3
+        : numerical error accumalation compensation
+        g = gVI * (wtau3*C + wtau2*B - A) * multiple
+        : if (g<0){
+        :     printf("%g\n",g)
+        :     printf("\t%g,%g\n",A,B)
+        :     : g = 0
+        :     : A = 0
+        :     : B = 0
+        :     printf("\t%g,%g\n",tau1,tau2)
+        : }
+	iNMDA_N2C = (1e-6) * g * Mgblock(v) * (v - e)
+        
+    }
+    
+    DERIVATIVE state {
+        rates(v)
+    A' = -A/tau1
+    B' = -B/tau2
+    C' = -C/tau3
 	: Voltage Dapaendent Gating of NMDA needs prior binding to Glutamate Kim11
-	gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
-	: gVD' = (inf-gVD)/tau
-}
+	: gVD' = ((wtau3*C + wtau2*B)/wf)*(inf-gVD)/tau
+	: gVD' = (inf-gVD)/tau Regular HH-type
+ }
 
 NET_RECEIVE(weight, D1, tsyn (ms)) {
 	INITIAL {
@@ -168,29 +216,48 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
-
-	wf = weight*factor*D1
+        
+	wf = synWeight*factor*D1*hillGluc(weight*1 (mM)) 
+        : printf("%g,%g,%g,%g,%g\n",weight,factor,D1,wf,hillGluc(glu))
+        : printf("%g\n",weight)
+        : printf("%g",tsyn)
+        
 	A = A + wf
 	B = B + wf
 	C = C + wf
-
+        : printf("%g,%g,%g\n",A,B,C)
+       
 	D1 = D1 * d1
-}
+        flag = 0
+        wf = 1
+        : printf("%g,%g,%g\n",A,B,C)
+   }
+    
 
 FUNCTION Mgblock(v(mV)) {
 	: from Spruston95
-	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(-z)*delta*F*v/R/(T+celsius)))
-}
-
-PROCEDURE rates(v (mV)) { 
-	inf = (v - gVDv0) * gVDst * gVI
-	
-	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
-	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3
+	Mgblock = 1 / (1 + (Mg/K0)*exp((0.001)*(z)*delta*F*(-v+shift)/R/(T+celsius)))
+    }
+    
+    PROCEDURE rates(v (mV)) {
+        : Follows mirroing aspect before and after 0 mV of Astrocyte NMDAR
+	: inf = (fabs(v) - gVDv0) * gVDst * gVI 
+        
+	tau1 = (tau1_0 + a1*(exp(-b1*v)))*q10_tau1
+        : printf("%g\n",tau1)
+	tau2 = (tau2_0 + a2*(exp(b2*v)))*q10_tau2
+        
+        :update when enough data to get voltage dependence
+	tau3 = (tau3_0 + a3*(exp(b3*v)))*q10_tau3
 	if (tau1/tau2 > .9999) {
-		tau1 = .9999*tau2
+		tau1 = tau2 * .9999
 	}
 	if (tau2/tau3 > .9999) {
-		tau2 = .9999*tau3
-	}
-}
+		tau2 = tau3*.9999
+	    }
+        }
+        
+    
+    FUNCTION hillGluc(gluConc (mM)){
+        hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
+    }

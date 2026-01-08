@@ -73,8 +73,9 @@ BREAKPOINT {
     : divided by estimated surface area Radulescu A. et al (2022)
     : units changes to mA/cm2 for ik
     : printf("ik:%g\n",ik)
-    
-    : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
+   :if ((100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs)))< 0){
+   : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
+   : } 
     : printf("exp:%g\n",exp(-z*v/vs))
     : ionMove()
         : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 

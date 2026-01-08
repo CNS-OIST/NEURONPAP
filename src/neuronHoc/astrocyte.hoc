@@ -5,7 +5,12 @@ astro_name = "CA1"
 celsius = 34
 
 double lenUnits[1]
-lenUnits = 0.3
+lenUnits = 0.1
+
+objref  secref,sGap,gaplist
+  gaplist = new List()
+
+gapcount = 0 
 
 // clear morphologyto
 total_surf = 0
@@ -25,22 +30,20 @@ total_surf = 0
         cm = 0.8
         insert pas
         e_pas = -85
-        //g_pas = 1 / 1450 
-        g_pas = 2.15 // fitted from Zhou 3.6 um
-        
+        g_pas = 1/145        
         insert kir2
         insert nakpump
         // insert ncx
         // imax_ncx = 10
-        insert twik
-        for (x) total_surf = total_surf + area(x)
+        //insert twik
+        //for (x) total_surf = total_surf + area(x)
         insert kleak
         insert naleak
         insert clleak
         //optimized for -80 mV
         
         insert k_acc
-        insert kdifl
+        //insert kdifl
         //insert na_acc
         //insert nai_acc
         //insert ca_acc
@@ -49,11 +52,20 @@ total_surf = 0
         if (L > lenUnits) {
             nseg = int(L/lenUnits)
         }
+      secref = new SectionRef()
+      if (secref.nchild == 0 && gapcount > 0){
+        //gap_kdifl = 1
+        //no_clamp_kdifl = 0
+        sGap = new Gap(0.7)
+        gaplist.append(sGap)
+        gapcount = gapcount - 1
+      }
+
     }
 }
 //psection()
 //print total_surf
-forall total_area_twik = total_surf
+//forall total_area_twik = total_surf
 
 objref r
 
@@ -183,10 +195,6 @@ obfunc get_randomSection() {local lenThr,rloc,rint localobj current_section, chi
     return current_section    
 }
 
-
-
-
-
 obfunc get_NodeSection() {local ID,skipCount localobj current_section,strobj
     ID = $2
     skipCount = 0
@@ -291,8 +299,11 @@ proc setNMDAs(){local lenPAP
         sNMDA = new Exp5NMDA(0.5)
         NMDAs.append(sNMDA)
         nc = new NetCon(stim,NMDAs.o(lenPAP))
+        sNMDA = new Exp5NMDA_N2C(0.5)
+        NMDAs.append(sNMDA)
+        nc = new NetCon(stim,NMDAs.o(lenPAP+1))
         ncNMDAList.append(nc)
-        lenPAP = lenPAP + 1
+        lenPAP = lenPAP + 2
     }
 }
 
@@ -374,14 +385,11 @@ proc fINITGLUT(){
 objref FinGluT
 FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 
-
-
-
 //initialize Ko
 proc initIon(){local iki,inai
     iki = 120 //ek set to -92
     inai = 15 // Verhratsky A 2019 review
-    ko0 = 3
+    ko0 = 2
     
     // set global Ki
     ki0_k_ion = iki
@@ -395,8 +403,9 @@ proc initIon(){local iki,inai
         //nai0_nai_acc = inai
         ko = ko0 
         ki = iki
-        ki0_kdifl = iki 
+        //ki0_kdifl = iki 
         ko0_k_acc = ko0
+        //kob_twik = iki 
         clo = 130
         cli = 30
         //cao = 2
@@ -447,6 +456,24 @@ proc setkin(){
         ki = $1
     }
 }
+proc turnoff_ki_diff(){
+  forall {
+      Dk_kdifl = 0
+    }
+  }
+
+  proc ki_clamp(){
+    forall {
+        no_clamp_kdifl = 1 - $1 
+      }
+
+    }
+
+  proc set_gap_k(){
+      forall {
+        gap_kdifl = $1 
+        }
+    }
 
 proc setGEVI(){
     forall {
@@ -482,8 +509,8 @@ proc clampSwitch() {
   if ($1 > 4){
         // voltage clamp
         soma {vc = new SEClamp(0.01)}
-        vc.dur[0] = tstop
-        vc.amp[0] = $2  // mV depolarization (dV = 20)
+        vc.dur1 = tstop
+        vc.amp1 = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
         //---------------------------------------------------
      } else if ($1 > 3) {
@@ -684,6 +711,19 @@ proc setNak_pump(){
   forall {
     if ($1 == 0) {
       totalpump_nakpump = 0
+      }
+    }
+}
+proc setECS(){local soma_area,total_area
+  if ($2 == 0) {
+    forall fhspace_k_acc = $1
+  } else {
+    soma_area = 0
+    soma {for (x) soma_area = soma_area + area(x)}
+    forall {
+      total_area = 0
+      for (x) total_area = total_area + area(x)
+      fhspace_k_acc = $1 * sqrt(total_area) / sqrt(soma_area)
       }
     }
 }
