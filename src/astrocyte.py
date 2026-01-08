@@ -72,7 +72,7 @@ class PAPModel(ResultsPAPModel):
         PAPLen=0.3,
         RiSec=None,
         v_init=-85,
-        g_pas=2.15,
+        g_pas=0.69,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -205,7 +205,7 @@ class PAPModel(ResultsPAPModel):
         if "kir2" in kwargs.keys() and kwargs["kir2"] is not None:
             # print(kwargs["kir2"])
             # print(type(kwargs["kir2"]))
-            if kwargs["kir2"] > 400:
+            if kwargs["kir2"] > 800:
                 self.dt = dt / 3
                 h.dt = self.dt
 
@@ -393,7 +393,7 @@ class PAPModel(ResultsPAPModel):
         # custom initialization
         #
         # initSpike at current T
-        totalT = [float(self.initTstop)]
+        totalT = [int(self.initTstop)]
         while totalT[-1] < self.tstop:
             for _ in range(3):
                 # 4 spikes of 100 Hz
@@ -670,8 +670,8 @@ class PAPModel(ResultsPAPModel):
         # print('setup Record')
         # sys.stdout.flush()
         if voltageClamp:
-            h.tstop = self.initTstop
-            h.clampSwitch(1, -80)
+            h.tstop = self.initTstop / 10
+            h.clampSwitch(1, -90)
             h.tstop = self.tstop
         h.finitialize(self.v_init)
         h.fcurrent()
@@ -683,12 +683,23 @@ class PAPModel(ResultsPAPModel):
         if video:
             self.makeVideo(self.varMorph, stop=self.initTstop)
         else:
-            h.continuerun(self.initTstop * ms)
+            if voltageClamp:
+                # for equilibriation purposes
+                self.setK(dur=(self.initTstop / 10 - h.t))
+
+            # TODO:
+            # adaptive integration (think about timesteps and how to detect in plot)
+            while h.t < self.initTstop:
+                if np.isnan(list(self.vPAP)[-1]):
+                    print("Encountered Nan in initialization")
+                    print(list(self.vPAP))
+                    sys.exit(-1)
+                h.fadvance()
         # print(list(self.KoSizePAP)[-1])
         self.RMP = list(self.vPAP)[
             -1
         ]  # consider last timepoint in initialization as RMP
-        # print(self.RMP)
+        print(f"RMP:{self.RMP}")
         if saveState:
             s = h.SaveState()
             s.save()
@@ -1179,13 +1190,33 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), 0, restKo, 0)
         self.KoSize = KoSize
 
-    def setKBath(self, Ko, dur=100, delay=0, isolate=False, video=False):
+    def set_ECS(self, angs, scale=True):
+        if scale:
+            h.setECS(angs, 1)
+        else:
+            h.setECS(angs, 0)
+
+    def clamp_ki(self, clamp):
+        if clamp:
+            h.set_gap_k(0)
+            # under the assumption the astrocyte network equilibriates ki
+            h.ki_clamp(1)
+
+    def setKBath(
+        self, Ko, dur=100, delay=0, isolate=False, video=False, clamp_ki=False
+    ):
         h.continuerun(delay * ms + h.t)
         papk = self.getPAPK()
         if isolate:
             h.setK(self.flattenPAP(), Ko - papk, Ko, 2)
         else:
             h.setK(h.getWholetree(), Ko - papk, Ko, 2)
+
+        if clamp_ki:
+            if hasattr(self, "Dk_kdifl"):
+                self.clamp_ki(True)
+
+        h.psection(sec=self.soma)
         h.fcurrent()
         if video:
             self.makeVideo(
@@ -1197,6 +1228,7 @@ class PAPModel(ResultsPAPModel):
 
         else:
             h.continuerun(dur * ms + h.t)
+
         self.Ko = Ko
 
     def GABABath(self, number, freq, video=False):

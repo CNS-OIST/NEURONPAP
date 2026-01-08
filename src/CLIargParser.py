@@ -97,6 +97,13 @@ def argParser(rangeInt=100):
         help="Used to run simulations with spill over, only works for KV Phase plot",
     )
     parser.add_argument(
+        "--testPhys",
+        dest="physiological",
+        action="store_true",
+        default=False,
+        help="Used to run simulations with physiological stimuli",
+    )
+    parser.add_argument(
         "--kComp",
         dest="kcomp",
         action="store_true",

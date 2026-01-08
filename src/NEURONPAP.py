@@ -196,6 +196,9 @@ def callExperimentMode(**kwargs):
         )
         print(res)
 
+    if "physiological" in kwargs.keys() and kwargs["physiological"]:
+        exp.physiological_stim()
+
 
 if __name__ == "__main__" or parallel:
     comm = MPI.COMM_WORLD

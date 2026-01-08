@@ -161,6 +161,7 @@ done
   fi
 
 } >>$output
+mpiexec -n $np python NEURONPAP.py --testPhys 1
 mpiexec -n 2 python experiments.py
 mpiexec -n 1 python experiments.py
 zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf

@@ -56,10 +56,10 @@ class GENEManipulation:
             for seg in sec:
                 seg.clleak.gleak = seg.clleak.gleak * multiple
 
-    def kpumpChange(self, multiple):
+    def nakpumpChange(self, multiple):
         for sec in self.compartments:
             for seg in sec:
-                seg.kpump.Kp = seg.kpump.Kp * multiple
+                seg.nakpump.totalpump = seg.nakpump.totalpump * multiple
 
     def kir2DistChange(self, multiple):
         # print('Checking Compartments')
