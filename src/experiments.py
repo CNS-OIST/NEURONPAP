@@ -155,6 +155,15 @@ class plotFigures:
         else:
             eMessage(f"Color not found for {key}")
 
+    def get_initStep(self, cell, shift=10):
+        if hasattr(cell, "cvode") and cell.cvode:
+            # get index of initTstop
+            tmp_time = np.array(cell.time)
+            initStep = (abs(tmp_time - cell.initTstop - shift) < cell.dt).argmax()
+        else:
+            initStep = int((cell.initTstop - shift) / cell.dt)
+        return int(initStep)
+
     def plotPAPs(self):
         funcArgs = []
         funcArgs.append(
@@ -199,7 +208,7 @@ class plotFigures:
 
         for cells in AllCells:
             for cell in cells:
-                initStep = int((cell.initTstop - 10) / cell.dt)
+                initStep = self.get_initStep(cell)
                 if NMDARCount == cell.multiple and cell.GABACount == 0:
                     ax.plot(
                         list(cell.time)[initStep:],
@@ -274,9 +283,9 @@ class plotFigures:
 
                 if not initStep:
                     # make globally defined
-                    initStep = int((cell.initTstop - 10) / cell.dt)
+                    initStep = self.get_initStep(cell)
                 else:
-                    initStep = int(initStep / cell.dt)
+                    initStep = self.get_initStep(cell, shift=0)
                 if bath:
                     if max(cell.time) > 2e3:
                         cell.time *= 1e-3
@@ -831,7 +840,7 @@ class plotFigures:
                     alpha = 1
                     if getattr(cell, merge) != selected:
                         alpha = 0.3
-                    initStep = int((cell.initTstop - 10) / cell.dt)
+                    initStep = self.get_initStep(cell)
                     plt.plot(
                         list(cell.time)[initStep:],
                         list(getattr(cell, recVal))[initStep:],
@@ -1115,7 +1124,7 @@ class plotFigures:
                     for m in models:
                         # flattened
                         cell = AllCells[index]
-                        initStep = int((cell.initTstop - 10) / cell.dt)
+                        initStep = self.get_initStep(cell)
                         plt.plot(
                             list(cell.time)[initStep:],
                             list(getattr(cell, location))[initStep:],
@@ -1137,11 +1146,12 @@ class plotFigures:
 
 
 class procedure(plotFigures):
-    leak = 0.25  # 7e8
+    leak = 1.5  # ideal calculated from stable model
     optKir = 4.7e3  # std * optkir  + mean
     optNMDAR = 273
     optGABAR = 998
     optGluT = 0  # std * optGluT + mean
+    optNKA = 1
     # default NMDAR counts
     channelCompareMax = 500
     channelCompareStep = 100
@@ -1157,7 +1167,7 @@ class procedure(plotFigures):
     GabaStim = False
     KStim = True
     stimdelay = 0
-    dt = 0.1
+    dt = 0.05
     PAPCount = 1
     stimCount = 1
     freq = 100
@@ -1476,7 +1486,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "multiple": None,
                 "dt": 0.1,
                 "seed": self.seed,
@@ -1549,7 +1559,7 @@ class procedure(plotFigures):
                 "mode": 3,
                 "ComplexMorph": True,
                 "dt": self.dt,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
@@ -1615,7 +1625,7 @@ class procedure(plotFigures):
                 "GABA": self.GabaStim,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
@@ -1650,7 +1660,7 @@ class procedure(plotFigures):
             AllCells = self.free_read_data()
             cells = AllCells[0][0]
 
-        initStep = int(cells.initTstop / cells.dt)
+        initStep = self.get_initStep(cells, shift=0)
         timeVoltageArray = list()
         for x in cells.branchAtten:
             # print(list(x))
@@ -1746,7 +1756,7 @@ class procedure(plotFigures):
                 "Glu": True,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
@@ -1789,7 +1799,7 @@ class procedure(plotFigures):
                     "ComplexMorph": True,
                     "bNum": 1,
                     "dt": 0.01,
-                    "naleak": self.leak,
+                    "kleak": self.leak,
                     "clleak": 0,
                     "seed": self.seed,
                     "KoSize": amp,
@@ -1874,7 +1884,7 @@ class procedure(plotFigures):
                 for j in range(len(results[0])):
                     for i, cell in enumerate(results):
                         cell = cell[j]
-                        initStep = int(cell.initTstop / cell.dt) - 200
+                        initStep = self.get_initStep(cell, shift=0) - 200
                         if cell.KoSize == 0.5:
                             color = "r"
                             z = len(results) + 1
@@ -1929,7 +1939,7 @@ class procedure(plotFigures):
                         "ComplexMorph": True,
                         "bNum": 1,
                         "dt": 0.01,
-                        "naleak": self.leak,
+                        "kleak": self.leak,
                         "clleak": 0,
                         "seed": self.seed,
                         "PAPLen": self.PAPLen,
@@ -2017,7 +2027,7 @@ class procedure(plotFigures):
                     for j in range(len(results[0])):
                         for i, cell in enumerate(results):
                             cell = cell[j]
-                            initStep = int(cell.initTstop / cell.dt) - 200
+                            initStep = self.get_initStep(cell, shift=0) - 200
                             if cell.KoSize == 0.5:
                                 color = "r"
                                 z = len(results) + 1
@@ -2074,7 +2084,7 @@ class procedure(plotFigures):
                     "Glu": True,
                     "kir2": self.optKir,
                     "clleak": 0,
-                    "naleak": self.leak,
+                    "kleak": self.leak,
                     "dt": self.dt,
                     "seed": self.seed,
                     "stimdelay": 20 * ms,
@@ -2106,7 +2116,7 @@ class procedure(plotFigures):
         for i, cells in enumerate(AllCells):
             for cell in cells:
                 ekList.append(cell.ek)
-                initStep = int((cell.initTstop + 10) / cell.dt)
+                initStep = self.get_initStep(cell)
                 depList.append(
                     max(list(cell.vPAP)[initStep:]) - list(cell.vPAP)[initStep]
                 )  # 3 ms to stablize
@@ -2242,7 +2252,7 @@ class procedure(plotFigures):
                     "GABA": self.GabaStim,
                     "kir2": self.optKir,
                     "clleak": 0,
-                    "naleak": self.leak,
+                    "kleak": self.leak,
                     "dt": self.dt,
                 }
             )
@@ -2521,7 +2531,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
             }
@@ -2539,7 +2549,7 @@ class procedure(plotFigures):
         cells.setK(KoSize=100, delay=0, dur=100)
         cells.run()
         cells = cells.copyAttr()
-        initStep = int((cells.initTstop + 10) / cells.dt) + 1
+        initStep = self.get_initStep(cells)
         flux = np.array(list(cells.flux)[initStep:]) * -1
         kbath = np.array(list(cells.kbath)[initStep:]) * -1
         kbath[kbath == 0] = np.nan
@@ -2577,7 +2587,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
                 "KoSize": 3,
@@ -2790,7 +2800,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
             }
@@ -2804,6 +2814,7 @@ class procedure(plotFigures):
         funcArgs[-1]["GABACount"] = 0
         funcArgs[-1]["GABA"] = False
         funcArgs[-1]["GluTrans"] = self.optGluT
+        funcArgs[-1]["nakpump"] = self.optNKA
 
         if not self.free_read_data():
             cells = PAPModel(**funcArgs[-1])
@@ -2814,6 +2825,8 @@ class procedure(plotFigures):
 
             else:
                 cells.setTstop(300)
+                # if not isolate:
+                #    cells.set_ECS(1e8, scale=False)
                 cells.initialize()
                 if isolate:
                     video = False
@@ -2868,7 +2881,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "kir2": 0,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
             }
@@ -2959,7 +2972,7 @@ class procedure(plotFigures):
                 "Glu": True,
                 "GABA": True,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -3049,7 +3062,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "GABA": self.GabaStim,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,
@@ -3134,7 +3147,7 @@ class procedure(plotFigures):
                 "mode": 0,
                 "Glu": self.GluStim,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
@@ -3201,7 +3214,7 @@ class procedure(plotFigures):
                     ]  # get index of PAPLen position in iterations
                     cindex = i / len(iterations)
                     color = cm.winter(cindex)
-                    initStep = int((cell.initTstop - 10) / cell.dt)
+                    initStep = self.get_initStep(cell)
                     plt.plot(
                         np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
                         np.array(list(cell.vPAP)[initStep:]) - cell.RMP,
@@ -3395,7 +3408,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "GABA": False,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
@@ -3539,7 +3552,7 @@ class procedure(plotFigures):
                 "Glu": self.GluStim,
                 "GABA": False,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
@@ -3738,7 +3751,7 @@ class procedure(plotFigures):
                 "kir2": self.optKir,
                 "GluTrans": self.optGluT,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
             }
@@ -3834,7 +3847,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
                 "multiple": None,
@@ -3886,7 +3899,7 @@ class procedure(plotFigures):
                             "kir2": 0,
                             "twik": 1,
                             "clleak": 0,
-                            "naleak": self.leak,
+                            "kleak": self.leak,
                             "dt": self.dt,
                             "seed": self.seed,
                             "KoSize": 0.5,
@@ -3996,7 +4009,7 @@ class procedure(plotFigures):
                         "kir2": Kir,
                         "twik": TWIK,
                         "clleak": 0,
-                        "naleak": leak,
+                        "kleak": leak,
                         "dt": self.dt,
                         "seed": self.seed,
                         "multiple": None,
@@ -4023,7 +4036,7 @@ class procedure(plotFigures):
                         "kir2": Kir,
                         "twik": TWIK,
                         "clleak": 0,
-                        "naleak": leak,
+                        "kleak": leak,
                         "dt": self.dt,
                         "seed": self.seed,
                         "multiple": NMDAR,
@@ -4065,7 +4078,7 @@ class procedure(plotFigures):
                     "kir2": kir,
                     "twik": TWIK,
                     "clleak": 0,
-                    "naleak": leak,
+                    "kleak": leak,
                     "dt": self.dt,
                     "seed": self.seed,
                     "multiple": None,
@@ -4444,7 +4457,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": 0,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
                 "multiple": self.optNMDAR,
@@ -4479,7 +4492,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "kir2": self.optKir,
                 "clleak": 0,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "dt": self.dt / 100,
                 "seed": self.seed,
                 "multiple": self.optNMDAR,
@@ -4529,7 +4542,7 @@ class procedure(plotFigures):
                     "mode": 0,
                     "Glu": self.GluStim,
                     "ComplexMorph": True,
-                    "naleak": self.leak,
+                    "kleak": self.leak,
                     "clleak": 0,
                     "dt": self.dt,
                     "seed": self.seed,
@@ -4581,7 +4594,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "kir2": None,
                 "clleak": 0,
-                "naleak": leak,
+                "kleak": leak,
                 "dt": self.dt,
                 "seed": self.seed,
                 "Glu": False,
@@ -4600,7 +4613,7 @@ class procedure(plotFigures):
                 "bNum": 1,
                 "kir2": kir,
                 "clleak": 0,
-                "naleak": x,
+                "kleak": x,
                 "dt": self.dt,
                 "seed": self.seed,
                 "Glu": False,
@@ -4640,7 +4653,7 @@ class procedure(plotFigures):
                 "mode": 0,
                 "Glu": self.GluStim,
                 "ComplexMorph": True,
-                "naleak": self.leak,
+                "kleak": self.leak,
                 "clleak": 0,
                 "dt": self.dt,
                 "seed": self.seed,

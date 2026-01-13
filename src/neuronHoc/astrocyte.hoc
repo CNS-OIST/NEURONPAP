@@ -4,13 +4,27 @@ strdef astro_name
 astro_name = "CA1"
 celsius = 34
 
+
+objref cvode
+{
+  cvode = new CVode()
+  cvode.active(1)
+  //cvode.maxstep(0.1)
+  //cvode.minstep(0.0001)
+  cvode.atol(1e-3)
+  cvode.rtol(1e-2)
+}
+
 double lenUnits[1]
-lenUnits = 0.1
+lenUnits = 1
 
 objref  secref,sGap,gaplist
   gaplist = new List()
 
-gapcount = 0 
+//gapcount = 30000 //NAGY (2007) CellComm Adhesion 
+gapcount = 0
+ki_sim_flag = 0
+
 
 // clear morphologyto
 total_surf = 0
@@ -43,7 +57,9 @@ total_surf = 0
         //optimized for -80 mV
         
         insert k_acc
-        //insert kdifl
+        if (ki_sim_flag == 1) {
+          insert kdifl
+          }
         //insert na_acc
         //insert nai_acc
         //insert ca_acc
@@ -54,8 +70,10 @@ total_surf = 0
         }
       secref = new SectionRef()
       if (secref.nchild == 0 && gapcount > 0){
-        //gap_kdifl = 1
-        //no_clamp_kdifl = 0
+        if (ki_sim_flag == 1) {
+          gap_kdifl = 1
+          no_clamp_kdifl = 0
+        }
         sGap = new Gap(0.7)
         gaplist.append(sGap)
         gapcount = gapcount - 1
@@ -403,7 +421,9 @@ proc initIon(){local iki,inai
         //nai0_nai_acc = inai
         ko = ko0 
         ki = iki
-        //ki0_kdifl = iki 
+        if (ki_sim_flag == 1) {
+          ki0_kdifl = iki 
+        }
         ko0_k_acc = ko0
         //kob_twik = iki 
         clo = 130
@@ -418,6 +438,8 @@ proc initIon(){local iki,inai
 
 objref FinIon
 {FinIon = new FInitializeHandler(1,"initIon()")}
+// if no na_acc
+ion_style("na_ion",1,1,1,0,0)
 
 // Experimental manipulations
 proc setK(){local tmp localobj sref
@@ -457,23 +479,26 @@ proc setkin(){
     }
 }
 proc turnoff_ki_diff(){
+        if (ki_sim_flag == 1) {
   forall {
       Dk_kdifl = 0
     }
-  }
+  }}
 
   proc ki_clamp(){
+        if (ki_sim_flag == 1) {
     forall {
         no_clamp_kdifl = 1 - $1 
       }
 
-    }
+    }}
 
   proc set_gap_k(){
+        if (ki_sim_flag == 1) {
       forall {
         gap_kdifl = $1 
         }
-    }
+    }}
 
 proc setGEVI(){
     forall {
@@ -693,7 +718,7 @@ proc kbath_off() {
 }
 proc kbath_on() {
     forall {
-        tauk_0_k_acc = 3 // reset
+        tauk_k_acc = 1 //((1e-4)*fhspace_k_acc - diam/2) * ((1e-4)*fhspace_k_acc - diam/2)/2/Dk_k_acc
     }
 }
 proc kbath_rule() {
@@ -728,4 +753,27 @@ proc setECS(){local soma_area,total_area
     }
 }
 
+proc set_gleakNa() {local tmp_gk, rmp,count_kir,tmp_gna
+    forall {
+      rmp = $1 
+      count_kir = count_kir2 + multiple_kir2*count_std_kir2
+      tmp_gk = (gk_kir2*(1e-12)*linf_kir2+ gleak_kleak)
+      tmp_gna = -(rmp-ek)* tmp_gk/(rmp-ena)
+      gleak_naleak = tmp_gna
+      }
+  }
+
+proc print_progress(){local max_time
+  if ($1 < 0) {
+      max_time = tstop
+    } else {
+        max_time = $1
+      }
+
+    soma {
+      insert prnt_prog
+      completion_prnt_prog = max_time
+      }
+    
+  }
 

@@ -63,9 +63,9 @@ class PAPModel(ResultsPAPModel):
         GABACount=None,
         Ko=3,
         KoSize=0.5,
-        stimdelay=0,
+        stimdelay=50,
         durStim=0.5,
-        initTstop=150,
+        initTstop=100,
         dt=0.001,
         seed=0,
         PAPCount=1,
@@ -626,6 +626,9 @@ class PAPModel(ResultsPAPModel):
         voltageClamp=True,
         TBS=None,
     ):
+        if hasattr(h, "cvode"):
+            self.cvode = True
+            h.print_progress(self.tstop)
         # print('initializing')
         # sys.stdout.flush()
         if kblock:
@@ -645,6 +648,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         # print('placing GluChannel')
         # sys.stdout.flush()
+        h.set_gleakNa(self.v_init)
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
@@ -687,8 +691,6 @@ class PAPModel(ResultsPAPModel):
                 # for equilibriation purposes
                 self.setK(dur=(self.initTstop / 10 - h.t))
 
-            # TODO:
-            # adaptive integration (think about timesteps and how to detect in plot)
             while h.t < self.initTstop:
                 if np.isnan(list(self.vPAP)[-1]):
                     print("Encountered Nan in initialization")
@@ -700,6 +702,7 @@ class PAPModel(ResultsPAPModel):
             -1
         ]  # consider last timepoint in initialization as RMP
         print(f"RMP:{self.RMP}")
+        # cvode.active(False)
         if saveState:
             s = h.SaveState()
             s.save()
@@ -1182,12 +1185,15 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), 0, restKo, 0)
         if mode == "step":
             h.continuerun(delay * ms + h.t)
+            if hasattr(h, "cvode"):
+                h.dt = self.dt
             papk = self.getPAPK()
             h.setK(self.flattenPAP(), KoSize, KoSize + papk, 2)
             h.fcurrent()
             h.continuerun(dur * ms + h.t)
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
+
         self.KoSize = KoSize
 
     def set_ECS(self, angs, scale=True):
@@ -1206,6 +1212,8 @@ class PAPModel(ResultsPAPModel):
         self, Ko, dur=100, delay=0, isolate=False, video=False, clamp_ki=False
     ):
         h.continuerun(delay * ms + h.t)
+        if hasattr(h, "cvode"):
+            h.dt = self.dt
         papk = self.getPAPK()
         if isolate:
             h.setK(self.flattenPAP(), Ko - papk, Ko, 2)
