@@ -69,7 +69,7 @@ NEURON {
 	SUFFIX kir2 			
 	USEION k READ ek,ko WRITE ik	
         RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
-        RANGE ik_kir
+        RANGE ik_kir,gk
         GLOBAL linf,taul
         
         THREADSAFE
@@ -100,6 +100,7 @@ INITIAL {
 	l=linf
   count = (1e-08) * area * density
   count_std = (1e-08) * area * density_std
+  gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * (count + multiple * count_std)/area
 }
 
 
@@ -111,7 +112,11 @@ BREAKPOINT {
   if (updatedCount < 0){
     updatedCount = 0
   }
-	gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * updatedCount /area
+  if (ko <0){
+      gk = 0
+  } else {
+    gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * updatedCount /area
+  }
 
 
         : printf("%g\n",area)

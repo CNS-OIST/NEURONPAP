@@ -11,7 +11,7 @@ NEURON {
 
 PARAMETER {
     no_clamp = 1 (1) : flag for turning off ki changes
-    gap = 1 (1) :flag for mediating gapjunction
+    gap = 0 (1) :flag for mediating gapjunction
     tau_k = 1 (ms)
     ki0 = 110 (mM)
 	Dk = 0.6 (micron2/ms)

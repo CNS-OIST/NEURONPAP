@@ -13,7 +13,7 @@ UNITS {
   }
 
 PARAMETER {
-    r = 100000(megohm)
+    r = 5(megohm)
     VoltageGap = -85 (millivolt)
     tau_k = 1 (ms): instantaneous
     ki_0 = 120 (mM)
