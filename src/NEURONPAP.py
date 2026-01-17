@@ -95,7 +95,7 @@ def callExperimentMode(**kwargs):
 
     if "length" in kwargs.keys() and kwargs["length"]:
         # Plot for various length
-        exp.compareLen()
+        print("compareLen deprecated")
 
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
@@ -132,7 +132,8 @@ def callExperimentMode(**kwargs):
         # plot phase plot
         exp.kvPhasePlane()
 
-    if "somavclamp" in kwargs.keys() and kwargs["somavclamp"]:
+    if "somaclamp" in kwargs.keys() and kwargs["somaclamp"]:
+        exp.SomaCC()
         exp.SomaVC()
 
     if "gluspill" in kwargs.keys() and kwargs["gluspill"]:

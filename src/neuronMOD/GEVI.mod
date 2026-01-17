@@ -27,19 +27,16 @@ NEURON {
         dF (mV)        
     }
     BREAKPOINT {
-        calcFluor()
         SOLVE state METHOD derivimplicit
     }
     DERIVATIVE state {
         : printf("%f\n",fluor)
-        dF' = fluor
-    }
-    PROCEDURE calcFluor (){
         if ((v - dF) > 0 ){
             fluor = (v - dF) / tON
         } else {
             fluor = (v - dF) / tOFF
         }
-        
+        dF' = fluor
     }
+       
 

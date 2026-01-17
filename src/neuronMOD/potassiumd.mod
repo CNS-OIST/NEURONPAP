@@ -63,9 +63,9 @@ KINETIC diff {
 	: LONGITUDINAL_DIFFUSION Dk {ka}
 	~ ka << (-(ik-iextra)/(FARADAY)*PI*diam/2*(1e4)*no_clamp)
   ~ ka <<  ((ki0 - ka)/tau_k*PI*diam*diam/4*gap)
-  if (no_clamp == 0 && gap == 0) {
-    printf("%g\n",ka)
-  }
+  :if (no_clamp == 0 && gap == 0) {
+  :  printf("%g\n",ka)
+  :}
 	ki = ka 
   }
 

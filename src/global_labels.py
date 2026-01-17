@@ -27,7 +27,7 @@ class gl:
     lim_Vmemb = (-90, -50)
     lim_d_volt = (0, 70)
     lim_ko = (0, 30)
-    lim_ek = (-120, -10)
+    lim_ek = (-100, 20)
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20):

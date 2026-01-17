@@ -32,15 +32,15 @@ PARAMETER {
     perm = 7.5e-5 (cm/s)
     memL = 80 (angstrom)
     :partition = 70 (1) :2/140
-    openMem = 1 (1)
+    openMem = 1(1)
 
 }
 
 ASSIGNED {
     tauk (ms)
     ik 	(mA/cm2)
-    kbath (mM/ms)
-    flux (mM/ms)
+    kbath (1)
+    flux (1)
     dt (ms)
     iNMDA (mA/cm2)
     iGluT (mA/cm2)
@@ -58,10 +58,17 @@ INITIAL {
     d_eff = (100000) * Dk /1.6/1.6: Hrabe (2019) biophysj 
     :perm = (10) * partition*Dk/memL
     :perm_outside =0.5 * diam/6.5 : lineraly scale permeability
-    tauk_0 = 1/(d_eff *2 *PI*openMem/log(2*(fhspace*(1e-4)+diam/2)/diam)/(fhspace*fhspace*(1e-8)+diam*fhspace*(1e-4)))
+    tauk_0 = 1/(d_eff * 2*openMem/log(2*(fhspace*(1e-4)+diam/2)/diam)/(fhspace*fhspace*(1e-8)+diam*fhspace*(1e-4)))
+    if (tauk_0 < 0.01) {
+      : dont simulate very fast dissipation
+      flag = 2
+      }else{
+        :printf("%g\n",tauk)
+        flag = 0
+        }
     tauk = tauk_0
     kbathRate()
-    :printf("%g\n",tauk)
+        :printf("%g\n",tauk)
 }
 
 BREAKPOINT {
@@ -77,19 +84,19 @@ BREAKPOINT {
         : if (ko0 > 2.5){
         :     printf("%g\n",ko0)
         : }
-    ko' = flux + kbath
-    : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
+        ko' = flux * (1e8)*ik /(fhspace*F) + kbath * (ko0-ko)/tauk
+        : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
     }
 PROCEDURE kbathRate(){
     if (flag > 0){
         flux = 0
-        kbath = 0
-        ko = ko0 
+        tauk = dt 
+        kbath = 1
         :printf("%g\n",ko)
     } else {
-        flux = (1e8)*ik /(fhspace*F)
+        flux =  1
         tauk = slowing * tauk_0: slowing 
-        kbath =  (ko0 - ko)/tauk
+        kbath =  1
         :printf("%g, ",kbath)
     }
     

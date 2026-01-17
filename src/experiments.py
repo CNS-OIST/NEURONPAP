@@ -9,6 +9,7 @@ from neuron.units import mM, mV, ms
 from math import floor
 import glob
 from matplotlib.ticker import MaxNLocator
+from plot_shape import *
 from scipy.stats import f_oneway, ttest_rel
 from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
@@ -159,7 +160,7 @@ class plotFigures:
         if hasattr(cell, "cvode") and cell.cvode:
             # get index of initTstop
             tmp_time = np.array(cell.time)
-            initStep = (abs(tmp_time - cell.initTstop - shift) < cell.dt).argmax()
+            initStep = np.argmin(abs(tmp_time - (cell.initTstop - shift)))
         else:
             initStep = int((cell.initTstop - shift) / cell.dt)
         return int(initStep)
@@ -285,7 +286,7 @@ class plotFigures:
                     # make globally defined
                     initStep = self.get_initStep(cell)
                 else:
-                    initStep = self.get_initStep(cell, shift=0)
+                    initStep = self.get_initStep(cell, shift=cell.initTstop - initStep)
                 if bath:
                     if max(cell.time) > 2e3:
                         cell.time *= 1e-3
@@ -376,7 +377,7 @@ class plotFigures:
                         if zoom:
                             ax.set_xlim(
                                 gl.lim_zoom(
-                                    initStep,
+                                    initStep - 50,
                                     cell.dt,
                                     time_frame=cell.tstop - cell.initTstop + 50,
                                 )
@@ -487,7 +488,7 @@ class plotFigures:
                         if zoom:
                             ax.set_xlim(
                                 gl.lim_zoom(
-                                    initStep,
+                                    initStep - 50,
                                     cell.dt,
                                     time_frame=cell.tstop - cell.initTstop + 50,
                                 )
@@ -1146,7 +1147,7 @@ class plotFigures:
 
 
 class procedure(plotFigures):
-    leak = 1.5  # ideal calculated from stable model
+    leak = 1.4  # ideal calculated from stable model
     optKir = 4.7e3  # std * optkir  + mean
     optNMDAR = 273
     optGABAR = 998
@@ -1547,8 +1548,61 @@ class procedure(plotFigures):
                 sim.mapRi(merged_dict)
             comm.Barrier()
 
-    @read_data
     def SomaVC(self):
+        funcArgs = []
+        plt.cla()
+        plt.clf()
+        funcArgs.append(
+            {
+                "mode": 2,
+                "ComplexMorph": True,
+                "dt": self.dt,
+                "kleak": self.leak,
+                "clleak": 0,
+                "kir2": self.optKir,
+                "multiple": self.optNMDAR,
+                "seed": self.seed,
+                "GluTrans": self.optGluT,
+                "somaCheck": True,
+                "voltageClamp": -60,
+            }
+        )
+        if not self.free_read_data():
+            cells = PAPModel(**funcArgs[-1])
+            cells.setTstop(260)
+            cells.initialize(force_print_progress=True)
+            cells.run(noclear=True)
+            cells.plot_path_attenuation()
+            cells = cells.copyAttr()
+            results = [[cells]]
+            self.free_figure(results)
+        else:
+            results = self.free_read_data()
+
+            if rank == 0:
+                for cells in results:
+                    for cell in cells:
+                        if hasattr(cell, "paths_toward"):
+                            plot_paths(
+                                "v",
+                                None,
+                                None,
+                                fname=f"soma_attenuation_{getattr(cell,'voltageClamp')}",
+                                precomputed=cell.paths_away,
+                            )
+                            if hasattr(cell, "paths_toward"):
+                                plot_combined(
+                                    "v",
+                                    None,
+                                    None,
+                                    None,
+                                    fName=f"combined_v_soma_{getattr(cell,'voltageClamp')}",
+                                    precomputed_toward=cell.paths_toward,
+                                    precomputed_away=cell.paths_away,
+                                )
+
+    @read_data
+    def SomaCC(self):
         # acutally current injection
         funcArgs = []
         vClampList = comm.bcast(list(np.arange(-40, 461, 50)), root=0)
@@ -1574,20 +1628,22 @@ class procedure(plotFigures):
             [PAPModel],
             funcArgs,
             ccList,
-            [["setTstop", "initialize", "run", "plot_path_attenuation"]],
-            [[{"tstop": 260}, {}, {"noclear": True}, {}]],
+            [["setTstop", "initialize", "run"]],
+            [[{"tstop": 260}, {}, {"noclear": True}]],
         )
+        if self.free_read_data():
+            results = self.free_read_data()
+
         self.free_figure(results)
         if rank == 0:
             fig = plt.figure(figsize=(10, 5))
             gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
             ax1 = fig.add_axes([0.1, 0.75, 0.85, 0.2])
             for v in vClampList:
-                x = np.linspace(140, 260, 1000)
+                x = np.linspace(40, 240, 1000)
                 holdingpotentials = self.pseudotrace(x, v)
                 ax1.plot(x, holdingpotentials, color="grey", label=f"{v}")
             ax1.set_ylabel(gl.curr, color="grey")
-            ax1.set_xlim((140, 260))
             for spine in ax1.spines.values():
                 spine.set_visible(False)
             ax1.tick_params(bottom=False, left=True, colors="grey")
@@ -1601,14 +1657,14 @@ class procedure(plotFigures):
 
             ax2.set_xlabel(gl.ms)
             ax2.set_ylabel(gl.volt)
-            ax2.set_xlim((140, 260))
-            ax2.set_ylim(gl.lim_Vmemb)
-            plt.savefig(os.path.join("../results/paperRes", f"VoltageClampSoma.pdf"))
+            ax1.set_xlim((40, 240))
+            ax2.set_xlim((40, 240))
+            plt.savefig(os.path.join("../results/paperRes", f"CurrentClampSoma.pdf"))
 
     def pseudotrace(self, x, v):
         tmp = []
         for t in x:
-            if t < 150 or t > 240:
+            if t < 80 or t > 220:
                 tmp.append(0)
             else:
                 tmp.append(v)
@@ -2216,15 +2272,12 @@ class procedure(plotFigures):
                     # Kir OE
                     self.optKir = self.KirMax  # from experiment
                     # self.dt *= 0.1
-                    self.leak = controlLeak
                 else:
                     self.tag += "_KirKO"
-                    self.leak = 8455
                     # match findings of Djukic et al. (2007) of -76.3 mV
                     self.dt = tmpdt
                     self.optKir = -2 * self.KirMax  # from experiment
             else:
-                self.leak = controlLeak
                 self.dt = tmpdt
                 self.optKir = 0
                 if i == 3:
@@ -2260,7 +2313,6 @@ class procedure(plotFigures):
             #                krule = {"kuptake": True}
             #            elif i == 2:
             #                # nonspecific K+ block
-            #                # funcArgs[-1]['twik'] = 0
             #                # funcArgs[-1]['kleak'] = 0
             #                krule = {"kblock": True}
             #            else:
@@ -2771,7 +2823,7 @@ class procedure(plotFigures):
                 self.bathExperiment(runAll=False, gaba=True)  # for escaping inf loop
 
         else:
-            print(f"{gaba=}{invivo=}{isolate=}{rank=}")
+            # print(f"{gaba=}{invivo=}{isolate=}{rank=}")
             if gaba:
                 self.gababathExperiment()
             else:
@@ -2821,19 +2873,21 @@ class procedure(plotFigures):
             if invivo:
                 cells.initialize()
                 cells.replayK("./Data/invivo_K.csv", isolate=isolate)
+                cells.ko_sim(False)
                 cells.run()
 
             else:
                 cells.setTstop(300)
                 # if not isolate:
-                #    cells.set_ECS(1e8, scale=False)
+                #    cells.set_ECS(100e4, scale=False)
+
                 cells.initialize()
                 if isolate:
                     video = False
                 else:
                     video = True
                 cells.setKBath(
-                    10, dur=500, video=video, isolate=isolate, clamp_ki=not isolate
+                    10, dur=200, video=video, isolate=isolate, clamp_ki=not isolate
                 )
                 cells.run()
 
@@ -2843,7 +2897,6 @@ class procedure(plotFigures):
             #     AllCells = comm.gather(cells, root=0)
             # else:
             AllCells.append([cells])
-            print(list(AllCells[0][0].vSoma))
         else:
             AllCells = self.free_read_data()
         setKoylim = True
@@ -3897,7 +3950,6 @@ class procedure(plotFigures):
                             "mode": 0,
                             "ComplexMorph": True,
                             "kir2": 0,
-                            "twik": 1,
                             "clleak": 0,
                             "kleak": self.leak,
                             "dt": self.dt,
@@ -3984,8 +4036,7 @@ class procedure(plotFigures):
         self.addChannelTag()
         AllCells = []
         funcArgs = []
-        TWIK = 1
-        leak = 3e5
+        leak = self.leak
         # maybe bug for result fit check how parms should change with diffrenet leak value
         forcedAccum = None
         if PAP:
@@ -4007,7 +4058,6 @@ class procedure(plotFigures):
                         "GABA": True,
                         "GABACount": GABAR,
                         "kir2": Kir,
-                        "twik": TWIK,
                         "clleak": 0,
                         "kleak": leak,
                         "dt": self.dt,
@@ -4034,7 +4084,6 @@ class procedure(plotFigures):
                         "ComplexMorph": True,
                         "Glu": True,
                         "kir2": Kir,
-                        "twik": TWIK,
                         "clleak": 0,
                         "kleak": leak,
                         "dt": self.dt,
@@ -4076,7 +4125,6 @@ class procedure(plotFigures):
                     "mode": 0,
                     "Glu": True,
                     "kir2": kir,
-                    "twik": TWIK,
                     "clleak": 0,
                     "kleak": leak,
                     "dt": self.dt,
@@ -4201,15 +4249,14 @@ class procedure(plotFigures):
         fList = np.array(fList) - fList[zeroPoint]
 
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
+        print(tList)
 
         fluorTrace = (np.array(list(cells.fluorVPAP)) - cells.RMP) * -1 / 10
         simV = np.array(list(cells.vPAP)) - cells.RMP  # use raw sim data for plot
 
         # extract corresponding indexes in df and sim
         indexConvert = [
-            (i, int(t / cells.dt))
-            for i, t in enumerate(tList)
-            if 0 <= t < max(cells.time)
+            (i, np.argmin(np.array(cells.time) - t)) for i, t in enumerate(tList)
         ]
 
         expT = []
@@ -4251,7 +4298,7 @@ class procedure(plotFigures):
         if not np.isnan(loss) and verbose:
             print(f"Loss:{loss}@rank{rank}")
         loss = comm.gather(loss, root=0)
-        sim_time = cells.time
+        sim_time = comm.gather(cells.time, root=0)
         expF = comm.gather(expF, root=0)
         expT = comm.gather(expT, root=0)
         expSTD = comm.gather(expSTD, root=0)
@@ -4268,12 +4315,12 @@ class procedure(plotFigures):
             if showFig:
                 if split:
                     color = {10: "tab:green", 5: "tab:orange", 1: "tab:blue"}
-                    for i, t, f, yerr, sim_v, sim_f in zip(
-                        stim, expT, expF, expSTD, simV, fluorTrace
+                    for i, t, f, yerr, sim_v, sim_f, sim_t in zip(
+                        stim, expT, expF, expSTD, simV, fluorTrace, sim_time
                     ):
                         plt.figure(0)
                         plt.plot(
-                            sim_time,
+                            sim_t,
                             sim_v,
                             label=f"{i} stim simulation",
                             linestyle="-",
@@ -4281,13 +4328,13 @@ class procedure(plotFigures):
                             zorder=i,
                         )
                         if correctArtifact:
-                            sim_f += spl(sim_time)
+                            sim_f += spl(sim_t)
                             label = f"\n{i} stim simulation"
                         else:
                             label = f"{i} stim simulation"
                         plt.figure(1)
                         plt.plot(
-                            sim_time,
+                            sim_t,
                             sim_f,
                             label=label,
                             linestyle="--",
@@ -4333,11 +4380,11 @@ class procedure(plotFigures):
                     color = {10: "tab:blue", 5: "tab:orange", 1: "tab:green"}
                     plotObjects = []
                     plotObjects_ax2 = []
-                    for i, t, f, yerr, sim_v, sim_f in zip(
-                        stim, expT, expF, expSTD, simV, fluorTrace
+                    for i, t, f, yerr, sim_v, sim_f, sim_t in zip(
+                        stim, expT, expF, expSTD, simV, fluorTrace, sim_time
                     ):
                         [tmp] = ax2.plot(
-                            sim_time,
+                            sim_t,
                             sim_v,
                             label=f"{gl.vm} simulation",
                             linestyle="-",
@@ -4346,12 +4393,12 @@ class procedure(plotFigures):
                         )
                         plotObjects_ax2.append(tmp)
                         if correctArtifact:
-                            sim_f += spl(sim_time)
+                            sim_f += spl(sim_t)
                             label = f"{i} stim simulation"
                         else:
                             label = f"{i} stim simulation"
                         [tmp] = ax1.plot(
-                            sim_time,
+                            sim_t,
                             sim_f,
                             label=label,
                             linestyle="--",

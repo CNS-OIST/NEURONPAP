@@ -10,22 +10,21 @@ UNITS {
     (molar) = (1/liter)
   
     (mM) =	(millimolar)
+    (pS) = (picosiemens)
   }
 
 PARAMETER {
-    r = 5(megohm)
+    r = 1(megohm)
+    multiple = 1000 (1)
+    uS = 56 (pS)
     VoltageGap = -85 (millivolt)
     tau_k = 1 (ms): instantaneous
     ki_0 = 120 (mM)
 }
 
-:INITIAL {
-:    ki = ki_0
-:  }
-
-:STATE {
-:    ki (mM)
-:  }
+INITIAL {
+      r = (1e6)/(uS * multiple)
+  }
 
 ASSIGNED {
     v (millivolt)
@@ -34,10 +33,6 @@ ASSIGNED {
 }
 
 BREAKPOINT {
-  :SOLVE state METHOD derivimplicit
     i_gap = (v-VoltageGap)/r
 }
 
-:DERIVATIVE state{
-:  ki' = (ki_0 - ki)/tau_k
-:  }

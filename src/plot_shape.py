@@ -73,8 +73,7 @@ def animate_morphology(
         )
 
         if not no_advance:
-            for i in range(int(dt / h.dt)):
-                h.fadvance()
+            h.continuerun(h.t + dt)
 
     anim = FuncAnimation(fig, update, frames=frames, interval=1, repeat=False)
     real_fps = 2 / dt  # 2 ms in simulation per 1 second video
@@ -213,25 +212,42 @@ def plot_3d_morphology(
         plt.show()
 
 
-def plot_combined(rangevar, origin, paths_away, path_toward):
+def plot_combined(
+    rangevar,
+    origin,
+    paths_away,
+    path_toward,
+    fName=None,
+    precomputed_toward=None,
+    precomputed_away=None,
+):
+    if not fName:
+        fName = f"combined_{rangevar}_{origin=}"
     plt.cla()
     plt.clf()
     plt.figure(figsize=(10, 5))
-    total_dict = {}
-    tmp_dict = convert_list_section_to_python(paths_away)
-
-    total_dict.update(tmp_dict)
-    tmp_dict = convert_list_section_to_python(path_toward)
-    total_dict.update(tmp_dict)
-
     xmin = np.inf
     xmax = -np.inf
-    for key, sec_list in total_dict.items():
-        dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
-        if "to_soma" in key:
-            plt.plot(dist, var, color="black")
-        else:
-            plt.plot(-1 * np.array(dist), var, color="black")
+    if not precomputed_toward and not precomputed_away:
+        precomputed_toward = []
+        precomputed_away = []
+        total_dict = {}
+        tmp_dict = convert_list_section_to_python(paths_away)
+
+        total_dict.update(tmp_dict)
+        tmp_dict = convert_list_section_to_python(path_toward)
+        total_dict.update(tmp_dict)
+        for key, sec_list in total_dict.items():
+            dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+            if "to_soma" in key:
+                precomputed_toward.append((dist, var))
+            else:
+                precomputed_away.append((dist, var))
+    for dist, var in precomputed_toward:
+        plt.plot(dist, var, color="black")
+    for dist, var in precomputed_away:
+        plt.plot(-1 * np.array(dist), var, color="black")
+        if len(dist) > 0:
             if xmin > np.min(-1 * np.array(dist)):
                 xmin = np.min(-1 * np.array(dist))
             if xmax < np.max(-1 * np.array(dist)):
@@ -247,17 +263,22 @@ def plot_combined(rangevar, origin, paths_away, path_toward):
     plt.ylabel(gl.volt)
     plt.xlim((1.1 * xmin, 1.1 * xmax))
     plt.legend()
-    plt.savefig(os.path.join("../morphResults", f"combined_{rangevar}_{origin=}.pdf"))
+    plt.savefig(os.path.join("../morphResults", f"{fName}.pdf"))
+    return precomputed_toward, precomputed_away
 
 
-def plot_paths(rangevar, origin, list_section, fname=""):
+def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     plt.cla()
     plt.clf()
     plt.figure(figsize=(10, 5))
-    section_dict = convert_list_section_to_python(list_section)
-    for key, sec_list in section_dict.items():
-        print(key)
-        dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+    if not precomputed:
+        precomputed = []
+        section_dict = convert_list_section_to_python(list_section)
+        for key, sec_list in section_dict.items():
+            print(key)
+            dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+            precomputed.append((dist, var))
+    for dist, var in precomputed:
         plt.plot(dist, var, color="black")
 
     plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
@@ -269,6 +290,7 @@ def plot_paths(rangevar, origin, list_section, fname=""):
     plt.legend()
 
     plt.savefig(os.path.join("../morphResults", f"{fname}_{rangevar}.pdf"))
+    return precomputed
 
 
 def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True):

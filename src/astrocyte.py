@@ -63,9 +63,9 @@ class PAPModel(ResultsPAPModel):
         GABACount=None,
         Ko=3,
         KoSize=0.5,
-        stimdelay=50,
+        stimdelay=0,
         durStim=0.5,
-        initTstop=100,
+        initTstop=150,
         dt=0.001,
         seed=0,
         PAPCount=1,
@@ -157,6 +157,7 @@ class PAPModel(ResultsPAPModel):
         for i in range(PAPCount):
             if self.getPeriphery:
                 h.PAP = h.get_randomfinalSection(h.soma)
+                h.PAP = h.shiftPAP(h.PAP, 0.7, sec=h.PAP.sec)
                 self.PAP = h.PAP.sec
                 # print(self.PAP)
             elif self.Node:
@@ -249,19 +250,40 @@ class PAPModel(ResultsPAPModel):
 
         # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
         #
+        #
 
-    def plot_path_attenuation(self, origin=None):
-        h.load_file("./neuronHoc/paths.hoc")
+    def nernstK(self, ko, kin):
+        R = 8.314  # Gas constant J/(mol*K)
+        F = 96485  # Faraday constant C/mol
+        T = h.celsius + 273.15  # Convert to Kelvin
+
+        return (R * T) / (F) * np.log(ko / kin)
+
+    def set_gapBath(self, on):
+        if on:
+            h.set_gapv(self.nernstK(10, 120) * 1000)
+        else:
+            h.set_gapv(self.v_init)
+
+    def plot_path_attenuation(self, parmName="voltageClamp", origin=None):
         if not origin:
             origin = self.soma
-        h.get_paths_away_from_soma(origin)
-        plot_paths(
+
+        h.load_file("./neuronHoc/paths.hoc")
+        h.get_paths_away_from_soma(origin, sec=origin)
+        self.paths_away = plot_paths(
             "v",
             origin,
             h.paths_away,
-            fname=f"soma_attenuation_{self.voltageClamp=}",
+            fname=f"soma_attenuation_{getattr(self,parmName)}",
         )
-        plot_combined("v", origin, h.paths_away, h.path_toward)
+        self.paths_toward, _ = plot_combined(
+            "v",
+            origin,
+            h.paths_away,
+            h.path_toward,
+            fName=f"combined_v_{origin=}_{getattr(self,parmName)}",
+        )
 
     def setDualPatch(self):
         h.tstop = 50
@@ -313,13 +335,21 @@ class PAPModel(ResultsPAPModel):
             h.delete_section(sec=sec)
         # print('Remove attr')
         self.branches = []
-        delattr(self, "soma")
-        delattr(self, "PAP")
+        if hasattr(self, "soma"):
+            delattr(self, "soma")
+        if hasattr(self, "PAP"):
+            delattr(self, "PAP")
         # if hasattr(self,"GENEDict"):
         #     delattr(self, "GENEDict")
 
     def koClamp(self, ko=None):
         h.koclamp(ko)
+
+    def ko_sim(self, on):
+        if on:
+            h.ko_sim_on()
+        else:
+            h.ko_sim_off()
 
     def setGEVI(self, tON, tOFF):
         h.setGEVI(tON, tOFF)
@@ -333,6 +363,7 @@ class PAPModel(ResultsPAPModel):
         video=False,
         dur=0.5,
         amp=None,
+        delay=0,
     ):
         self.SpikeFreq = freq
         self.SpikeNum = number
@@ -355,18 +386,19 @@ class PAPModel(ResultsPAPModel):
         if hasattr(h, "stim") and number > 0:
             h(f"stim.number = {number}")
             h(f"stim.interval = {ISI}")
+            currTime = int(h.t / self.dt) * self.dt
+            h(f"stim.start = {currTime + delay}")
             # print(h.stim.number,h.stim.interval)
         if amp is not None:
             for nc in self.NCs:
                 nc.weight[0] = amp
         if koclamp:
-            while h.t < ISI * number:
-                self.koClamp(self.Ko)
-                h.fadvance()
+            self.koClamp(self.Ko)
+            h.continuerun(ISI * number)
         else:
             for i in range(number):
-                currTime = h.t
-                self.setK(KoSize=KoSize, dur=dur)
+                currTime = int(h.t / self.dt) * self.dt
+                self.setK(KoSize=KoSize, dur=dur, delay=delay if i == 0 else 0)
                 if video:
                     self.makeVideo(
                         self.varMorph,
@@ -375,7 +407,7 @@ class PAPModel(ResultsPAPModel):
                         zoom=True,
                     )
                 else:
-                    h.continuerun(ISI * ms + currTime)
+                    h.continuerun(ISI * ms + currTime - self.dt)
 
     def TBS(
         self,
@@ -384,6 +416,7 @@ class PAPModel(ResultsPAPModel):
         dur=0.5,
         amp=None,
         initvoltageClamp=True,
+        delay=0,
     ):
         if KoSize == None:
             KoSize = self.KoSize
@@ -403,6 +436,8 @@ class PAPModel(ResultsPAPModel):
             totalT.append(totalT[-1] + 200)
 
         self.initialize(video=video, voltageClamp=initvoltageClamp, TBS=totalT)
+        if delay > 0:
+            h.continuerun(delay + h.t - self.dt)
 
         if amp is not None:
             for nc in self.NCs:
@@ -585,7 +620,7 @@ class PAPModel(ResultsPAPModel):
     def setStimStart(self):
         h("objref stim")
         h("stim = new NetStim(.5)")
-        h(f"stim.start = {(self.initTstop + self.stimdelay) * ms}")
+        h(f"stim.start = {(self.initTstop+self.stimdelay) * ms}")
         h("stim.noise = 0")
         h("stim.number = 1")
         h("stim.interval = 0")
@@ -623,12 +658,15 @@ class PAPModel(ResultsPAPModel):
         kblock=False,
         kuptake=False,
         krule=None,
-        voltageClamp=True,
+        voltageClamp=False,
         TBS=None,
+        force_print_progress=False,
     ):
         if hasattr(h, "cvode"):
             self.cvode = True
-            h.print_progress(self.tstop)
+            voltageClamp = False
+            if size < 2 or force_print_progress:
+                h.print_progress(self.tstop)
         # print('initializing')
         # sys.stdout.flush()
         if kblock:
@@ -648,7 +686,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
         # print('placing GluChannel')
         # sys.stdout.flush()
-        h.set_gleakNa(self.v_init)
+
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
@@ -673,12 +711,36 @@ class PAPModel(ResultsPAPModel):
         self.record(**recordDictArgs)
         # print('setup Record')
         # sys.stdout.flush()
+        #  voltage clamp for initialization
         if voltageClamp:
             h.tstop = self.initTstop / 10
             h.clampSwitch(1, -90)
             h.tstop = self.tstop
+
+        # setup clamp protocols
+        if self.mode > 2:
+            if self.somaCheck:
+                h.clampSwitch(3, self.currentClamp)
+                self.initTstop -= 20
+                h.ic.dur = self.tstop - self.initTstop - 40
+            else:
+                h.clampSwitch(2, self.currentClamp)
+            h.ic.delay = self.initTstop
+
+        else:
+            if self.mode > 1 and self.cvode:
+                h(f'fih = new FInitializeHandler("delaysec({self.initTstop})")')
+                h.clampSwitch(5, self.voltageClamp)
+            elif self.mode > 0:
+                h.clampSwitch(0, self.currentClamp)
+                h.ic.delay = self.initTstop + 10
+
         h.finitialize(self.v_init)
         h.fcurrent()
+
+        # set gleak so RMP is v_init
+        h.set_gleakNa(self.v_init)
+
         self.getKirCountPAP()
         self.getGLTCountPAP()
         self.getkin()
@@ -691,18 +753,25 @@ class PAPModel(ResultsPAPModel):
                 # for equilibriation purposes
                 self.setK(dur=(self.initTstop / 10 - h.t))
 
-            while h.t < self.initTstop:
-                if np.isnan(list(self.vPAP)[-1]):
-                    print("Encountered Nan in initialization")
-                    print(list(self.vPAP))
-                    sys.exit(-1)
-                h.fadvance()
+            if self.cvode:
+                h.continuerun(self.initTstop)
+                if self.mode > 0 and self.mode != 2:
+                    h.cvode.active(False)
+            else:
+                while h.t < self.initTstop:
+                    if len(list(self.vPAP)) > 0 and np.isnan(list(self.vPAP)[-1]):
+                        print("Encountered Nan in initialization")
+                        print(list(self.vPAP))
+                        sys.exit(-1)
+                    h.fadvance()
         # print(list(self.KoSizePAP)[-1])
         self.RMP = list(self.vPAP)[
             -1
         ]  # consider last timepoint in initialization as RMP
-        print(f"RMP:{self.RMP}")
+        # print(f"RMP:{self.RMP}")
+        # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
+        # self.ko_sim(False)
         if saveState:
             s = h.SaveState()
             s.save()
@@ -713,20 +782,8 @@ class PAPModel(ResultsPAPModel):
         # print('running')
         # sys.stdout.flush()
         # Clamp settings
-        if self.mode > 2:
-            if self.somaCheck:
-                h.clampSwitch(3, self.currentClamp)
-                h.ic.delay = h.t
-                h.ic.dur = self.tstop - self.initTstop - 20
-            else:
-                h.clampSwitch(2, self.currentClamp)
-                h.ic.delay = h.t
-
-        elif self.mode > 1:
+        if not self.cvode and self.mode == 2:
             h.clampSwitch(1, self.voltageClamp)
-
-        elif self.mode > 0:
-            h.clampSwitch(0, self.currentClamp)
 
         # print('clamp experiment setup')
         # print('about to run')
@@ -944,7 +1001,7 @@ class PAPModel(ResultsPAPModel):
         if sNMDA != None:
             self.iNMDA = h.Vector()
             # self.iNMDA.record(sNMDA._ref_iNMDA)
-            self.iNMDA.record(sNMDA._ref_iNMDA)
+            self.iNMDA.record(sNMDA._ref_iNMDA_N2C)
 
             if toFile:
                 self.iFile = h.File("iFile.dat")
@@ -1181,18 +1238,21 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), KoSize, papk + KoSize, 1)
             self.KoPAP[-1] = papk + KoSize
             h.fcurrent()
-            h.fadvance()  # change to 1 ms?
+            h.continuerun(self.dt + h.t)
             h.setK(self.flattenPAP(), 0, restKo, 0)
         if mode == "step":
+            # stop at one timestep before for cvode
             h.continuerun(delay * ms + h.t)
             if hasattr(h, "cvode"):
-                h.dt = self.dt
+                h.cvode.active(False)
             papk = self.getPAPK()
             h.setK(self.flattenPAP(), KoSize, KoSize + papk, 2)
             h.fcurrent()
             h.continuerun(dur * ms + h.t)
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
+            if hasattr(h, "cvode"):
+                h.cvode.active(True)
 
         self.KoSize = KoSize
 
@@ -1211,9 +1271,12 @@ class PAPModel(ResultsPAPModel):
     def setKBath(
         self, Ko, dur=100, delay=0, isolate=False, video=False, clamp_ki=False
     ):
-        h.continuerun(delay * ms + h.t)
+        if h.t + delay < h.tstop:
+            h.continuerun(delay * ms + h.t)
         if hasattr(h, "cvode"):
             h.dt = self.dt
+        if not isolate:
+            self.set_gapBath(True)
         papk = self.getPAPK()
         if isolate:
             h.setK(self.flattenPAP(), Ko - papk, Ko, 2)
@@ -1225,6 +1288,7 @@ class PAPModel(ResultsPAPModel):
                 self.clamp_ki(True)
 
         h.psection(sec=self.soma)
+        h.psection(sec=self.PAP)
         h.fcurrent()
         if video:
             self.makeVideo(
@@ -1235,9 +1299,13 @@ class PAPModel(ResultsPAPModel):
             )
 
         else:
-            h.continuerun(dur * ms + h.t)
+            h.continuerun(min(dur * ms + h.t, h.tstop))
 
         self.Ko = Ko
+        if isolate:
+            h.setK(self.flattenPAP(), Ko - papk, Ko, 0)
+        else:
+            h.setK(h.getWholetree(), Ko - papk, Ko, 0)
 
     def GABABath(self, number, freq, video=False):
         self.setStimStart()

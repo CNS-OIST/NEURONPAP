@@ -4,15 +4,15 @@ strdef astro_name
 astro_name = "CA1"
 celsius = 34
 
-
-objref cvode
+objref cvode,py_obj
 {
   cvode = new CVode()
+  cvode.use_daspk(1)
   cvode.active(1)
-  //cvode.maxstep(0.1)
   //cvode.minstep(0.0001)
-  cvode.atol(1e-3)
-  cvode.rtol(1e-2)
+  cvode.cache_efficient(1)
+  //cvode.atol(1e-6)
+  //cvode.rtol(1e-5)
 }
 
 double lenUnits[1]
@@ -21,10 +21,18 @@ lenUnits = 1
 objref  secref,sGap,gaplist
   gaplist = new List()
 
-//gapcount = 30000 //NAGY (2007) CellComm Adhesion 
-gapcount = 0
+gapcount = 30000 //NAGY (2007) CellComm Adhesion 
+//gapcount = 0
 ki_sim_flag = 0
 
+func calc_fhspace(){local min_ecs,max_ecs,max_d,min_d
+  min_ecs = 20
+max_ecs = 1000
+min_d = 0.1
+max_d = 6.5 
+
+  return min_ecs + (max_ecs-min_ecs)*log($1/min_d)/log(max_d/min_d) 
+  }
 
 // clear morphologyto
 total_surf = 0
@@ -54,9 +62,10 @@ total_surf = 0
         insert kleak
         insert naleak
         insert clleak
-        //optimized for -80 mV
+        //clleak is for purely creating cl ion
         
         insert k_acc
+        fhspace_k_acc = calc_fhspace(diam)
         if (ki_sim_flag == 1) {
           insert kdifl
           }
@@ -84,13 +93,11 @@ total_surf = 0
 //psection()
 //print total_surf
 //forall total_area_twik = total_surf
-
 objref r
 
 proc koclamp() { 
     // print $1
     forall {
-        ko = $1
         flag_k_acc = 2
         ko0_k_acc = $1
         // psection()
@@ -159,6 +166,18 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
     }
     return current_section
 }
+
+obfunc shiftPAP() {local shift_dist,totalShift localobj current_section
+shift_dist = $2 //micron
+  $o1 current_section = new SectionRef()
+  totalShift = 0
+  while (totalShift < shift_dist) {
+      totalShift = totalShift + L
+      current_section.parent current_section = new SectionRef()
+    }
+    //print "shifted PAP from end by ", totalShift
+  return current_section
+  }
 
 //get last section fitting criteria
 obfunc get_midAstrocytePAP() {localobj candidate
@@ -314,14 +333,14 @@ proc setNMDAs(){local lenPAP
     lenPAP = 0
     // $o1.printnames()
     forsec $o1 {
-        sNMDA = new Exp5NMDA(0.5)
-        NMDAs.append(sNMDA)
-        nc = new NetCon(stim,NMDAs.o(lenPAP))
+        //sNMDA = new Exp5NMDA(0.5)
+        //NMDAs.append(sNMDA)
+        //nc = new NetCon(stim,NMDAs.o(lenPAP))
         sNMDA = new Exp5NMDA_N2C(0.5)
         NMDAs.append(sNMDA)
-        nc = new NetCon(stim,NMDAs.o(lenPAP+1))
+        nc = new NetCon(stim,NMDAs.o(lenPAP))
         ncNMDAList.append(nc)
-        lenPAP = lenPAP + 2
+        lenPAP = lenPAP + 1
     }
 }
 
@@ -407,11 +426,12 @@ FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 proc initIon(){local iki,inai
     iki = 120 //ek set to -92
     inai = 15 // Verhratsky A 2019 review
-    ko0 = 2
+    ko0 = 3.5
     
     // set global Ki
     ki0_k_ion = iki
     nai0_na_ion = inai
+    nao0_na_ion = 140
 
     
     // set initial Ko Ki
@@ -439,7 +459,7 @@ proc initIon(){local iki,inai
 objref FinIon
 {FinIon = new FInitializeHandler(1,"initIon()")}
 // if no na_acc
-ion_style("na_ion",1,1,1,0,0)
+{ion_style("na_ion",1,1,1,0,0)}
 
 // Experimental manipulations
 proc setK(){local tmp localobj sref
@@ -452,10 +472,10 @@ proc setK(){local tmp localobj sref
             //relative change of bath
             ko0_k_acc = $2 + getPAPK(sref)
             //relative change of ko
-            ko = $2 + getPAPK(sref)
+            //ko = $2 + getPAPK(sref)
         } else {
             //relative change of ko
-            ko = $2 + getPAPK(sref)
+            //ko = $2 + getPAPK(sref)
             flag_k_acc = 0
             //change of ko
             ko0_k_acc = $3
@@ -530,6 +550,13 @@ func getPAPK(){local papko
 objref ic,vc,electrodeList
 {electrodeList = new List()}
 
+proc delaysec() {
+  vc.rs = 1e9
+  //depends on cvode
+  cvode.event($1, "vc.rs = 0.001")
+}
+objref fih
+
 proc clampSwitch() {
   if ($1 > 4){
         // voltage clamp
@@ -539,7 +566,7 @@ proc clampSwitch() {
         electrodeList.append(vc)
         //---------------------------------------------------
      } else if ($1 > 3) {
-        getLeaf(slPAP) {vc = new VClamp(0.5)}
+        getLeaf(slPAP) {vc = new SEClamp(0.5)}
         vc.dur[0] = tstop
         vc.amp[0] = $2   // mV depolarization (dV = 20)
         electrodeList.append(vc)
@@ -557,8 +584,8 @@ proc clampSwitch() {
         //---------------------------------------------------
     } else if ($1 > 0) {
         // voltage clamp
-        soma {vc = new VClamp(0.5)}
-        vc.dur[0] = tstop - 20
+        soma {vc = new SEClamp(0.5)}
+        vc.dur[0] = tstop
         vc.amp[0] = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
         //---------------------------------------------------
@@ -711,6 +738,19 @@ proc getAllRi() {localobj all_sections
     }
 }
 
+
+proc ko_sim_off() {
+  forall {
+      flag_k_acc = 2
+    }
+  }
+proc ko_sim_on() {
+  forall {
+      flag_k_acc = 0
+    }
+  }
+
+
 proc kbath_off() {
     forall {
         tauk_0_k_acc = exp(700) // esenntially infinite kclearence (Never clears) 3/0
@@ -757,10 +797,15 @@ proc set_gleakNa() {local tmp_gk, rmp,count_kir,tmp_gna
     forall {
       rmp = $1 
       count_kir = count_kir2 + multiple_kir2*count_std_kir2
-      tmp_gk = (gk_kir2*(1e-12)*linf_kir2+ gleak_kleak)
-      tmp_gna = -(rmp-ek)* tmp_gk/(rmp-ena)
+
+      tmp_gk = (count_kir *gkbar_kir2*A_kir2*sqrt(3)*(1e-4)*linf_kir2+ gleak_kleak*area(0.5))
+      tmp_gna = -((rmp-ek)* tmp_gk)/(rmp-ena)
+      tmp_gna = tmp_gna/area(0.5)
       gleak_naleak = tmp_gna
       }
+  }
+func u_glut() {
+    return exp($2*$1/(2*(26.7)))
   }
 
 proc print_progress(){local max_time
@@ -776,4 +821,12 @@ proc print_progress(){local max_time
       }
     
   }
+proc set_gapv(){
+  for i=0,gaplist.count - 1{
+    gaplist.o(i).VoltageGap = $1
+
+    }
+
+  }
+
 

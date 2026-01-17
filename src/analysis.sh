@@ -102,7 +102,7 @@ seed=1
 # Panel A: model cartoon
 # Panel C gen in NEURON
 # Panel D gen in NEURON
-mpiexec -n 11 python NEURONPAP.py --somaVC $seed                         # Fig 1b
+mpiexec -n 11 python NEURONPAP.py --somaClamp $seed                      # Fig 1b
 mpiexec -n 5 python experiments.py                                       # Fig 1 EFH
 python NEURONPAP.py -s --GABAR 0 --NMDAR 0 --GluT 0 --stimCount 10 $seed # Fig1 G
 #python experiments.py                                                    # Fig 1 I
