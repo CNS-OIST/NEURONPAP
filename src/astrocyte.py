@@ -854,7 +854,7 @@ class PAPModel(ResultsPAPModel):
                 f"morph{v}_{zoom=}_{self.seed=}_{self.PAPCount=}_{self.tstop=}",
             )
             if hasattr(self, "SpikeFreq"):
-                outfile += f"_{self.SpikeFreq}Hz_{self.spikeNum=}"
+                outfile += f"_{self.SpikeFreq}Hz_{self.SpikeNum=}"
             outfile += ".mp4"
             animate_morphology(
                 tstop=stop,

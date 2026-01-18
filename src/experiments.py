@@ -4258,6 +4258,7 @@ class procedure(plotFigures):
         indexConvert = [
             (i, np.argmin(np.array(cells.time) - t)) for i, t in enumerate(tList)
         ]
+        print(indexConvert)
 
         expT = []
         expF = []
@@ -4896,7 +4897,7 @@ if __name__ == "__main__":
                     initParms,
                     showFig=True,
                     PAP=PAP,
-                    skipsave=True,
+                    skipsave=False,
                     use_tau=use_tau,
                 )
                 if not exp.foundFitExperiment:

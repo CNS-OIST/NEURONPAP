@@ -109,7 +109,7 @@ python NEURONPAP.py -s --GABAR 0 --NMDAR 0 --GluT 0 --stimCount 10 $seed # Fig1 
 python NEURONPAP.py -s --NMDAR 0 --GABAR 0 --GluT 0 --stimCount 10 --ko 16 $seed
 mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --freqComp --stimCount 10 --NMDAR 1 --GluT 1 --GABAR 0 $seed
 
-mpiexec -n 3 python experiments.py # fig 3EF 5D
+#mpiexec -n 3 python experiments.py # fig 3EF 5D
 for i in $( # for ten random PAPs
   seq 1 $total
 ); do
