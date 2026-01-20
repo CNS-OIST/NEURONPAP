@@ -61,6 +61,7 @@ class PAPModel(ResultsPAPModel):
         Glu=False,
         GABA=False,
         GABACount=None,
+        gapCount=None,
         Ko=3,
         KoSize=0.5,
         stimdelay=0,
@@ -93,6 +94,8 @@ class PAPModel(ResultsPAPModel):
         h.v_init = self.v_init
 
         # print('set sim parms')
+        # Set gap count
+        self.gapcount = gapCount
 
         # set NMDA
         self.multiple = multiple
@@ -139,7 +142,7 @@ class PAPModel(ResultsPAPModel):
         # # set K parms
         self.KoSize = KoSize
 
-        self.Ko = Ko
+        self.Ko = float(h.ko0)
         h.set_kobase(self.Ko)
 
         self.durStim = durStim
@@ -202,13 +205,6 @@ class PAPModel(ResultsPAPModel):
                 self.GABACount = 50
             else:
                 self.GABACount = GABACount
-
-        if "kir2" in kwargs.keys() and kwargs["kir2"] is not None:
-            # print(kwargs["kir2"])
-            # print(type(kwargs["kir2"]))
-            if kwargs["kir2"] > 800:
-                self.dt = dt / 3
-                h.dt = self.dt
 
         # GENE expression setup
         self.GENEobj = GENExpression(h.allsec(), self.PAPs, kwargs)
@@ -389,15 +385,21 @@ class PAPModel(ResultsPAPModel):
             currTime = int(h.t / self.dt) * self.dt
             h(f"stim.start = {currTime + delay}")
             # print(h.stim.number,h.stim.interval)
+            #
+        if self.cvode:
+            maxCVODEstep = h.cvode.maxstep()
+            h.cvode.maxstep(1)
+
         if amp is not None:
             for nc in self.NCs:
                 nc.weight[0] = amp
         if koclamp:
             self.koClamp(self.Ko)
             h.continuerun(ISI * number)
+
         else:
+            currTime = int(h.t / self.dt) * self.dt
             for i in range(number):
-                currTime = int(h.t / self.dt) * self.dt
                 self.setK(KoSize=KoSize, dur=dur, delay=delay if i == 0 else 0)
                 if video:
                     self.makeVideo(
@@ -405,11 +407,13 @@ class PAPModel(ResultsPAPModel):
                         stop=ISI * ms + currTime,
                         frame_num=self.tstop
                         / ISI
-                        / 2,  # sample at half ISI ms interval
+                        * 2,  # sample at half ISI ms interval
                         zoom=True,
                     )
                 else:
-                    h.continuerun(ISI * ms + currTime - self.dt)
+                    h.continuerun(ISI * ms * (i + 1) + currTime)
+        if self.cvode:
+            h.cvode.maxstep(maxCVODEstep)
 
     def TBS(
         self,
@@ -462,6 +466,12 @@ class PAPModel(ResultsPAPModel):
 
     def getkin(self):
         self.kin = h.getkin()
+
+    def setGap(self):
+        self.gaplist = h.gaplist
+        for i, sGap in enumerate(self.gaplist):
+            if self.gapcount:
+                sGap.multiple = self.gapcount
 
     def initNMDAs(self):
         if self.readParms:
@@ -690,6 +700,9 @@ class PAPModel(ResultsPAPModel):
         # print('placing GluChannel')
         # sys.stdout.flush()
 
+        self.setGap()
+        # print('placed GAP')
+        # sys.stdout.flush()
         self.setNMDAs()
         # print('placed NMDAR')
         # sys.stdout.flush()
@@ -1244,6 +1257,7 @@ class PAPModel(ResultsPAPModel):
             h.continuerun(delay * ms + h.t)
             if hasattr(h, "cvode"):
                 h.cvode.active(False)
+                h.dt = self.dt
             papk = self.getPAPK()
             h.setK(self.flattenPAP(), KoSize, KoSize + papk, 2)
             h.fcurrent()

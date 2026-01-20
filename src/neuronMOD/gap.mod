@@ -4,7 +4,7 @@ NEURON {
     NONSPECIFIC_CURRENT i_gap
     :USEION k READ ki WRITE ki
     
-    RANGE r, i, VoltageGap
+    RANGE r, i, VoltageGap,multiple
 }
 UNITS {
     (molar) = (1/liter)

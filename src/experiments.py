@@ -1164,6 +1164,7 @@ class procedure(plotFigures):
     OE = False
     NMDAR = True
     GABAR = True
+    GAP = False
     GluT = True
     GluStim = True
     GabaStim = False
@@ -1206,6 +1207,8 @@ class procedure(plotFigures):
             self.tag += "_NMDAR"
         if self.GABAR:
             self.tag += "_GABAR"
+        if self.GAP:
+            self.tag += "_GAP"
         if not self.GluStim:
             self.tag += "_NoGlu"
         if self.GabaStim:
@@ -3207,6 +3210,9 @@ class procedure(plotFigures):
         if self.GABAR:
             self.channelCompareMax *= 3
             self.channelCompareStep *= 3
+        if self.GAP and not(self.GABAR or self.NMDAR or self.GluT):
+            self.channelCompareMax *= 4
+            self.channelCompareStep *= 4
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 5
             self.channelCompareStep = int(self.channelCompareMax / 5)
@@ -3267,6 +3273,10 @@ class procedure(plotFigures):
             if self.GluT:
                 ccList.append("GluTrans")
                 funcArgs[-1]["Glu"] = True
+            elif self.GAP:
+                ccList.append("gapCount")
+                funcArgs[-1]["GABA"] = False
+                funcArgs[-1]["Glu"] = False
             else:
                 iterations = [
                     i

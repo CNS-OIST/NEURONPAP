@@ -295,7 +295,14 @@ def argParser(rangeInt=100):
         type=int,
         dest="gabar",
         default=0,
-        help="Used to set NMDAR; 1 True; 0 False",
+        help="Used to set GABAR; 1 True; 0 False",
+    )
+    parser.add_argument(
+        "--GAP",
+        type=int,
+        dest="gap",
+        default=0,
+        help="Used to set GAP; 1 True; 0 False",
     )
 
     parser.add_argument(
