@@ -39,6 +39,7 @@ font = {
 }
 
 plt.rcParams.update(font)
+plt.ioff()
 
 
 comm = MPI.COMM_WORLD
@@ -731,7 +732,7 @@ class plotFigures:
                         color=self.returnColor("PAP"),
                     )
 
-                    x0, x1 = 155, 165
+                    x0, x1 = 145, 155
                     y0, y1 = gl.lim_ek
                     grey = "0.5"
 
@@ -872,7 +873,7 @@ class plotFigures:
 
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
-            "Kir": (819 * area, 197 * area),
+            "Kir": (819 * area + 197*4.7e3*area, 197 * area),
             "GluT": (14248 * area, 812 * area),
             "GABAR": (np.inf, 0),
             "PAPLen": (
@@ -1148,8 +1149,8 @@ class plotFigures:
 
 class procedure(plotFigures):
     leak = 1.4  # ideal calculated from stable model
-    optKir = 4.7e3  # std * optkir  + mean
-    optNMDAR = 273
+    optKir = 0  # std * optkir  + mean
+    optNMDAR = 378
     optGABAR = 998
     optGluT = 0  # std * optGluT + mean
     optNKA = 1
@@ -1183,8 +1184,8 @@ class procedure(plotFigures):
         self.seed = seed
         self.ko = ko
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
-        self._KirMax = 300
-        self._KirStep = 60
+        self._KirMax = 5e3 
+        self._KirStep = self._KirMax / 5
 
     # no write access to KirMax
     @property
@@ -1636,7 +1637,7 @@ class procedure(plotFigures):
 
         self.free_figure(results)
         if rank == 0:
-            fig = plt.figure(figsize=(10, 5))
+            fig = plt.figure(figsize=(8, 5))
             gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
             ax1 = fig.add_axes([0.1, 0.75, 0.85, 0.2])
             for v in vClampList:
@@ -1740,7 +1741,7 @@ class procedure(plotFigures):
 
         plt.text(
             0.5,
-            len(list(cells.branchAtten[0])[initStep:]) + 1,
+            len(list(cells.branchAtten[0])[initStep:]) + 2,
             "Soma",
             color="white",
             ha="left",
@@ -1748,7 +1749,7 @@ class procedure(plotFigures):
         )
         plt.text(
             9.5,
-            len(list(cells.branchAtten[0])[initStep:]) + 1,
+            len(list(cells.branchAtten[0])[initStep:]) + 2,
             "PAP",
             color="white",
             ha="right",
@@ -1838,147 +1839,235 @@ class procedure(plotFigures):
                 )
             )
 
+    def plot_phase_panel(
+        self, id, data, label, figObj=None, finalize=None, final_label=None, **plt_args
+    ):
+        # get data
+
+        if not figObj:
+            fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharex=True, sharey=True)
+        else:
+            fig, axs = figObj
+
+        splt_x, splt_y = id
+        axs[splt_x, splt_y].plot(*data, label=label, **plt_args)
+
+        if splt_x == 1 and splt_y == 0:
+            axs[splt_x, splt_y].legend()
+
+        if finalize and final_label:
+            plt.tight_layout(rect=[0.18, 0.12, 0.95, 0.90])
+
+            left = axs[0, 0].get_position().x0
+            right = axs[0, 1].get_position().x1
+            bottom = axs[1, 0].get_position().y0
+            top = axs[0, 0].get_position().y1
+            x_label, y_label = final_label
+
+            fig.text((left + right) / 2, bottom - 0.07, x_label, ha="center", va="top")
+            fig.text(
+                left - 0.07,
+                (bottom + top) / 2,
+                y_label,
+                ha="center",
+                va="center",
+                rotation=90,
+            )
+
+            col1, col2, row1, row2 = finalize
+
+            fig.text(
+                axs[0, 0].get_position().x0, top + 0.03, col1, ha="left", va="bottom"
+            )
+            fig.text(
+                axs[0, 1].get_position().x0, top + 0.03, col2, ha="left", va="bottom"
+            )
+
+            fig.text(
+                left - 0.13,
+                (axs[0, 0].get_position().y0 + axs[0, 0].get_position().y1) / 2,
+                row1,
+                ha="left",
+                va="center",
+                rotation=90,
+            )
+            fig.text(
+                left - 0.13,
+                (axs[1, 0].get_position().y0 + axs[1, 0].get_position().y1) / 2,
+                row2,
+                ha="left",
+                va="center",
+                rotation=90,
+            )
+
+        return fig, axs
+
     def kvPhasePlane(self):
         self.KirNMDAPhase()
-        # self.duramplenPhase()
+        self.duramplenPhase()
 
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
 
         AllCells = []
-        for amp in [0.5, 10]:
-            funcArgs = []
-            funcArgs.append(
-                {
-                    "mode": 0,
-                    "ComplexMorph": True,
-                    "bNum": 1,
-                    "dt": 0.01,
-                    "kleak": self.leak,
-                    "clleak": 0,
-                    "seed": self.seed,
-                    "KoSize": amp,
-                }
-            )
-            if self.GluT:
-                if self.NMDAR:
-                    funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = self.optNMDAR
-                    funcArgs[-1]["GluTrans"] = self.optGluT
-                    chanName = "GluT_NMDAR"
-                elif self.GABAR:
-                    funcArgs[-1]["GABACount"] = self.optGABAR
-                    funcArgs[-1]["multiple"] = None
-                    funcArgs[-1]["GluTrans"] = self.optGluT
-                    chanName = "GABAR"
-                else:
-                    funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = None
-                    funcArgs[-1]["GluTrans"] = self.optGluT
-                    chanName = "GluTrans"
-            else:
-                if self.NMDAR:
-                    funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = self.optNMDAR
-                    funcArgs[-1]["GluTrans"] = None
-                    chanName = "NMDAR"
-                elif self.GABAR:
-                    funcArgs[-1]["GABACount"] = self.optGABAR
-                    funcArgs[-1]["multiple"] = None
-                    funcArgs[-1]["GluTrans"] = None
-                    chanName = "GABAR"
-                else:
-                    funcArgs[-1]["GABACount"] = 0
-                    funcArgs[-1]["multiple"] = None
-                    funcArgs[-1]["GluTrans"] = None
-                    chanName = ""
+        if not self.free_read_data():
+            for kircount in [self.KirMax, self.optKir]:
+                for PAPLen in [0.3, 5]:
 
-            if (
-                funcArgs[-1]["multiple"] is not None
-                or funcArgs[-1]["GluTrans"] is not None
-            ):
-                funcArgs[-1]["Glu"] = True
-            if funcArgs[-1]["GABACount"] > 0:
-                funcArgs[-1]["GABA"] = True
-
-            iterations = comm.bcast(
-                [
-                    (dur, papLen)
-                    for dur in np.arange(0.5, 1, 0.1)
-                    for papLen in np.arange(0.3, 3, 0.3)
-                ],
-                root=0,
-            )
-            ccList = comm.bcast(["durStim", "papLen"], root=0)
-            comm.Barrier()
-            if self.KStim:
-                results = parallizeFor(
-                    iterations,
-                    [PAPModel],
-                    funcArgs,
-                    ccList,
-                    [["initialize", "multiSpike", "run"]],
-                    [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
-                )
-            else:
-                plt.cla()
-                plt.clf()
-                results = parallizeFor(
-                    iterations,
-                    [PAPModel, PAPModel],
-                    funcArgs,
-                    ccList,
-                    [["initialize", "run"]],
-                    [[{}, {}]],
-                )
-            comm.Barrier()
-            if rank == 0:
-                # self.mergePlotsIK(results)
-                plt.cla()
-                plt.clf()
-                for j in range(len(results[0])):
-                    for i, cell in enumerate(results):
-                        cell = cell[j]
-                        initStep = self.get_initStep(cell, shift=0) - 200
-                        if cell.KoSize == 0.5:
-                            color = "r"
-                            z = len(results) + 1
+                    funcArgs = []
+                    funcArgs.append(
+                        {
+                            "mode": 0,
+                            "ComplexMorph": True,
+                            "bNum": 1,
+                            "dt": 0.01,
+                            "kleak": self.leak,
+                            "clleak": 0,
+                            "seed": self.seed,
+                            "PAPLen": PAPLen,
+                        }
+                    )
+                    if self.GluT:
+                        if self.NMDAR:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = self.optNMDAR
+                            funcArgs[-1]["GluTrans"] = self.optGluT
+                            chanName = "GluT_NMDAR"
+                        elif self.GABAR:
+                            funcArgs[-1]["GABACount"] = self.optGABAR
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = self.optGluT
+                            chanName = "GABAR"
                         else:
-                            color = cm.summer(i / len(results))
-                            z = i
-                        plt.plot(
-                            list(cell.KoPAP)[initStep:],
-                            list(cell.vPAP)[initStep:],
-                            label=f"Dur:{cell.durStim:.1f},PAPLen:{cell.PAPLen:.1f}",
-                            color=color,
-                            zorder=z,
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = self.optGluT
+                            chanName = "GluTrans"
+                    else:
+                        if self.NMDAR:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = self.optNMDAR
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = "NMDAR"
+                        elif self.GABAR:
+                            funcArgs[-1]["GABACount"] = self.optGABAR
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = "GABAR"
+                        else:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = ""
+
+                    if (
+                        funcArgs[-1]["multiple"] is not None
+                        or funcArgs[-1]["GluTrans"] is not None
+                    ):
+                        funcArgs[-1]["Glu"] = True
+                    if funcArgs[-1]["GABACount"] > 0:
+                        funcArgs[-1]["GABA"] = True
+
+                    iterations = comm.bcast(
+                        [(kircount, amp) for amp in np.arange(0.5, 10, 2)],
+                        root=0,
+                    )
+                    ccList = comm.bcast(["kir2", "KoSize"], root=0)
+                    comm.Barrier()
+                    if self.KStim:
+                        results = parallizeFor(
+                            iterations,
+                            [PAPModel],
+                            funcArgs,
+                            ccList,
+                            [["initialize", "multiSpike", "run"]],
+                            [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
                         )
-                        if i == len(results) - 1:
-                            x = np.linspace(1, 25)
-                            plt.plot(
+                    else:
+                        results = parallizeFor(
+                            iterations,
+                            [PAPModel, PAPModel],
+                            funcArgs,
+                            ccList,
+                            [["initialize", "run"]],
+                            [[{}, {}]],
+                        )
+                    AllCells.append([r[0] for r in results])
+                    comm.Barrier()
+
+            self.free_figure(AllCells)
+
+        else:
+            AllCells = self.free_read_data()
+
+        if rank == 0:
+            plt.cla()
+            plt.clf()
+            for i, cells in enumerate(AllCells):
+                for j in range(len(AllCells[i])):
+                    cell = cells[j]
+                    id = 0
+                    if cell.GENEDict["kir2"] == self.optKir:
+                        id += 2
+                    if cell.PAPLen > 1:
+                        id += 1
+
+                    if cell.KoSize == 0.5:
+                        color = "r"
+                        z = len(results) + 1
+                    else:
+                        color = cm.summer(i / len(results))
+                        z = i
+                    kw_args = {}
+                    if id == len(results) - 1 and j == len(results[i]) - 1:
+                        kw_args["finalize"] = [
+                            "PAP Length 0.3 $\mu$m",
+                            "5 $\mu$m",
+                            "Kir Channels",
+                            "",
+                        ]
+                        kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
+                    initStep = self.get_initStep(cell, shift=0) - 200
+
+                    figobj = self.plot_phase_panel(
+                        (0 if id < 2 else 1, id % 2),
+                        (list(cell.kopap)[initStep:], list(cell.vpap)[initStep:]),
+                        f"dur:{cell.durstim:.1f},paplen:{cell.paplen:.1f}",
+                        figObj=None if id == 0 and j == 0 else figobj,
+                        color=color,
+                        zorder=z,
+                        **kw_args,
+                    )
+                    if j == len(results[i]) - 1:
+                        ko_min, ko_max = gl.lim_ko
+                        x = np.linspace(ko_min, ko_max)
+                        figobj = self.plot_phase_panel(
+                            (0 if id < 2 else 1, id % 2),
+                            (
                                 x,
                                 self.nernst(x, cell.kin),
-                                label=f"{gl.ek_raw}",
-                                color="black",
-                                linestyle="--",
-                            )
-                            plt.legend()
-                            plt.ylabel(gl.volt)
-                            plt.xlabel(gl.ion_o("K"))
-                            if self.PAPLen <= 0.3:
-                                plt.ylim(gl.lim_Vmemb)
-                            plt.xlim(gl.lim_ko)
-                            plt.savefig(
-                                os.path.join(
-                                    "../results/paperRes",
-                                    f"phasePlanePotassium{cell.KoSize:.2f}{self.tag}.pdf",
-                                )
-                            )
-                            plt.cla()
-                            plt.clf()
+                            ),
+                            f"{gl.ek_raw}",
+                            figObj=figobj,
+                            color="black",
+                            linestyle="--",
+                            **kw_args,
+                        )
 
-            plt.close("all")
+            _, axs = figobj
+            for ax in axs.flat:
+                ax.set_xlim(gl.lim_ko)
+                ax.set_ylim(gl.lim_ek)
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    f"phasePlanePotassium{amp}_panel{self.tag}.pdf",
+                )
+            )
+            plt.cla()
+            plt.clf()
+        plt.close("all")
 
     @read_data
     def KirNMDAPhase(self):
@@ -1986,145 +2075,179 @@ class procedure(plotFigures):
         self.addChannelTag()
 
         AllCells = []
-        for kircount in [self.KirMax, self.optKir]:
-            for chanCount in [self.optNMDAR, 25, self.optGABAR]:
-                funcArgs = []
-                funcArgs.append(
-                    {
-                        "mode": 0,
-                        "ComplexMorph": True,
-                        "bNum": 1,
-                        "dt": 0.01,
-                        "kleak": self.leak,
-                        "clleak": 0,
-                        "seed": self.seed,
-                        "PAPLen": self.PAPLen,
-                    }
-                )
-                if self.GluT:
-                    if self.NMDAR:
-                        funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = chanCount
-                        funcArgs[-1]["GluTrans"] = 0
-                        chanName = "GluT_NMDAR"
-                    elif self.GABAR:
-                        funcArgs[-1]["GABACount"] = chanCount
-                        funcArgs[-1]["multiple"] = None
-                        funcArgs[-1]["GluTrans"] = 0
-                        chanName = "GABAR"
-                    else:
-                        funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = None
-                        funcArgs[-1]["GluTrans"] = 0
-                        chanName = "GluTrans"
-                else:
-                    if self.NMDAR:
-                        funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = chanCount
-                        funcArgs[-1]["GluTrans"] = None
-                        chanName = "NMDAR"
-                    elif self.GABAR:
-                        funcArgs[-1]["GABACount"] = chanCount
-                        funcArgs[-1]["multiple"] = None
-                        funcArgs[-1]["GluTrans"] = None
-                        chanName = "GABAR"
-                    else:
-                        funcArgs[-1]["GABACount"] = 0
-                        funcArgs[-1]["multiple"] = None
-                        funcArgs[-1]["GluTrans"] = None
-                        chanName = ""
+        NTChannelComp = [700]
+        if self.NMDAR:
+            NTChannelComp = [self.optNMDAR] + NTChannelComp
+            self.tag += "NMDAR"
+        else:
+            NTChannelComp += [self.optGABAR]
+            self.tag += "GABAR"
 
-                if (
-                    funcArgs[-1]["multiple"] is not None
-                    or funcArgs[-1]["GluTrans"] is not None
-                ):
-                    funcArgs[-1]["Glu"] = True
-                if funcArgs[-1]["GABACount"] > 0:
-                    funcArgs[-1]["GABA"] = True
-
-                iterations = comm.bcast(
-                    [
-                        (kircount, conc)
-                        for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 16.0])
-                    ],
-                    root=0,
-                )
-                ccList = comm.bcast(["kir2", "KoSize"], root=0)
-                comm.Barrier()
-                if self.KStim:
-                    results = parallizeFor(
-                        iterations,
-                        [PAPModel],
-                        funcArgs,
-                        ccList,
-                        [["initialize", "multiSpike", "run"]],
-                        [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
-                        randomize=False,
+        if not self.free_read_data():
+            for kircount in [self.KirMax, self.optKir]:
+                for chanCount in NTChannelComp:
+                    funcArgs = []
+                    funcArgs.append(
+                        {
+                            "mode": 0,
+                            "ComplexMorph": True,
+                            "bNum": 1,
+                            "dt": 0.01,
+                            "kleak": self.leak,
+                            "clleak": 0,
+                            "seed": self.seed,
+                            "PAPLen": self.PAPLen,
+                        }
                     )
+                    if self.GluT:
+                        if self.NMDAR:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = chanCount
+                            funcArgs[-1]["GluTrans"] = 0
+                            chanName = "GluT_NMDAR"
+                        elif self.GABAR:
+                            funcArgs[-1]["GABACount"] = chanCount
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = 0
+                            chanName = "GABAR"
+                        else:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = 0
+                            chanName = "GluTrans"
+                    else:
+                        if self.NMDAR:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = chanCount
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = "NMDAR"
+                        elif self.GABAR:
+                            funcArgs[-1]["GABACount"] = chanCount
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = "GABAR"
+                        else:
+                            funcArgs[-1]["GABACount"] = 0
+                            funcArgs[-1]["multiple"] = None
+                            funcArgs[-1]["GluTrans"] = None
+                            chanName = ""
 
-                else:
-                    plt.cla()
-                    plt.clf()
-                    results = parallizeFor(
-                        iterations,
-                        [PAPModel, PAPModel],
-                        funcArgs,
-                        ccList,
-                        [["initialize", "run"]],
-                        [[{}, {}]],
+                    if (
+                        funcArgs[-1]["multiple"] is not None
+                        or funcArgs[-1]["GluTrans"] is not None
+                    ):
+                        funcArgs[-1]["Glu"] = True
+                    if funcArgs[-1]["GABACount"] > 0:
+                        funcArgs[-1]["GABA"] = True
+
+                    iterations = comm.bcast(
+                        [
+                            (kircount, conc)
+                            for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 16.0])
+                        ],
+                        root=0,
                     )
-                comm.Barrier()
-                self.free_figure(results)
+                    ccList = comm.bcast(["kir2", "KoSize"], root=0)
+                    comm.Barrier()
+                    if self.KStim:
+                        results = parallizeFor(
+                            iterations,
+                            [PAPModel],
+                            funcArgs,
+                            ccList,
+                            [["initialize", "multiSpike", "run"]],
+                            [[{}, {"number": self.stimCount, "freq": self.freq}, {}]],
+                            randomize=False,
+                        )
 
-                if rank == 0:
-                    # self.mergePlotsIK(results)
-                    plt.cla()
-                    plt.clf()
-                    for j in range(len(results[0])):
-                        for i, cell in enumerate(results):
-                            cell = cell[j]
-                            initStep = self.get_initStep(cell, shift=0) - 200
-                            if cell.KoSize == 0.5:
-                                color = "r"
-                                z = len(results) + 1
-                            else:
-                                color = cm.summer(i / len(results))
-                                z = i
-                            plt.plot(
-                                list(cell.KoPAP)[initStep:],
-                                list(cell.vPAP)[initStep:],
-                                label=f"{cell.KoSize:.1f}",
-                                color=color,
-                                zorder=z,
-                            )
-                            if i == len(results) - 1:
-                                x = np.linspace(1, 25)
-                                plt.plot(
-                                    x,
-                                    self.nernst(x, cell.kin),
-                                    label=f"{gl.ek_raw}",
-                                    color="black",
-                                    linestyle="--",
-                                )
-                                if (
-                                    kircount == self.optKir
-                                    and chanCount == self.optNMDAR
-                                ):
-                                    plt.legend()
-                                plt.ylabel(gl.volt)
-                                plt.xlabel(gl.ion_o("K"))
-                                plt.ylim(gl.lim_Vmemb)
-                                plt.xlim(gl.lim_ko)
-                                plt.savefig(
-                                    os.path.join(
-                                        "../results/paperRes",
-                                        f"phasePlane_{kircount}{chanName}{chanCount}{self.tag}.pdf",
-                                    )
-                                )
-                                plt.cla()
-                                plt.clf()
+                    else:
+                        plt.cla()
+                        plt.clf()
+                        results = parallizeFor(
+                            iterations,
+                            [PAPModel, PAPModel],
+                            funcArgs,
+                            ccList,
+                            [["initialize", "run"]],
+                            [[{}, {}]],
+                        )
+                    AllCells.append([r[0] for r in results])
+                    comm.Barrier()
+            self.free_figure(AllCells)
+            # structure AllCells [ chanNum(Kir,NT) [Kosize]]
+        else:
+            AllCells = self.free_read_data()
 
-                plt.close("all")
+        if rank == 0:
+            plt.cla()
+            plt.clf()
+            for i, cell in enumerate(AllCells):
+                for j in range(len(AllCells[i])):
+                    cell = cell[j]
+                    id = 0
+                    if cell.GENEDict["kir2"] == self.optKir:
+                        id += 2
+                    if cell.multiple == 0 and cell.GABACount == self.optGABAR:
+                        id += 1
+                    elif cell.multiple != self.optNMDAR:
+                        id += 1
+
+                    initStep = self.get_initStep(cell, shift=0) - 200
+                    if cell.KoSize == 0.5:
+                        color = "r"
+                        z = len(results) + 1
+                    else:
+                        color = cm.summer(i / len(results))
+                        z = i
+
+                    kw_args = {}
+                    if id == len(results) - 1 and j == len(results[i]) - 1:
+                        kw_args["finalize"] = [
+                            "PAP Length 0.3 $\mu$m",
+                            "5 $\mu$m",
+                            "Kir Channels",
+                            "",
+                        ]
+                        kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
+                    initStep = self.get_initStep(cell, shift=0) - 200
+                    figobj = self.plot_phase_panel(
+                        (0 if id < 2 else 1, id % 2),
+                        (list(cell.koPAP)[initStep:], list(cell.vPAP)[initStep:]),
+                        f"{cell.KoSize:.1f}",
+                        figObj=None if id == 0 and j == 0 else figobj,
+                        color=color,
+                        zorder=z,
+                        **kw_args,
+                    )
+                    if j == len(results[i]) - 1:
+                        ko_min, ko_max = gl.lim_ko
+                        x = np.linspace(ko_min, ko_max)
+                        figobj = self.plot_phase_panel(
+                            (0 if id < 2 else 1, id % 2),
+                            (
+                                x,
+                                self.nernst(x, cell.kin),
+                            ),
+                            f"{gl.ek_raw}",
+                            figObj=figobj,
+                            linestyle="--",
+                            color="black",
+                            **kw_args,
+                        )
+
+                _, axs = figobj
+                for ax in axs.flat:
+                    ax.set_xlim(gl.lim_ko)
+                    ax.set_ylim(gl.lim_Vmemb)
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f"phasePlaneNT_{self.tag}.pdf",
+                    )
+                )
+                plt.cla()
+                plt.clf()
+            plt.close("all")
 
     def ekComp(self):
         self.addChannelTag()
@@ -2595,21 +2718,28 @@ class procedure(plotFigures):
         if self.GluT:
             funcArgs[-1]["GluTrans"] = self.optGluT
 
-        cells = PAPModel(**funcArgs[-1])
-        cells.setTstop(260)
-        cells.initialize()
-        cells.setK(KoSize=100, delay=0, dur=100)
-        cells.run()
-        cells = cells.copyAttr()
-        initStep = self.get_initStep(cells)
-        flux = np.array(list(cells.flux)[initStep:]) * -1
-        kbath = np.array(list(cells.kbath)[initStep:]) * -1
-        kbath[kbath == 0] = np.nan
-        _, ax = plt.subplots(figsize=(11, 6))
-        ax.plot(list(cells.time)[initStep:], np.divide(flux, kbath))
-        ax.set_xlabel(gl.ms)
-        ax.set_ylabel(gl.free("Ratio of\ninflux / diffusion\nfor potassium"))
-        plt.savefig(os.path.join("../results/paperRes", "fluxRatioOvertime.pdf"))
+        if not self.free_read_data():
+            cells = PAPModel(**funcArgs[-1])
+            cells.setTstop(160)
+            cells.initialize()
+            cells.setK(KoSize=100, delay=0, dur=5)
+            cells.run()
+            cells = cells.copyAttr()
+            AllCells = [[cells]]
+            self.free_figure(AllCells)
+        else:
+            AllCells = self.free_read_data()
+            cells = AllCells[0][0]
+        if rank == 0:
+            initStep = self.get_initStep(cells)
+            flux = np.array(list(cells.flux)[initStep:])
+            kbath = np.array(list(cells.kbath)[initStep:]) * -1
+            kbath[kbath == 0] = np.nan
+            _, ax = plt.subplots(figsize=(11, 6))
+            ax.plot(list(cells.time)[initStep:], np.divide(flux, kbath))
+            ax.set_xlabel(gl.ms)
+            ax.set_ylabel(gl.free("Ratio of\ninflux / diffusion\nfor potassium"))
+            plt.savefig(os.path.join("../results/paperRes", "fluxRatioOvertime.pdf"))
 
     def singleRun(self, *args, expOverlay=False, GluTime=False, nearSoma=False):
         # add multispike ek clamp
@@ -2647,7 +2777,7 @@ class procedure(plotFigures):
             }
         )
         if self.OE:
-            funcArgs[-1]["kir2"] = 5
+            funcArgs[-1]["kir2"] = self.KirMax 
             self.tag += "_OE"
 
         if funcArgs[-1]["kir2"] > 3:  # to compensate for mathematical unstability
@@ -2801,7 +2931,7 @@ class procedure(plotFigures):
         # call to set global rw data i.e. each indicidual rank will read and write src_data for plots instead of waiting for all
         if runAll:
             if invivo:
-                invivoRunConds = [True, False]
+                invivoRunConds = [False, True]
             else:
                 invivoRunConds = [False]
 
@@ -2812,7 +2942,7 @@ class procedure(plotFigures):
                     f"bath experiment runAll only when there are more than {allConds} ranks"
                 )
             for i, bool_invivo in enumerate(invivoRunConds):
-                for j, bool_isolate in enumerate([True, False]):
+                for j, bool_isolate in enumerate([False, True]):
                     if rank == 2 * i + j:
                         self.bathExperiment(
                             runAll=False,  # for escaping inf loop
@@ -2858,7 +2988,7 @@ class procedure(plotFigures):
             }
         )
         if self.OE:
-            funcArgs[-1]["kir2"] = 5
+            funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
 
         funcArgs[-1]["multiple"] = None
@@ -2882,12 +3012,11 @@ class procedure(plotFigures):
                 #    cells.set_ECS(100e4, scale=False)
 
                 cells.initialize()
-                if isolate:
-                    video = False
-                else:
-                    video = True
+                tsnap = False
+                if not isolate:
+                    tsnap = True
                 cells.setKBath(
-                    10, dur=200, video=video, isolate=isolate, clamp_ki=not isolate
+                    10, dur=200, tsnap=tsnap, isolate=isolate, clamp_ki=not isolate
                 )
                 cells.run()
 
@@ -3380,7 +3509,7 @@ class procedure(plotFigures):
                 self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
 
     def potassiumComparison(self):
-        self.KoCompMax = 16
+        self.KoCompMax = 18
         self.KoCompStep = 2
         for comparison in ["seed", "PAPLen", "KoSize", "durStim"]:
             if comparison == "KoSize":

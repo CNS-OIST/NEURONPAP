@@ -403,7 +403,9 @@ class PAPModel(ResultsPAPModel):
                     self.makeVideo(
                         self.varMorph,
                         stop=ISI * ms + currTime,
-                        interval=ISI / 2 / self.dt,  # sample at half ISI ms interval
+                        frame_num=self.tstop
+                        / ISI
+                        / 2,  # sample at half ISI ms interval
                         zoom=True,
                     )
                 else:
@@ -449,7 +451,7 @@ class PAPModel(ResultsPAPModel):
                     self.makeVideo(
                         self.varMorph,
                         stop=t,
-                        interval=5 / self.dt,  # sample at half 10 ms interval
+                        frame_num=self.tstop / 10,  # sample at half 10 ms interval
                         zoom=True,
                     )
                 else:
@@ -662,6 +664,7 @@ class PAPModel(ResultsPAPModel):
         TBS=None,
         force_print_progress=False,
     ):
+        self.cvode = False
         if hasattr(h, "cvode"):
             self.cvode = True
             voltageClamp = False
@@ -829,7 +832,7 @@ class PAPModel(ResultsPAPModel):
         self.RMP = RMP
         return RMP
 
-    def makeVideo(self, var, interval=5, stop=None, zoom=False):
+    def makeVideo(self, var, frame_num=200, stop=None, zoom=False):
         if not hasattr(self, "frames"):
             self.frames = []
         if stop == None:
@@ -862,11 +865,7 @@ class PAPModel(ResultsPAPModel):
                 outfile=outfile,
                 zoom=pap,
                 clim=clim,
-                frame_num=(
-                    200
-                    if int(self.tstop / self.dt) > 200
-                    else int(self.tstop / self.dt) / interval
-                ),
+                frame_num=(frame_num),
             )
         return
 
@@ -1065,10 +1064,10 @@ class PAPModel(ResultsPAPModel):
         self.ekPAP.record(self.PAP(0.5)._ref_ek)
 
         self.flux = h.Vector()
-        self.flux.record(self.PAP(0.5)._ref_flux_k_acc)
+        self.flux.record(self.PAP(0.5)._ref_flux_change_k_acc)
 
         self.kbath = h.Vector()
-        self.kbath.record(self.PAP(0.5)._ref_kbath_k_acc)
+        self.kbath.record(self.PAP(0.5)._ref_kbath_change_k_acc)
 
         if hasattr(self.PAP(0.5), "_ref_ena"):
             self.enaPAP = h.Vector()
@@ -1269,7 +1268,14 @@ class PAPModel(ResultsPAPModel):
             h.ki_clamp(1)
 
     def setKBath(
-        self, Ko, dur=100, delay=0, isolate=False, video=False, clamp_ki=False
+        self,
+        Ko,
+        dur=100,
+        delay=0,
+        isolate=False,
+        tsnap=False,
+        video=False,
+        clamp_ki=False,
     ):
         if h.t + delay < h.tstop:
             h.continuerun(delay * ms + h.t)
@@ -1294,12 +1300,15 @@ class PAPModel(ResultsPAPModel):
             self.makeVideo(
                 self.varMorph,
                 stop=dur * ms + h.t,
-                interval=100 / self.dt,  # sample at 100 ms interval
+                frame_num=2,
                 zoom=False,
             )
 
         else:
             h.continuerun(min(dur * ms + h.t, h.tstop))
+            if tsnap:
+                plot_3d_morphology(rangevar="v", clim=gl.lim_ek)
+                plt.savefig(os.path.join("../morphResults", f"kbath_v.pdf"))
 
         self.Ko = Ko
         if isolate:
@@ -1372,7 +1381,7 @@ class PAPModel(ResultsPAPModel):
                 self.makeVideo(
                     self.varMorph,
                     stop=t * ms + h.t,
-                    interval=10000 / self.dt,  # sample at 10 ms interval
+                    frame_num=self.tstop / 10,  # sample at 10 ms interval
                     zoom=True,
                 )
 

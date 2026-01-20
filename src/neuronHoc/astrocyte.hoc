@@ -422,11 +422,12 @@ proc fINITGLUT(){
 objref FinGluT
 FinGluT = new FInitializeHandler(3,"fINITGLUT()")
 
+ko0 = 3.5
+
 //initialize Ko
 proc initIon(){local iki,inai
     iki = 120 //ek set to -92
     inai = 15 // Verhratsky A 2019 review
-    ko0 = 3.5
     
     // set global Ki
     ki0_k_ion = iki

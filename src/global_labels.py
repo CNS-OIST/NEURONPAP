@@ -23,6 +23,8 @@ class gl:
     seed_num = "Seed number"
     pap_len = "PAP length " + unit_micron
     fluor = "$\Delta F/F_0$ (%)"
+    volt_atten = f"{vm}/V$_0$"
+    abs_distance = f"Distance {unit_micron}"
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
     lim_d_volt = (0, 70)
