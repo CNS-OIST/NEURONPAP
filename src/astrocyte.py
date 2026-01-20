@@ -468,8 +468,7 @@ class PAPModel(ResultsPAPModel):
         self.kin = h.getkin()
 
     def setGap(self):
-        self.gaplist = h.gaplist
-        for i, sGap in enumerate(self.gaplist):
+        for i, sGap in enumerate(h.gaplist):
             if self.gapcount:
                 sGap.multiple = self.gapcount
 

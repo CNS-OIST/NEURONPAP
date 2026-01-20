@@ -29,7 +29,7 @@ class ResultsPAPModel:
         "iClSoma",
         "iNaSoma",
         "iMemSoma",
-        "iNCXPAP"
+        "iNCXPAP",
         # "iNMDA"
     ]
     ppcurrents = ["iGluT", "iNMDA", "iGluTSoma", "iGABA"]
