@@ -40,7 +40,7 @@ class GENEManipulation:
     # for sec in self.compartments:
     #     for seg in sec:
     #         seg.GluTrans.count = multiple * seg.GluTrans.count_std
-
+    #
     def kleakChange(self, multiple):
         for sec in self.compartments:
             for seg in sec:

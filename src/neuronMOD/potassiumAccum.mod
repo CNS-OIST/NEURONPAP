@@ -3,7 +3,7 @@ TITLE Potassium ion accumulation
 NEURON {
 	SUFFIX k_acc
 	USEION k READ ko, ik WRITE ko
-        RANGE tauk_0, ko0, flag, kbath, flux, slowing
+        RANGE tauk_0, ko0, flag, kbath,kbath_change, flux, flux_change,slowing
         RANGE fhspace
 	THREADSAFE
 }
@@ -40,7 +40,9 @@ ASSIGNED {
     tauk (ms)
     ik 	(mA/cm2)
     kbath (1)
+    kbath_change(mM/ms)
     flux (1)
+    flux_change(mM/ms)
     dt (ms)
     iNMDA (mA/cm2)
     iGluT (mA/cm2)
@@ -85,6 +87,9 @@ BREAKPOINT {
         :     printf("%g\n",ko0)
         : }
         ko' = flux * (1e8)*ik /(fhspace*F) + kbath * (ko0-ko)/tauk
+        flux_change =(1e8)*ik /(fhspace*F) 
+        kbath_change =(ko0-ko)/tauk
+ 
         : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
     }
 PROCEDURE kbathRate(){

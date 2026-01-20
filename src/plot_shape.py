@@ -34,11 +34,11 @@ def animate_morphology(
 
     h.tstop = tstop
 
-    frames = int(tstop / dt)
     # override calc frames when frame num set
     if frame_num:
         dt = tstop / frame_num
 
+    frames = int(tstop / dt)
     if dt < h.dt:
         h.dt = dt
 
@@ -103,6 +103,8 @@ def plot_3d_morphology(
 
     # Prepare new fig/ax if none provided
     if fig is None or ax is None:
+        plt.cla()
+        plt.clf()
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection="3d")
 
@@ -270,7 +272,7 @@ def plot_combined(
 def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     plt.cla()
     plt.clf()
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(8, 5))
     if not precomputed:
         precomputed = []
         section_dict = convert_list_section_to_python(list_section)
@@ -288,6 +290,8 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
         )
 
     plt.legend()
+    plt.ylabel(gl.volt_atten)
+    plt.xlabel(gl.abs_distance)
 
     plt.savefig(os.path.join("../morphResults", f"{fname}_{rangevar}.pdf"))
     return precomputed

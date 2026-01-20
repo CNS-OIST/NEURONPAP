@@ -98,8 +98,8 @@ ASSIGNED {
 INITIAL {
 	rate(v)
 	l=linf
-  count = (1e-08) * area * density
   count_std = (1e-08) * area * density_std
+  count = (1e-08) * area * density + 4.7e3 * count_std 
   gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * (count + multiple * count_std)/area
 }
 

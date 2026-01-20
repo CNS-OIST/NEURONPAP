@@ -30,15 +30,13 @@ def callExperimentMode(**kwargs):
     exp.parallel = kwargs["parallel"]
     exp.NMDAR = bool(kwargs["nmdar"])
     exp.GABAR = bool(kwargs["gabar"])
+    exp.GAP = bool(kwargs["gap"])
     exp.GluT = bool(kwargs["glut"])
     exp.PAPCount = kwargs["papcount"]
     exp.stimCount = kwargs["stimcount"]
     exp.freq = kwargs["freq"]
     exp.ek = kwargs["ek"]
     exp.OE = bool(kwargs["overexpress"])
-
-    if exp.GABAR:
-        channelCompareMax = 50
 
     if "spill" in kwargs.keys() and kwargs["spill"]:
         exp.PAPLen = 5
