@@ -873,7 +873,7 @@ class plotFigures:
 
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
-            "Kir": (819 * area + 197*4.7e3*area, 197 * area),
+            "Kir": (819 * area + 197 * 4.7e3 * area, 197 * area),
             "GluT": (14248 * area, 812 * area),
             "GABAR": (np.inf, 0),
             "PAPLen": (
@@ -1185,7 +1185,7 @@ class procedure(plotFigures):
         self.seed = seed
         self.ko = ko
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
-        self._KirMax = 5e3 
+        self._KirMax = 5e3
         self._KirStep = self._KirMax / 5
 
     # no write access to KirMax
@@ -2780,7 +2780,7 @@ class procedure(plotFigures):
             }
         )
         if self.OE:
-            funcArgs[-1]["kir2"] = self.KirMax 
+            funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
 
         if funcArgs[-1]["kir2"] > 3:  # to compensate for mathematical unstability
@@ -3210,7 +3210,7 @@ class procedure(plotFigures):
         if self.GABAR:
             self.channelCompareMax *= 3
             self.channelCompareStep *= 3
-        if self.GAP and not(self.GABAR or self.NMDAR or self.GluT):
+        if self.GAP and not (self.GABAR or self.NMDAR or self.GluT):
             self.channelCompareMax *= 4
             self.channelCompareStep *= 4
         if not (self.GABAR or self.NMDAR) and self.GluT:
@@ -4164,7 +4164,7 @@ class procedure(plotFigures):
         skipsave=False,
     ):
 
-        #print(f"{rank}:{x}")
+        # print(f"{rank}:{x}")
         # unify x value
         x = comm.bcast(x, root=0)
         comm.Barrier()
@@ -4335,7 +4335,7 @@ class procedure(plotFigures):
             correctArtifact=False,
             rankDict=rankDict,
         )
-        #print(loss)
+        # print(loss)
         return loss
 
     def artifactCurve(self, x, a, l, c):
@@ -5003,7 +5003,7 @@ if __name__ == "__main__":
                         2.95467474,
                         4.98841321e1,
                     )
-                    bounds = [(0, 1e5), (exp.optKir*0.1, exp.optKir*10), (0.3, 50), (0.5, 50)]
+                    bounds = [(0, 1e5), (0, 1e5), (0.3, 50), (0.5, 50)]
 
                     if forcedAccum and use_tau:
                         initParms = list(initParms)
