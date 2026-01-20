@@ -4025,7 +4025,7 @@ class procedure(plotFigures):
         skipsave=False,
     ):
 
-        print(f"{rank}:{x}")
+        #print(f"{rank}:{x}")
         # unify x value
         x = comm.bcast(x, root=0)
         comm.Barrier()
@@ -4196,7 +4196,7 @@ class procedure(plotFigures):
             correctArtifact=False,
             rankDict=rankDict,
         )
-        print(loss)
+        #print(loss)
         return loss
 
     def artifactCurve(self, x, a, l, c):
@@ -4249,16 +4249,15 @@ class procedure(plotFigures):
         fList = np.array(fList) - fList[zeroPoint]
 
         tList = np.array(tList) + int(cells.initTstop + cells.stimdelay)
-        print(tList)
+        # print(tList)
 
         fluorTrace = (np.array(list(cells.fluorVPAP)) - cells.RMP) * -1 / 10
         simV = np.array(list(cells.vPAP)) - cells.RMP  # use raw sim data for plot
 
         # extract corresponding indexes in df and sim
         indexConvert = [
-            (i, np.argmin(np.array(cells.time) - t)) for i, t in enumerate(tList)
+            (i, np.argmin(abs(np.array(cells.time) - t))) for i, t in enumerate(tList)
         ]
-        print(indexConvert)
 
         expT = []
         expF = []
@@ -4860,12 +4859,12 @@ if __name__ == "__main__":
                     if forcedAccum:
                         use_tau = True
                     initParms = (
-                        1.02159429e3,
-                        1.86149789e2,
+                        exp.optGluT,
+                        exp.optKir,
                         2.95467474,
                         4.98841321e1,
                     )
-                    bounds = [(0, 5000), (-200, 1500), (1, 10), (0.5, 50)]
+                    bounds = [(0, 1e5), (exp.optKir*0.1, exp.optKir*10), (0.3, 50), (0.5, 50)]
 
                     if forcedAccum and use_tau:
                         initParms = list(initParms)
@@ -4897,17 +4896,17 @@ if __name__ == "__main__":
                     initParms,
                     showFig=True,
                     PAP=PAP,
-                    skipsave=False,
+                    skipsave=True,
                     use_tau=use_tau,
                 )
                 if not exp.foundFitExperiment:
                     print(kwargs["use_tau"])
-                    res = differential_evolution(
+                    res = minimize(
                         lambda x: exp.fitExpDepolarization(x, **kwargs),
-                        bounds,
-                        x0=initParms,
-                        rng=seed,
-                        atol=1,
+                        initParms,
+                        method="Nelder-Mead",
+                        bounds=bounds,
+                        tol=1,
                     )
                     mprint(res.x)
                     if res.success:
