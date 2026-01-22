@@ -473,7 +473,7 @@ proc setK(){local tmp localobj sref
             //relative change of bath
             ko0_k_acc = $2 + getPAPK(sref)
             //relative change of ko
-            //ko = $2 + getPAPK(sref)
+            ko = $2 + getPAPK(sref)
         } else {
             //relative change of ko
             //ko = $2 + getPAPK(sref)
@@ -558,6 +558,7 @@ proc delaysec() {
 }
 objref fih
 
+
 proc clampSwitch() {
   if ($1 > 4){
         // voltage clamp
@@ -586,8 +587,8 @@ proc clampSwitch() {
     } else if ($1 > 0) {
         // voltage clamp
         soma {vc = new SEClamp(0.5)}
-        vc.dur[0] = tstop
-        vc.amp[0] = $2  // mV depolarization (dV = 20)
+        vc.dur1 = tstop
+        vc.amp1 = $2  // mV depolarization (dV = 20)
         electrodeList.append(vc)
         //---------------------------------------------------
         
@@ -830,4 +831,94 @@ proc set_gapv(){
 
   }
 
+func get_distance() {local dx, dy, dz,xo,yo,zo
+soma xo = x3d(0)
+soma yo = y3d(0)
+soma zo = z3d(0)
+dx = $1 - xo
+dy = $2 - yo
+dz = $3 - zo
+
+return sqrt(dx*dx+dy*dy+dz*dz)
+}
+
+func get_max_dist () { local maxDist,tmp
+maxDist = 0.0
+forall {
+           for i=0, n3d() - 1 {
+            tmp =  get_distance(x3d(i),y3d(i),z3d(i))
+            if (tmp > maxDist) {
+              maxDist = tmp
+              }
+            } 
+          }
+  return maxDist
+  }
+
+
+
+objref shell_compartments
+shell_compartments = new List()
+
+proc define_shell() {local max_p,tmp,j,maxDist,total_shells,shell_width,synapse localobj synapse_track,sl
+total_shells = $1
+synapse = $2
+maxDist = get_max_dist()
+shell_width = (maxDist + 1)/ total_shells
+
+max_p = 0
+forall {max_p = max_p + 1}
+max_p = int(max_p / total_shells/synapse)
+if (max_p > 0) {
+  max_p = max_p - 1
+  } else {
+      max_p = 0
+  }
+
+synapse_track = new Vector(total_shells)
+for i=0,total_shells-1 {
+  synapse_track.x[i] = synapse
+    shell_compartments.append(new SectionList())
+  }
+
+
+  forall {
+    for i=0, n3d() - 1 {
+        tmp = get_distance(x3d(i),y3d(i),z3d(i))
+        j = -1
+        while (tmp >= 0) {
+            tmp = tmp - shell_width
+            j = j + 1
+        }
+        if (synapse_track.x[j] > 0) {
+            rint = r.discunif(0,max_p)
+            if (rint == 0){
+              shell_compartments.o(j).append()
+              synapse_track.x[j] = synapse_track.x[j] - 1
+            }
+       }
+    }
+  }
+  for i=0,total_shells-1 {
+    shell_compartments.o(i).unique()
+  }
+}
+
+proc set_all_pp(){
+      for i=0, ncNMDAList.count - 1{
+        ncNMDAList.o(i).active($1)
+      }
+    for i=0,ncGABAaList.count - 1{
+      ncGABAaList.o(i).active($1)
+      }
+
+    for i=0,ncGluList.count - 1{
+      ncGluList.o(i).active($1)
+      }
+
+  }
+
+  proc select_shell() {
+    slPAP = shell_compartments.o($1-1)
+    }
 

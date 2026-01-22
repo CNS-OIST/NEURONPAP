@@ -53,6 +53,10 @@ def callExperimentMode(**kwargs):
         exp.GabaStim = kwargs["gabastim"]
 
         exp.singleRun()
+
+    if "shell" in kwargs.keys() and kwargs["shell"]:
+        exp.distance_analysis()
+
     if "cond" in kwargs.keys() and kwargs["cond"]:
         # measureconductance
         exp.measureCond("IV")

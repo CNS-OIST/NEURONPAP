@@ -322,6 +322,14 @@ def argParser(rangeInt=100):
     )
 
     parser.add_argument(
+        "--shellExperiment",
+        dest="shell",
+        action="store_true",
+        default=False,
+        help="Used to run shell experiments",
+    )
+
+    parser.add_argument(
         "seed",
         metavar="seed",
         type=int,

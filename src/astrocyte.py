@@ -74,6 +74,7 @@ class PAPModel(ResultsPAPModel):
         RiSec=None,
         v_init=-85,
         g_pas=0.69,
+        shell=0,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -93,6 +94,8 @@ class PAPModel(ResultsPAPModel):
         self.v_init = v_init * mV
         h.v_init = self.v_init
 
+        # set shell layer
+        self.shell = shell
         # print('set sim parms')
         # Set gap count
         self.gapcount = gapCount
@@ -219,6 +222,8 @@ class PAPModel(ResultsPAPModel):
                 self.comparecount = self.GENEDict["GluTrans"]
             elif GABA:
                 self.comparecount = self.GABACount
+            elif self.gapcount:
+                self.comparecount = self.gapcount
             else:
                 self.comparecount = self.multiple
 
@@ -1279,6 +1284,31 @@ class PAPModel(ResultsPAPModel):
             h.set_gap_k(0)
             # under the assumption the astrocyte network equilibriates ki
             h.ki_clamp(1)
+
+    def define_shell(self, total_shell=5, synapse=10000):
+        h.define_shell(total_shell, synapse)
+        h.clampSwitch(1, -60)
+        plt.cla()
+        plt.clf()
+        # only for rank 0
+        plot_3d_morphology(rangevar="v", add_shell=True, clim=gl.lim_Vmemb)
+        plt.savefig(f"defined_shell_{total_shell}.pdf")
+
+    def record_VClampI(self):
+        self.VClampI = h.Vector()
+        vc = h.electrodeList[-1]
+        self.VClampI.record(vc._ref_i)
+
+    def select_shell(self):
+        # clean up all previous synapses
+        i = self.shell
+        if i == 0:
+            return
+        h.set_all_pp(0)
+        for channel in ["NMDAs", "GABAas", "GluTs"]:
+            if hasattr(self, channel):
+                delattr(self, channel)
+        h.select_shell(i)
 
     def setKBath(
         self,

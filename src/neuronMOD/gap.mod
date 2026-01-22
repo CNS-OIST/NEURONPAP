@@ -23,6 +23,9 @@ PARAMETER {
 }
 
 INITIAL {
+  if (multiple < 0) {
+      multiple = 0
+    }
       r = (1e6)/(uS * multiple)
   }
 

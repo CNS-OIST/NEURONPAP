@@ -95,8 +95,7 @@ BREAKPOINT {
 PROCEDURE kbathRate(){
     if (flag > 0){
         flux = 0
-        tauk = dt 
-        kbath = 1
+        kbath = tauk 
         :printf("%g\n",ko)
     } else {
         flux =  1

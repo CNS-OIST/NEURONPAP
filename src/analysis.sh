@@ -123,6 +123,7 @@ for i in $( # for ten random PAPs
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i               # Fig 3A
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i              # Fig 4CD
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i               # Fig 5AC
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --GluT 0 --NMDAR 0 --GABAR 0 --GAP 1 --stimCount $k --ko $j $i       # Fig 5AC
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --PAPCount 10 --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i # Fig 5AC
       if (($k == 10)); then
         if (($video_bool == 1)); then
@@ -151,8 +152,8 @@ done
 
 {
   if (($np >= 6)); then
+    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 0 $seed
     mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 6BCD
-    mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --spillOver $seed
     mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 1 --GluT 1 --GABAR 0 $seed
     mpiexec -n 6 python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed
   else

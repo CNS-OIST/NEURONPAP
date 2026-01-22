@@ -40,8 +40,11 @@ class gl:
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
-    def ion_o(ion):
-        return f"Extracellular [{ion}] " + gl.unit_mM
+    def ion_o(ion, short=False):
+        if short:
+            return f"{ion}" + "$_\mathrm{o}$ "
+        else:
+            return f"Extracellular [{ion}] " + gl.unit_mM
 
     @staticmethod
     def delta_ion_o(ion):

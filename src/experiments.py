@@ -1,5 +1,5 @@
-from astrocyte import *
 from scipy.optimize import curve_fit
+from astrocyte import *
 import os
 import numpy as np
 from utils import *
@@ -935,7 +935,7 @@ class plotFigures:
                             int(self.channelCompareMax / self.channelCompareStep) + 1,
                         )
                     )
-            elif self.GABAR:
+            elif self.GABAR or self.GAP:
                 imArray = np.zeros(
                     (
                         int(self.channelCompareMax / self.channelCompareStep) + 1,
@@ -976,7 +976,6 @@ class plotFigures:
                     ] += (
                         max(getattr(res[0], PAPattr)) - res[0].RMP
                     )
-
                 else:
                     imArray[
                         int(res[0].PAPLen / 0.3) - 1,
@@ -1085,10 +1084,9 @@ class plotFigures:
             elif self.GABAR and Kir:
                 # plt.xlabel("# of GABAR channels / um2")
                 plt.xlabel(gl.chan_num("GABAR"))
-            if self.NMDAR or (self.GABAR and Kir):
-                _, cbarMax = gl.clim_volt
-            else:
-                cbarMax = 50
+            elif self.GAP:
+                plt.xlabel(gl.chan_num('Cx43'))
+            _, cbarMax = gl.clim_volt
             plt.colorbar(label=gl.volt, ticks=np.arange(0, cbarMax, 2), extend="max")
             plt.clim((0, cbarMax))
             if stdLabels:
@@ -1852,11 +1850,15 @@ class procedure(plotFigures):
         else:
             fig, axs = figObj
 
+        print(id)
         splt_x, splt_y = id
         axs[splt_x, splt_y].plot(*data, label=label, **plt_args)
 
         if splt_x == 1 and splt_y == 0:
-            axs[splt_x, splt_y].legend()
+            handle,label = axs[splt_x,splt_y].get_legend_handles_labels()
+            sortedpair = sorted(zip(label,handle),key= lambda pair:pair[0],reverse=True)
+            sorted_handle,sorted_label = zip(*sortedpair)
+            axs[splt_x, splt_y].legend(sorted_handle,sorted_label)
 
         if finalize and final_label:
             plt.tight_layout(rect=[0.18, 0.12, 0.95, 0.90])
@@ -1869,7 +1871,7 @@ class procedure(plotFigures):
 
             fig.text((left + right) / 2, bottom - 0.07, x_label, ha="center", va="top")
             fig.text(
-                left - 0.07,
+                left - 0.10,
                 (bottom + top) / 2,
                 y_label,
                 ha="center",
@@ -1887,7 +1889,7 @@ class procedure(plotFigures):
             )
 
             fig.text(
-                left - 0.13,
+                left - 0.16,
                 (axs[0, 0].get_position().y0 + axs[0, 0].get_position().y1) / 2,
                 row1,
                 ha="left",
@@ -1895,7 +1897,7 @@ class procedure(plotFigures):
                 rotation=90,
             )
             fig.text(
-                left - 0.13,
+                left - 0.16,
                 (axs[1, 0].get_position().y0 + axs[1, 0].get_position().y1) / 2,
                 row2,
                 ha="left",
@@ -1906,14 +1908,17 @@ class procedure(plotFigures):
         return fig, axs
 
     def kvPhasePlane(self):
-        self.KirNMDAPhase()
         self.duramplenPhase()
+        if self.GluT or self.GABAR or self.NMDAR:
+            self.KirNMDAPhase()
 
     def duramplenPhase(self):
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
 
         AllCells = []
+        KoSteps =np.arange(2, 19, 2) 
+        KoSteps = np.concatenate(([0.5],KoSteps))
         if not self.free_read_data():
             for kircount in [self.KirMax, self.optKir]:
                 for PAPLen in [0.3, 5]:
@@ -1924,7 +1929,7 @@ class procedure(plotFigures):
                             "mode": 0,
                             "ComplexMorph": True,
                             "bNum": 1,
-                            "dt": 0.01,
+                            "dt": self.dt,
                             "kleak": self.leak,
                             "clleak": 0,
                             "seed": self.seed,
@@ -1973,7 +1978,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GABA"] = True
 
                     iterations = comm.bcast(
-                        [(kircount, amp) for amp in np.arange(0.5, 10, 2)],
+                        [(kircount, amp) for amp in KoSteps],
                         root=0,
                     )
                     ccList = comm.bcast(["kir2", "KoSize"], root=0)
@@ -1996,7 +2001,8 @@ class procedure(plotFigures):
                             [["initialize", "run"]],
                             [[{}, {}]],
                         )
-                    AllCells.append([r[0] for r in results])
+                    if rank == 0:
+                        AllCells.append([r[0] for r in results])
                     comm.Barrier()
 
             self.free_figure(AllCells)
@@ -2018,31 +2024,32 @@ class procedure(plotFigures):
 
                     if cell.KoSize == 0.5:
                         color = "r"
-                        z = len(results) + 1
+                        z = len(AllCells[i]) + 1
                     else:
-                        color = cm.summer(i / len(results))
+                        ko_index = (KoSteps == cell.KoSize)
+                        ko_index = np.argmax(ko_index)
+                        color = cm.summer(ko_index / len(AllCells[i]))
                         z = i
                     kw_args = {}
-                    if id == len(results) - 1 and j == len(results[i]) - 1:
+                    if id == 2 and j == len(AllCells[i]) - 1:
                         kw_args["finalize"] = [
-                            "PAP Length 0.3 $\mu$m",
-                            "5 $\mu$m",
-                            "Kir Channels",
-                            "",
+                            f"PAP Length 0.3 {gl.unit_micron_raw}",
+                            f"5 {gl.unit_micron_raw}",
+                            f"Kir Channels {int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
+                            f"{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
                         kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
                     initStep = self.get_initStep(cell, shift=0) - 200
 
                     figobj = self.plot_phase_panel(
                         (0 if id < 2 else 1, id % 2),
-                        (list(cell.kopap)[initStep:], list(cell.vpap)[initStep:]),
-                        f"dur:{cell.durstim:.1f},paplen:{cell.paplen:.1f}",
+                        (list(cell.KoPAP)[initStep:], list(cell.vPAP)[initStep:]),
+                        f"{gl.ion_o('K',short=True)}: {cell.KoSize}",
                         figObj=None if id == 0 and j == 0 else figobj,
                         color=color,
                         zorder=z,
-                        **kw_args,
                     )
-                    if j == len(results[i]) - 1:
+                    if j == len(AllCells[i]) - 1:
                         ko_min, ko_max = gl.lim_ko
                         x = np.linspace(ko_min, ko_max)
                         figobj = self.plot_phase_panel(
@@ -2062,10 +2069,11 @@ class procedure(plotFigures):
             for ax in axs.flat:
                 ax.set_xlim(gl.lim_ko)
                 ax.set_ylim(gl.lim_ek)
+
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
-                    f"phasePlanePotassium{amp}_panel{self.tag}.pdf",
+                    f"phasePlanePotassium_panel{self.tag}.pdf",
                 )
             )
             plt.cla()
@@ -2095,7 +2103,7 @@ class procedure(plotFigures):
                             "mode": 0,
                             "ComplexMorph": True,
                             "bNum": 1,
-                            "dt": 0.01,
+                            "dt": self.dt,
                             "kleak": self.leak,
                             "clleak": 0,
                             "seed": self.seed,
@@ -2174,7 +2182,8 @@ class procedure(plotFigures):
                             [["initialize", "run"]],
                             [[{}, {}]],
                         )
-                    AllCells.append([r[0] for r in results])
+                    if rank == 0:
+                        AllCells.append([r[0] for r in results])
                     comm.Barrier()
             self.free_figure(AllCells)
             # structure AllCells [ chanNum(Kir,NT) [Kosize]]
@@ -2184,27 +2193,28 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
-            for i, cell in enumerate(AllCells):
+            figobj = None
+            for i, cells in enumerate(AllCells):
                 for j in range(len(AllCells[i])):
-                    cell = cell[j]
+                    cell = cells[j]
                     id = 0
                     if cell.GENEDict["kir2"] == self.optKir:
                         id += 2
-                    if cell.multiple == 0 and cell.GABACount == self.optGABAR:
+                    if cell.multiple == 0 and hasattr(cell,'GABACount') and cell.GABACount == self.optGABAR:
                         id += 1
-                    elif cell.multiple != self.optNMDAR:
+                    elif cell.multiple != self.optNMDAR and not hasattr(cell,'GABACount'):
                         id += 1
 
                     initStep = self.get_initStep(cell, shift=0) - 200
                     if cell.KoSize == 0.5:
                         color = "r"
-                        z = len(results) + 1
+                        z = len(AllCells[i]) + 1
                     else:
-                        color = cm.summer(i / len(results))
+                        color = cm.summer(j / len(AllCells[i]))
                         z = i
 
                     kw_args = {}
-                    if id == len(results) - 1 and j == len(results[i]) - 1:
+                    if id == 2 and j == len(AllCells[i]) - 1:
                         kw_args["finalize"] = [
                             "PAP Length 0.3 $\mu$m",
                             "5 $\mu$m",
@@ -2215,14 +2225,13 @@ class procedure(plotFigures):
                     initStep = self.get_initStep(cell, shift=0) - 200
                     figobj = self.plot_phase_panel(
                         (0 if id < 2 else 1, id % 2),
-                        (list(cell.koPAP)[initStep:], list(cell.vPAP)[initStep:]),
+                        (list(cell.KoPAP)[initStep:], list(cell.vPAP)[initStep:]),
                         f"{cell.KoSize:.1f}",
-                        figObj=None if id == 0 and j == 0 else figobj,
+                        figObj=figobj,
                         color=color,
                         zorder=z,
-                        **kw_args,
                     )
-                    if j == len(results[i]) - 1:
+                    if j == len(AllCells[i]) - 1:
                         ko_min, ko_max = gl.lim_ko
                         x = np.linspace(ko_min, ko_max)
                         figobj = self.plot_phase_panel(
@@ -2238,18 +2247,16 @@ class procedure(plotFigures):
                             **kw_args,
                         )
 
-                _, axs = figobj
-                for ax in axs.flat:
-                    ax.set_xlim(gl.lim_ko)
-                    ax.set_ylim(gl.lim_Vmemb)
-                plt.savefig(
-                    os.path.join(
-                        "../results/paperRes",
-                        f"phasePlaneNT_{self.tag}.pdf",
-                    )
+            _, axs = figobj
+            for ax in axs.flat:
+                ax.set_xlim(gl.lim_ko)
+                ax.set_ylim(gl.lim_Vmemb)
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    f"phasePlaneNT_{self.tag}.pdf",
                 )
-                plt.cla()
-                plt.clf()
+            )
             plt.close("all")
 
     def ekComp(self):
@@ -4762,6 +4769,143 @@ class procedure(plotFigures):
 
             if rank == 0:
                 self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
+
+    @read_data
+    def distance_analysis(self,shell_range=10):
+        self.addChannelTag()
+        funcArgs = []
+        funcArgs.append(
+            {
+                "Glu": self.GluStim,
+                "GABA": self.GabaStim,
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "kir2": self.optKir,
+                "clleak": 0,
+                "kleak": self.leak,
+                "dt": self.dt,
+                "seed": self.seed,
+                "KoSize": 3,
+                "PAPLen": 0.3,
+            }
+        )
+        if self.OE:
+            funcArgs[-1]["kir2"] = self.KirMax
+            self.tag += "_OE"
+
+        if funcArgs[-1]["kir2"] > 3:  # to compensate for mathematical unstability
+            funcArgs[-1]["dt"] *= 0.2
+
+        if self.NMDAR and self.GluStim:
+            funcArgs[-1]["multiple"] = self.optNMDAR
+        else:
+            funcArgs[-1]["multiple"] = None
+        if self.GluT and self.GluStim:
+            funcArgs[-1]["GluTrans"] = self.optGluT
+        if self.GABAR and self.GabaStim:
+            funcArgs[-1]["GABACount"] = self.optGABAR
+        else:
+            funcArgs[-1]["GABACount"] = 0
+
+
+        ccList = ["shell"]
+        iterations = [ i for i in range(1,shell_range)]
+        results = parallizeFor(
+            iterations, 
+            [PAPModel], 
+            funcArgs, 
+            ccList, 
+            [["define_shell", "select_shell", "record_VClampI","initialize","multiSpike","run"]],
+            [
+                [
+                    {"total_shell":shell_range},
+                    {},
+                    {},
+                    {},
+                    {
+                        "number": self.stimCount,
+                        "freq": self.freq,
+                        "KoSize": self.ko,
+                    },
+                    {},
+                ]
+            ],
+        )
+
+        comm.Barrier()
+        self.free_figure(results)
+
+
+        if rank == 0:
+            resList = []
+            shell_num = []
+            for cells in results:
+                for cell in cells:
+                    VCI = list(cell.VClampI)
+                    resList.append(min(VCI) - VCI[-1])
+                    shell_num.append(cell.shell)
+
+            plt.cla()
+            plt.clf()
+            ax = plt.figure().gca()
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.scatter(shell_num, resList)
+            plt.savefig(f"minAmplitude_shellcomp{self.tag}.pdf")
+
+
+
+
+
+    def optRMPSearch(self, x, optmV=-76.3):
+        # x = leak value
+        leak, kir = x
+        # add multispike ek clamp
+        self.addChannelTag()
+        # print(self.tag)
+        AllCells = []
+        # single run
+        funcArgs = []
+        print(x)
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "kir2": None,
+                "clleak": 0,
+                "kleak": leak,
+                "dt": self.dt,
+                "seed": self.seed,
+                "Glu": False,
+                "multiple": None,
+            }
+        )
+        cells = PAPModel(**funcArgs[-1])
+        cells.initialize()
+        print(abs(cells.RMP - optmV))
+        lossKO = (cells.RMP - optmV) ** 2
+        print(x)
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "kir2": kir,
+                "clleak": 0,
+                "kleak": x,
+                "dt": self.dt,
+                "seed": self.seed,
+                "Glu": False,
+                "multiple": None,
+            }
+        )
+        cellsRMP = PAPModel(**funcArgs[-1])
+        cellsRMP.initialize()
+        print(abs(cellsRMP.RMP + 80))
+        loss = (cellsRMP.RMP + 80) ** 2
+        return lossKO + loss
+
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value
