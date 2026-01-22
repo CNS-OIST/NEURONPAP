@@ -15,8 +15,8 @@ UNITS {
 
 PARAMETER {
     r = 1(megohm)
-    multiple = 1000 (1)
-    uS = 56 (pS)
+    multiple = 1 (1)
+    uS = 5.6 (pS) :from 56 unitary conductance split by average number of gap junctions between cells
     VoltageGap = -85 (millivolt)
     tau_k = 1 (ms): instantaneous
     ki_0 = 120 (mM)
@@ -36,6 +36,7 @@ ASSIGNED {
 }
 
 BREAKPOINT {
+    r = (1e6)/(uS * multiple)
     i_gap = (v-VoltageGap)/r
 }
 

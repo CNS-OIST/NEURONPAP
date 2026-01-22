@@ -129,7 +129,7 @@ def plot_3d_morphology(
     fig=None,
     ax=None,
     add_colorbar=True,
-    add_shell=False,
+    add_shell=None,
     show=False,
     zoom=None,
     clim=None,
@@ -151,7 +151,7 @@ def plot_3d_morphology(
         ax = fig.add_subplot(111, projection="3d", computed_zorder=not add_shell)
 
     if add_shell:
-        plot_distance_shells(ax, h.soma)
+        plot_distance_shells(ax, h.soma, step_num=add_shell)
 
     dlist = []
     varlist = []

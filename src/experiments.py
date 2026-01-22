@@ -873,7 +873,7 @@ class plotFigures:
 
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
         stdChannelDict = {
-            "Kir": (819 * area + 197 * 4.7e3 * area, 197 * area),
+            "Kir": (370 * area + 1 * 4.7e3 * area, 1 * area),
             "GluT": (14248 * area, 812 * area),
             "GABAR": (np.inf, 0),
             "PAPLen": (
@@ -881,6 +881,7 @@ class plotFigures:
                 0.225,
             ),  # 95th percentile of node sizes from Arizono M. Nat Comm. (2020)
         }
+        print(area)
         if chanOverride != None and type(chanOverride) == dict:
             for k, v in chanOverride.items():
                 stdChannelDict[k] = v
@@ -960,7 +961,7 @@ class plotFigures:
                             max(getattr(res[0], PAPattr)) - res[0].RMP
                         )
 
-                    elif res[0].comparecount:
+                    elif res[0].comparecount is not None:
                         # bug when stimulus but not GABAR
                         imArray[
                             int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
@@ -986,6 +987,7 @@ class plotFigures:
 
             cmap = "magma"
 
+            plt.figure(figsize=(6, 7))
             imArray /= divedend
             plt.imshow(
                 imArray,
@@ -1018,6 +1020,8 @@ class plotFigures:
                         skip,
                     ),
                     xlabels,
+                    rotation=45,
+                    ha="right",
                 )
             else:
                 chanStart = 0
@@ -1035,6 +1039,8 @@ class plotFigures:
                         1,
                     )
                     * self.channelCompareStep,
+                    rotation=45,
+                    ha="right",
                 )
             if Kir:
                 ytick_labels = (
@@ -1085,7 +1091,7 @@ class plotFigures:
                 # plt.xlabel("# of GABAR channels / um2")
                 plt.xlabel(gl.chan_num("GABAR"))
             elif self.GAP:
-                plt.xlabel(gl.chan_num('Cx43'))
+                plt.xlabel(gl.chan_num("Cx43"))
             _, cbarMax = gl.clim_volt
             plt.colorbar(label=gl.volt, ticks=np.arange(0, cbarMax, 2), extend="max")
             plt.clim((0, cbarMax))
@@ -1846,7 +1852,7 @@ class procedure(plotFigures):
         # get data
 
         if not figObj:
-            fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharex=True, sharey=True)
+            fig, axs = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
         else:
             fig, axs = figObj
 
@@ -1854,20 +1860,22 @@ class procedure(plotFigures):
         splt_x, splt_y = id
         axs[splt_x, splt_y].plot(*data, label=label, **plt_args)
 
-        if splt_x == 1 and splt_y == 0:
-            handle,label = axs[splt_x,splt_y].get_legend_handles_labels()
-            sortedpair = sorted(zip(label,handle),key= lambda pair:pair[0],reverse=True)
-            sorted_handle,sorted_label = zip(*sortedpair)
-            axs[splt_x, splt_y].legend(sorted_handle,sorted_label)
-
         if finalize and final_label:
             plt.tight_layout(rect=[0.18, 0.12, 0.95, 0.90])
-
+            plt.subplots_adjust(left=0.2, right=0.7, wspace=0.1)
             left = axs[0, 0].get_position().x0
             right = axs[0, 1].get_position().x1
             bottom = axs[1, 0].get_position().y0
             top = axs[0, 0].get_position().y1
             x_label, y_label = final_label
+
+            handle, label = axs[splt_x, splt_y].get_legend_handles_labels()
+            sortedpair = sorted(
+                zip(label, handle), key=lambda pair: int(''.join(filter(str.isdigit,pair[0])) if ''.join(filter(str.isdigit,pair[0])) else 0), reverse=True
+            )
+            sorted_label, sorted_handle = zip(*sortedpair)
+            fig.legend(sorted_handle, sorted_label, loc='center left', bbox_to_anchor=(0.75, 0.5), fancybox=True, shadow=True, ncol=1)
+
 
             fig.text((left + right) / 2, bottom - 0.07, x_label, ha="center", va="top")
             fig.text(
@@ -1917,8 +1925,8 @@ class procedure(plotFigures):
         self.addChannelTag()
 
         AllCells = []
-        KoSteps =np.arange(2, 19, 2) 
-        KoSteps = np.concatenate(([0.5],KoSteps))
+        KoSteps = np.arange(2, 19, 2)
+        KoSteps = np.concatenate(([0.5], KoSteps))
         if not self.free_read_data():
             for kircount in [self.KirMax, self.optKir]:
                 for PAPLen in [0.3, 5]:
@@ -2026,7 +2034,7 @@ class procedure(plotFigures):
                         color = "r"
                         z = len(AllCells[i]) + 1
                     else:
-                        ko_index = (KoSteps == cell.KoSize)
+                        ko_index = KoSteps == cell.KoSize
                         ko_index = np.argmax(ko_index)
                         color = cm.summer(ko_index / len(AllCells[i]))
                         z = i
@@ -2035,8 +2043,8 @@ class procedure(plotFigures):
                         kw_args["finalize"] = [
                             f"PAP Length 0.3 {gl.unit_micron_raw}",
                             f"5 {gl.unit_micron_raw}",
-                            f"Kir Channels {int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
-                            f"{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
+                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
+                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
                         kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
                     initStep = self.get_initStep(cell, shift=0) - 200
@@ -2200,9 +2208,15 @@ class procedure(plotFigures):
                     id = 0
                     if cell.GENEDict["kir2"] == self.optKir:
                         id += 2
-                    if cell.multiple == 0 and hasattr(cell,'GABACount') and cell.GABACount == self.optGABAR:
+                    if (
+                        cell.multiple == 0
+                        and hasattr(cell, "GABACount")
+                        and cell.GABACount == self.optGABAR
+                    ):
                         id += 1
-                    elif cell.multiple != self.optNMDAR and not hasattr(cell,'GABACount'):
+                    elif cell.multiple != self.optNMDAR and not hasattr(
+                        cell, "GABACount"
+                    ):
                         id += 1
 
                     initStep = self.get_initStep(cell, shift=0) - 200
@@ -4771,7 +4785,7 @@ class procedure(plotFigures):
                 self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
 
     @read_data
-    def distance_analysis(self,shell_range=10):
+    def distance_analysis(self, shell_range=10):
         self.addChannelTag()
         funcArgs = []
         funcArgs.append(
@@ -4808,18 +4822,26 @@ class procedure(plotFigures):
         else:
             funcArgs[-1]["GABACount"] = 0
 
-
         ccList = ["shell"]
-        iterations = [ i for i in range(1,shell_range)]
+        iterations = [i for i in range(1, shell_range)]
         results = parallizeFor(
-            iterations, 
-            [PAPModel], 
-            funcArgs, 
-            ccList, 
-            [["define_shell", "select_shell", "record_VClampI","initialize","multiSpike","run"]],
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ccList,
             [
                 [
-                    {"total_shell":shell_range},
+                    "define_shell",
+                    "select_shell",
+                    "record_VClampI",
+                    "initialize",
+                    "multiSpike",
+                    "run",
+                ]
+            ],
+            [
+                [
+                    {"total_shell": shell_range},
                     {},
                     {},
                     {},
@@ -4836,7 +4858,6 @@ class procedure(plotFigures):
         comm.Barrier()
         self.free_figure(results)
 
-
         if rank == 0:
             resList = []
             shell_num = []
@@ -4852,10 +4873,6 @@ class procedure(plotFigures):
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             plt.scatter(shell_num, resList)
             plt.savefig(f"minAmplitude_shellcomp{self.tag}.pdf")
-
-
-
-
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value
@@ -4905,7 +4922,6 @@ class procedure(plotFigures):
         print(abs(cellsRMP.RMP + 80))
         loss = (cellsRMP.RMP + 80) ** 2
         return lossKO + loss
-
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value

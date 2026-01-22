@@ -603,6 +603,7 @@ proc clampSwitch() {
     }
 }
 
+
 // Function to plot neuron topology with highlighted sections
 proc plot_topology() {localobj rando, sref,slPAP,ps
     sref = new SectionList()
@@ -922,3 +923,9 @@ proc set_all_pp(){
     slPAP = shell_compartments.o($1-1)
     }
 
+proc set_vgap(){
+    for i=0,gaplist.count - 1{
+      gaplist.o(i).VoltageGap = $1
+
+    }
+  }

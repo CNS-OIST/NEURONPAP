@@ -216,13 +216,14 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         # print(self.GENEDict)
-        if self.multiple == None:
+        if self.multiple is None:
             if "GluTrans" in self.GENEDict.keys() and self.GENEDict["GluTrans"] != None:
                 # Can be buggy
                 self.comparecount = self.GENEDict["GluTrans"]
             elif GABA:
                 self.comparecount = self.GABACount
-            elif self.gapcount:
+            elif self.gapcount is not None:
+                # 0 should be also included
                 self.comparecount = self.gapcount
             else:
                 self.comparecount = self.multiple
@@ -774,6 +775,8 @@ class PAPModel(ResultsPAPModel):
                 self.setK(dur=(self.initTstop / 10 - h.t))
 
             if self.cvode:
+                h.continuerun(self.initTstop / 2)
+                h.set_vgap(list(self.vSoma)[-1])
                 h.continuerun(self.initTstop)
                 if self.mode > 0 and self.mode != 2:
                     h.cvode.active(False)
@@ -792,6 +795,16 @@ class PAPModel(ResultsPAPModel):
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
         # self.ko_sim(False)
+        if self.shell > 0 and rank == 0 and hasattr(self, "total_shell"):
+            plot_3d_morphology(
+                rangevar="v", add_shell=self.total_shell, clim=gl.lim_Vmemb
+            )
+            plt.savefig(
+                os.path.join(
+                    "../morphResults/", f"defined_shell_{self.total_shell}.pdf"
+                )
+            )
+
         if saveState:
             s = h.SaveState()
             s.save()
@@ -925,12 +938,13 @@ class PAPModel(ResultsPAPModel):
                 )
 
     def plotMorphParms(self):
-        plot_3d_morphology(rangevar="diam")
-        plt.savefig("DiamMap.pdf")
-        plt.cla()
-        plt.clf()
-        plot_3d_morphology(rangevar="nseg")
-        plt.savefig("nsegMap.pdf")
+        if rank == 0:
+            plot_3d_morphology(rangevar="diam")
+            plt.savefig("DiamMap.pdf")
+            plt.cla()
+            plt.clf()
+            plot_3d_morphology(rangevar="nseg")
+            plt.savefig("nsegMap.pdf")
 
         # h.plot_varMorph("diam", "DiamMap.psf")
         # h.plot_varMorph("nseg", "nsegMap.psf")
@@ -1286,13 +1300,12 @@ class PAPModel(ResultsPAPModel):
             h.ki_clamp(1)
 
     def define_shell(self, total_shell=5, synapse=10000):
+        self.total_shell = total_shell
         h.define_shell(total_shell, synapse)
         h.clampSwitch(1, -60)
         plt.cla()
         plt.clf()
         # only for rank 0
-        plot_3d_morphology(rangevar="v", add_shell=True, clim=gl.lim_Vmemb)
-        plt.savefig(f"defined_shell_{total_shell}.pdf")
 
     def record_VClampI(self):
         self.VClampI = h.Vector()
@@ -1349,7 +1362,7 @@ class PAPModel(ResultsPAPModel):
 
         else:
             h.continuerun(min(dur * ms + h.t, h.tstop))
-            if tsnap:
+            if tsnap and rank == 0:
                 plot_3d_morphology(rangevar="v", clim=gl.lim_ek)
                 plt.savefig(os.path.join("../morphResults", f"kbath_v.pdf"))
 
@@ -1475,8 +1488,9 @@ class PAPModel(ResultsPAPModel):
         else:
             h.getAllRi()
             # h.plot_varMorph("Ri", "RiMap.psf")
-            plot_3d_morphology(rangevar="Ri")
-            plt.savefig("RiMap.pdf")
+            if rank == 0:
+                plot_3d_morphology(rangevar="Ri")
+                plt.savefig("RiMap.pdf")
 
     def mapRi(self, sectionDict):
         for k, v in sectionDict.items():
@@ -1484,8 +1498,9 @@ class PAPModel(ResultsPAPModel):
             RiSec.insert("inputRes")
             RiSec.Ri_inputRes = v
         # h.plot_varMorph("Ri_inputRes", "RiMap.psf")
-        plot_3d_morphology(rangevar="Ri_inputRes")
-        plt.savefig("RiMap.pdf")
+        if rank == 0:
+            plot_3d_morphology(rangevar="Ri_inputRes")
+            plt.savefig("RiMap.pdf")
 
     def saveRiDict(self):
         for sName, v in self.RiDict.items():
