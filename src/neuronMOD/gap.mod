@@ -4,7 +4,7 @@ NEURON {
     NONSPECIFIC_CURRENT i_gap
     :USEION k READ ki WRITE ki
     
-    RANGE r, i, VoltageGap,multiple
+    RANGE  i, VoltageGap,multiple,g
 }
 UNITS {
     (molar) = (1/liter)
@@ -14,16 +14,21 @@ UNITS {
   }
 
 PARAMETER {
-    r = 1(megohm)
-    multiple = 1000 (1)
-    uS = 56 (pS)
+    multiple = 50 (1)
+    g_max = 56 (pS) :from 56 unitary conductance measured in culture
     VoltageGap = -85 (millivolt)
     tau_k = 1 (ms): instantaneous
     ki_0 = 120 (mM)
 }
+ASSIGNED {
+  g (pS)
+}
 
 INITIAL {
-      r = (1e6)/(uS * multiple)
+  if (multiple < 0) {
+      multiple = 0
+    }
+      g = (g_max * multiple)
   }
 
 ASSIGNED {
@@ -33,6 +38,7 @@ ASSIGNED {
 }
 
 BREAKPOINT {
-    i_gap = (v-VoltageGap)/r
+    g = (g_max * multiple)
+    i_gap = (1e-06)*g*(v-VoltageGap)
 }
 

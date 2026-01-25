@@ -32,16 +32,23 @@ class gl:
     lim_ek = (-100, 20)
 
     @staticmethod
-    def lim_zoom(initStep, dt, time_frame=20):
-        return (initStep * dt, initStep * dt + time_frame)
+    def lim_zoom(initStep, dt, time_frame=20, cvode=None):
+        if cvode:
+            # get index of initTstop
+            return (cvode, cvode + time_frame)
+        else:
+            return (initStep * dt, initStep * dt + time_frame)
 
     @staticmethod
     def current_ion(ion):
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
-    def ion_o(ion):
-        return f"Extracellular [{ion}] " + gl.unit_mM
+    def ion_o(ion, short=False):
+        if short:
+            return f"{ion}" + "$_\mathrm{o}$ "
+        else:
+            return f"Extracellular [{ion}] " + gl.unit_mM
 
     @staticmethod
     def delta_ion_o(ion):

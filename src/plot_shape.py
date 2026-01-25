@@ -16,6 +16,47 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 
+def plot_distance_shells(ax, origin, step_num=5, alpha=0.15, color="k", resolution=30):
+    center = (h.x3d(0, sec=origin), h.y3d(0, sec=origin), h.z3d(0, sec=origin))
+    xlist, ylist, zlist = get_all_coords()
+    all_x = np.concatenate(xlist)
+    all_y = np.concatenate(ylist)
+    all_z = np.concatenate(zlist)
+
+    coords = np.column_stack((all_x, all_y, all_z))
+    dists = np.linalg.norm(coords - np.array(center), axis=1)
+    max_radius = np.ceil(dists.max())
+    step = max_radius / step_num
+    u = np.linspace(0, 2 * np.pi, resolution)
+    v = np.linspace(0, np.pi, resolution)
+
+    for r in np.arange(step, max_radius + step, step):
+        x = center[0] + r * np.outer(np.cos(u), np.sin(v))
+        y = center[1] + r * np.outer(np.sin(u), np.sin(v))
+        z = center[2] + r * np.outer(np.ones_like(u), np.cos(v))
+
+        ax.plot_surface(x, y, z, color=color, alpha=alpha, linewidth=0, shade=False)
+
+
+def get_all_coords():
+    xlist = []
+    ylist = []
+    zlist = []
+
+    # Extract morphology + RANGEVAR
+    for sec in h.allsec():
+        n3d = int(h.n3d(sec=sec))
+        xs = [h.x3d(i, sec=sec) for i in range(n3d)]
+        ys = [h.y3d(i, sec=sec) for i in range(n3d)]
+        zs = [h.z3d(i, sec=sec) for i in range(n3d)]
+
+        xlist.append(np.array(xs))
+        ylist.append(np.array(ys))
+        zlist.append(np.array(zs))
+
+    return xlist, ylist, zlist
+
+
 def animate_morphology(
     tstop=100,
     dt=1,
@@ -88,6 +129,7 @@ def plot_3d_morphology(
     fig=None,
     ax=None,
     add_colorbar=True,
+    add_shell=None,
     show=False,
     zoom=None,
     clim=None,
@@ -106,20 +148,17 @@ def plot_3d_morphology(
         plt.cla()
         plt.clf()
         fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection="3d")
+        ax = fig.add_subplot(111, projection="3d", computed_zorder=not add_shell)
 
-    xlist = []
-    ylist = []
-    zlist = []
+    if add_shell:
+        plot_distance_shells(ax, h.soma, step_num=add_shell)
+
     dlist = []
     varlist = []
 
     # Extract morphology + RANGEVAR
     for sec in h.allsec():
         n3d = int(h.n3d(sec=sec))
-        xs = [h.x3d(i, sec=sec) for i in range(n3d)]
-        ys = [h.y3d(i, sec=sec) for i in range(n3d)]
-        zs = [h.z3d(i, sec=sec) for i in range(n3d)]
         ds = [h.diam3d(i, sec=sec) for i in range(n3d)]
 
         # color uses section rangevar (segment midpoint)
@@ -131,11 +170,9 @@ def plot_3d_morphology(
             except:
                 rv = np.nan
 
-        xlist.append(np.array(xs))
-        ylist.append(np.array(ys))
-        zlist.append(np.array(zs))
         dlist.append(np.array(ds))
         varlist.append(rv)
+
     sm = plt.cm.ScalarMappable(cmap=cmap)
 
     if clim:
@@ -164,7 +201,7 @@ def plot_3d_morphology(
         mid_z = z / count
         max_range = size
     else:
-        # === SCALING CODE ===
+        xlist, ylist, zlist = get_all_coords()
         all_x = np.concatenate(xlist)
         all_y = np.concatenate(ylist)
         all_z = np.concatenate(zlist)
@@ -178,10 +215,12 @@ def plot_3d_morphology(
         mid_y = (ymax + ymin) / 2
         mid_z = (zmax + zmin) / 2
 
+    if add_shell:
+        max_range *= 1.2
+
     ax.set_xlim(mid_x - max_range / 2, mid_x + max_range / 2)
     ax.set_ylim(mid_y - max_range / 2, mid_y + max_range / 2)
     ax.set_zlim(mid_z - max_range / 2, mid_z + max_range / 2)
-    # === END SCALING ===
 
     # Plot each section with diameter scaling and color mapping
     for xs, ys, zs, ds, rv in zip(xlist, ylist, zlist, dlist, varlist):
