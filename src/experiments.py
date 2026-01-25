@@ -258,7 +258,7 @@ class plotFigures:
         setKoylim=False,
         setekylim=False,
         showFluor=False,
-        initStep=None,
+        define_initStep=None,
         bath=False,
         tagReset=False,
         panelF=True,
@@ -283,11 +283,13 @@ class plotFigures:
                     )
                     self.tag = tmpTag
 
-                if not initStep:
+                if not define_initStep:
                     # make globally defined
                     initStep = self.get_initStep(cell)
                 else:
-                    initStep = self.get_initStep(cell, shift=cell.initTstop - initStep)
+                    initStep = self.get_initStep(
+                        cell, shift=cell.initTstop - define_initStep
+                    )
                 if bath:
                     if max(cell.time) > 2e3:
                         cell.time *= 1e-3
@@ -381,6 +383,7 @@ class plotFigures:
                                     initStep - 50,
                                     cell.dt,
                                     time_frame=cell.tstop - cell.initTstop + 50,
+                                    cvode=list(cell.time)[initStep],
                                 )
                             )
 
@@ -393,7 +396,9 @@ class plotFigures:
                 ax.legend()
 
                 if zoom:
-                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
+                    ax.set_xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
 
                 if not bath:
                     plt.savefig(
@@ -492,6 +497,7 @@ class plotFigures:
                                     initStep - 50,
                                     cell.dt,
                                     time_frame=cell.tstop - cell.initTstop + 50,
+                                    cvode=list(cell.time)[initStep],
                                 )
                             )
                         ax.set_xlabel(gl.ms)
@@ -505,7 +511,9 @@ class plotFigures:
                 ax.legend()
 
                 if zoom:
-                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
+                    ax.set_xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
 
                 if not bath:
                     plt.savefig(
@@ -547,7 +555,9 @@ class plotFigures:
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
                 ax.legend()
                 if zoom:
-                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
+                    ax.set_xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -619,7 +629,9 @@ class plotFigures:
                     ax.legend(loc="lower right")
 
                 if zoom:
-                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
+                    ax.set_xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -674,7 +686,9 @@ class plotFigures:
                 ax3.set_ylabel(gl.volt)
                 ax3.set_ylim(gl.lim_Vmemb)
                 if zoom:
-                    ax.set_xlim(gl.lim_zoom(initStep, cell.dt))
+                    ax.set_xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
 
                 plt.savefig(
                     os.path.join(
@@ -855,7 +869,9 @@ class plotFigures:
                         ),
                     )
                 if zoom:
-                    plt.xlim(gl.lim_zoom(initStep, cell.dt))
+                    plt.xlim(
+                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
+                    )
                 plt.legend(title="seed", title_fontsize="x-small", fontsize="xx-small")
                 plt.xlabel(gl.ms)
                 if recVal == "vPAP":
@@ -914,79 +930,121 @@ class plotFigures:
                 if abs(float(l.get_text()) - mean) > std:
                     l.set_color("grey")
 
-    @save_src_Data
-    def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
-        plt.cla()
-        plt.clf()
-        for PAPattr in ["vPAP", "vSoma"]:
-            if Kir:
-                if self.GluT:
-                    imArray = np.zeros(
-                        (
-                            2 * int(self.KirMax / self.KirStep) + 1,
-                            2 * int(self.channelCompareMax / self.channelCompareStep)
-                            + 1,
-                        )
-                    )
+    def combined_heatmap(self, results, PAPattr, Kir=True):
+        caller = inspect.stack()[2].function
+        fName = f"{caller}{self.tag}.pickle"
+        if "_multiSpikex10" in fName:
+            singleFName = "".join(fName.split("_multiSpikex10"))
+        else:
+            return
 
-                else:
-                    imArray = np.zeros(
-                        (
-                            2 * int(self.KirMax / self.KirStep) + 1,
-                            int(self.channelCompareMax / self.channelCompareStep) + 1,
-                        )
-                    )
-            elif self.GABAR or self.GAP:
+        fPath = os.path.join("intermediaryData", singleFName)
+        if os.path.isfile(fPath):
+            with open(os.path.join("intermediaryData", f), "rb") as handle:
+                AllCells = pickle.load(handle)
+
+        else:
+            return
+
+        single_res = AllCells
+
+        imarray_multi = self.createIMArray(results, PAPattr, Kir=Kir)
+        imarray_single = self.createIMArray(single_res, PAPattr, Kir=Kir)
+
+        vmin, vmax = gl.clim_volt
+
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+        im1 = axes[0].imshow(imarray_single, vmin=vmin, vmax=vmax, cmap="magma")
+        im2 = axes[1].imshow(imarray_multi, vmin=vmin, vmax=vmax, cmap="magma")
+
+        fig.colorbar(im1, ax=axes.ravel().tolist(), shrink=0.6)
+        plt.savefig(f"combined_heatmap{PAPattr}{self.tag}.pdf")
+
+    def createIMArray(self, results, PAPattr, Kir=True):
+        if Kir:
+            if self.GluT:
                 imArray = np.zeros(
                     (
-                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        2 * int(self.KirMax / self.KirStep) + 1,
+                        2 * int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    )
+                )
+
+            else:
+                imArray = np.zeros(
+                    (
+                        2 * int(self.KirMax / self.KirStep) + 1,
                         int(self.channelCompareMax / self.channelCompareStep) + 1,
                     )
                 )
-            else:
-                imArray = np.zeros((5, 5))
+        elif self.GABAR or self.GAP:
+            imArray = np.zeros(
+                (
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                )
+            )
+        else:
+            imArray = np.zeros((5, 5))
 
-            plt.cla()
-            plt.clf()
-            for res in results:
-                if Kir:
-                    if self.GluT:
-                        imArray[
-                            int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
-                            int(
-                                (self.channelCompareMax + res[0].comparecount)
-                                / self.channelCompareStep
-                            ),
-                        ] += (
-                            max(getattr(res[0], PAPattr)) - res[0].RMP
-                        )
-
-                    elif res[0].comparecount is not None:
-                        # bug when stimulus but not GABAR
-                        imArray[
-                            int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
-                            int(res[0].comparecount / self.channelCompareStep),
-                        ] += (
-                            max(getattr(res[0], PAPattr)) - res[0].RMP
-                        )
-                elif self.GABAR:
-                    # if not Kir and GABA i.e. GABA vs. NMDAR do this
+        for res in results:
+            if Kir:
+                if self.GluT:
                     imArray[
-                        int(res[0].GABACount / self.channelCompareStep),
+                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
+                        int(
+                            (self.channelCompareMax + res[0].comparecount)
+                            / self.channelCompareStep
+                        ),
+                    ] += (
+                        max(getattr(res[0], PAPattr)) - res[0].RMP
+                    )
+                elif res[0].comparecount is not None:
+                    # bug when stimulus but not GABAR
+                    imArray[
+                        int((self.KirMax + res[0].GENEDict["kir2"]) / self.KirStep),
                         int(res[0].comparecount / self.channelCompareStep),
                     ] += (
                         max(getattr(res[0], PAPattr)) - res[0].RMP
                     )
-                else:
-                    imArray[
-                        int(res[0].PAPLen / 0.3) - 1,
-                        int(res[0].comparecount / self.channelCompareStep) - 1,
-                    ] += (
-                        max(getattr(res[0], PAPattr)) - res[0].RMP
-                    )
+            elif self.GABAR:
+                # if not Kir and GABA i.e. GABA vs. NMDAR do this
+                imArray[
+                    int(res[0].GABACount / self.channelCompareStep),
+                    int(res[0].comparecount / self.channelCompareStep),
+                ] += (
+                    max(getattr(res[0], PAPattr)) - res[0].RMP
+                )
+            else:
+                imArray[
+                    int(res[0].PAPLen / 0.3) - 1,
+                    int(res[0].comparecount / self.channelCompareStep) - 1,
+                ] += (
+                    max(getattr(res[0], PAPattr)) - res[0].RMP
+                )
 
+        return imArray
+
+    @save_src_Data
+    def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
+        plt.cla()
+        plt.clf()
+        self.plotIKSeries.__wrapped__(
+            self,
+            results,
+            setKoylim=True,
+            setekylim=True,
+            setyLim=[-15, 1],
+        )
+
+        res = results[0]
+        for PAPattr in ["vPAP", "vSoma"]:
+            self.combined_heatmap(results, PAPattr, Kir=Kir)
+            imArray = self.createIMArray(results, PAPattr, Kir=Kir)
             cmap = "magma"
-
+            plt.cla()
+            plt.clf()
             plt.figure(figsize=(6, 7))
             imArray /= divedend
             plt.imshow(
@@ -1093,7 +1151,7 @@ class plotFigures:
             elif self.GAP:
                 plt.xlabel(gl.chan_num("Cx43"))
             _, cbarMax = gl.clim_volt
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, cbarMax, 2), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, cbarMax, 2), extend="max")
             plt.clim((0, cbarMax))
             if stdLabels:
                 self.setLabelColors(
@@ -1736,10 +1794,10 @@ class procedure(plotFigures):
         # Plot the array using a heatmap
         plt.imshow(timeVoltageArray, cmap="magma", interpolation="none", aspect="auto")
         if replay:
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, 10, 2), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, 10, 2), extend="max")
             plt.clim((0, 10))
         else:
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
         plt.xlabel(gl.free("Normalized distance"))
         plt.xticks(
@@ -1856,7 +1914,6 @@ class procedure(plotFigures):
         else:
             fig, axs = figObj
 
-        print(id)
         splt_x, splt_y = id
         axs[splt_x, splt_y].plot(*data, label=label, **plt_args)
 
@@ -1871,11 +1928,24 @@ class procedure(plotFigures):
 
             handle, label = axs[splt_x, splt_y].get_legend_handles_labels()
             sortedpair = sorted(
-                zip(label, handle), key=lambda pair: int(''.join(filter(str.isdigit,pair[0])) if ''.join(filter(str.isdigit,pair[0])) else 0), reverse=True
+                zip(label, handle),
+                key=lambda pair: int(
+                    "".join(filter(str.isdigit, pair[0]))
+                    if "".join(filter(str.isdigit, pair[0]))
+                    else 0
+                ),
+                reverse=True,
             )
             sorted_label, sorted_handle = zip(*sortedpair)
-            fig.legend(sorted_handle, sorted_label, loc='center left', bbox_to_anchor=(0.75, 0.5), fancybox=True, shadow=True, ncol=1)
-
+            fig.legend(
+                sorted_handle,
+                sorted_label,
+                loc="center left",
+                bbox_to_anchor=(0.75, 0.5),
+                fancybox=True,
+                shadow=True,
+                ncol=1,
+            )
 
             fig.text((left + right) / 2, bottom - 0.07, x_label, ha="center", va="top")
             fig.text(
@@ -3062,7 +3132,7 @@ class procedure(plotFigures):
             setKoylim=setKoylim,
             setekylim=True,
             setyLim=[-20, 10],
-            initStep=50,
+            define_initStep=50,
             bath=True,
         )
         # results = AllCells[0][0]
@@ -3232,8 +3302,8 @@ class procedure(plotFigures):
             self.channelCompareMax *= 3
             self.channelCompareStep *= 3
         if self.GAP and not (self.GABAR or self.NMDAR or self.GluT):
-            self.channelCompareMax *= 4
-            self.channelCompareStep *= 4
+            self.channelCompareMax /= 2
+            self.channelCompareStep /= 2
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 5
             self.channelCompareStep = int(self.channelCompareMax / 5)
@@ -3331,7 +3401,82 @@ class procedure(plotFigures):
             if self.NMDAR and self.GluT:
                 self.GluT = False  # force plot priority of NMDA
             self.plotHeatmap(results, Kir=True, tag=self.tag, stdLabels=True)
-            self.plotIKSeries(results, setekylim=True, setKoylim=True, setyLim=[-15, 1])
+            # self.plotIKSeries(results, setekylim=True, setKoylim=True, setyLim=[-15, 1])
+
+    @read_data
+    def shift_PAP_location(self):
+        self.addChannelTag()
+        gapCounts = [0, 50, 100]
+        shift_range = np.arange(0, 1, 0.1)
+        iterations = [(i, j) for i in shift_range for j in gapCounts]
+        iterations = comm.bcast(iterations, root=0)
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "Glu": self.GluStim,
+                "GABA": self.GabaStim,
+                "ComplexMorph": True,
+                "kleak": self.leak,
+                "clleak": 0,
+                "dt": self.dt,
+                "seed": self.seed,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+            }
+        )
+        ccList = ["shift_PAP", "gapCount"]
+        callMethods = [[]]
+        callArgs = [[]]
+        callMethods[0] += ["initialize", "multiSpike", "run"]
+        callArgs[0] += [
+            {},
+            {"number": self.stimCount, "KoSize": self.ko, "freq": self.freq},
+            {},
+        ]
+        results = parallizeFor(
+            iterations, [PAPModel], funcArgs, ccList, callMethods, callArgs
+        )
+
+        self.free_figure(results)
+
+        comm.Barrier()
+
+        if rank == 0:
+            imArray = np.zeros((len(shift_range), len(gapCounts)))
+            gapCounts = np.array(gapCounts)
+            for cells in results:
+                for cell in cells:
+                    imArray[
+                        np.where(shift_range == cell.shift_PAP)[0][0],
+                        np.where(gapCounts == cell.gapcount)[0][0],
+                    ] += (
+                        max(np.array(cell.vPAP)) - cell.RMP
+                    )
+
+            cmap = "magma"
+            plt.cla()
+            plt.clf()
+            plt.figure(figsize=(4, 7))
+            plt.imshow(
+                imArray,
+                cmap=cmap,
+                origin="lower",
+                interpolation="nearest",
+                aspect="equal",
+            )
+            maxv = 30
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, maxv, 2), extend="max")
+            plt.clim((5, maxv))
+            plt.xlabel(gl.chan_num("Cx43"))
+            plt.ylabel(gl.free(f"PAP distance from GJ {gl.unit_micron}"))
+            plt.xticks(
+                range(len(gapCounts)),
+                gapCounts,
+            )
+            plt.yticks(range(len(shift_range)), [f"{x:.2f}" for x in shift_range])
+
+            plt.savefig(os.path.join("../results/paperRes", f"PAP_shift{self.tag}.pdf"))
 
     #            self.plotHeatmap(totResults, divedend=len(resFiles))
     #
@@ -3732,7 +3877,7 @@ class procedure(plotFigures):
                     np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                 ).astype(printType),
             )
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
@@ -3911,7 +4056,7 @@ class procedure(plotFigures):
                         np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                     ).astype(printType),
                 )
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
@@ -5081,7 +5226,7 @@ class procedure(plotFigures):
                 range(int(spikeNumMax / spikeNumStep) + 1),
                 np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
-            plt.colorbar(label=gl.volt, ticks=np.arange(0, 30, 5), extend="max")
+            plt.colorbar(label=gl.vm, ticks=np.arange(0, 30, 5), extend="max")
             plt.clim(gl.clim_volt)
             plt.savefig(
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")

@@ -32,8 +32,12 @@ class gl:
     lim_ek = (-100, 20)
 
     @staticmethod
-    def lim_zoom(initStep, dt, time_frame=20):
-        return (initStep * dt, initStep * dt + time_frame)
+    def lim_zoom(initStep, dt, time_frame=20, cvode=None):
+        if cvode:
+            # get index of initTstop
+            return (cvode, cvode + time_frame)
+        else:
+            return (initStep * dt, initStep * dt + time_frame)
 
     @staticmethod
     def current_ion(ion):

@@ -330,6 +330,14 @@ def argParser(rangeInt=100):
     )
 
     parser.add_argument(
+        "--shiftExperiment",
+        dest="shift_pap",
+        action="store_true",
+        default=False,
+        help="Used to run shift PAP experiments",
+    )
+
+    parser.add_argument(
         "seed",
         metavar="seed",
         type=int,

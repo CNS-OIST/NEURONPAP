@@ -75,6 +75,7 @@ class PAPModel(ResultsPAPModel):
         v_init=-85,
         g_pas=0.69,
         shell=0,
+        shift_PAP=0.7,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -98,6 +99,7 @@ class PAPModel(ResultsPAPModel):
         self.shell = shell
         # print('set sim parms')
         # Set gap count
+        self.shift_PAP = shift_PAP
         self.gapcount = gapCount
 
         # set NMDA
@@ -163,7 +165,7 @@ class PAPModel(ResultsPAPModel):
         for i in range(PAPCount):
             if self.getPeriphery:
                 h.PAP = h.get_randomfinalSection(h.soma)
-                h.PAP = h.shiftPAP(h.PAP, 0.7, sec=h.PAP.sec)
+                h.PAP = h.shiftPAP(h.PAP, self.shift_PAP, sec=h.PAP.sec)
                 self.PAP = h.PAP.sec
                 # print(self.PAP)
             elif self.Node:
@@ -474,9 +476,13 @@ class PAPModel(ResultsPAPModel):
         self.kin = h.getkin()
 
     def setGap(self):
-        for i, sGap in enumerate(h.gaplist):
-            if self.gapcount:
+        for _, sGap in enumerate(list(h.gaplist)):
+            if self.gapcount is not None:
                 sGap.multiple = self.gapcount
+
+    def checkGap(self):
+        for _, sGap in enumerate(h.gaplist):
+            print(self.gapcount, sGap.multiple, sGap.g)
 
     def initNMDAs(self):
         if self.readParms:
@@ -767,6 +773,8 @@ class PAPModel(ResultsPAPModel):
         self.getkin()
         # print('initialized')
         # sys.stdout.flush()
+        h.fadvance()
+        # self.checkGap()
         if video:
             self.makeVideo(self.varMorph, stop=self.initTstop)
         else:
