@@ -866,6 +866,7 @@ total_shells = $1
 synapse = $2
 maxDist = get_max_dist()
 shell_width = (maxDist + 1)/ total_shells
+r.discunif(0,max_p)
 
 max_p = 0
 forall {max_p = max_p + 1}
@@ -891,19 +892,13 @@ for i=0,total_shells-1 {
             tmp = tmp - shell_width
             j = j + 1
         }
-        if (synapse_track.x[j] > 0) {
-            rint = r.discunif(0,max_p)
-            if (rint == 0){
               shell_compartments.o(j).append()
-              synapse_track.x[j] = synapse_track.x[j] - 1
-            }
-       }
-    }
+              synapse_track.x[j] = synapse_track.x[j] + 1
   }
   for i=0,total_shells-1 {
     shell_compartments.o(i).unique()
   }
-}
+}}
 
 proc set_all_pp(){
       for i=0, ncNMDAList.count - 1{

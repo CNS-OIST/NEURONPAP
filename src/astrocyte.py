@@ -804,6 +804,8 @@ class PAPModel(ResultsPAPModel):
         # cvode.active(False)
         # self.ko_sim(False)
         if self.shell > 0 and rank == 0 and hasattr(self, "total_shell"):
+            plt.cla()
+            plt.clf()
             plot_3d_morphology(
                 rangevar="v", add_shell=self.total_shell, clim=gl.lim_Vmemb
             )
@@ -1310,10 +1312,10 @@ class PAPModel(ResultsPAPModel):
     def define_shell(self, total_shell=5, synapse=10000):
         self.total_shell = total_shell
         h.define_shell(total_shell, synapse)
-        h.clampSwitch(1, -60)
-        plt.cla()
-        plt.clf()
-        # only for rank 0
+        # [print(len(list(i))) for i in h.shell_compartments]
+        h.clampSwitch(1, -40)
+
+    # only for rank 0
 
     def record_VClampI(self):
         self.VClampI = h.Vector()

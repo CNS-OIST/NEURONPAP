@@ -684,7 +684,7 @@ class plotFigures:
                     color=self.returnColor("Soma"),
                 )
                 ax3.set_ylabel(gl.volt)
-                ax3.set_ylim(gl.lim_Vmemb)
+                ax3.set_ylim(gl.lim_curr)
                 if zoom:
                     ax.set_xlim(
                         gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
@@ -3301,7 +3301,7 @@ class procedure(plotFigures):
         if self.GABAR:
             self.channelCompareMax *= 3
             self.channelCompareStep *= 3
-        if self.GAP and not (self.GABAR or self.NMDAR or self.GluT):
+        if self.GAP and not self.GABAR:
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
         if not (self.GABAR or self.NMDAR) and self.GluT:
@@ -4932,6 +4932,7 @@ class procedure(plotFigures):
     @read_data
     def distance_analysis(self, shell_range=10):
         self.addChannelTag()
+        syn_count = 50
         funcArgs = []
         funcArgs.append(
             {
@@ -4953,17 +4954,15 @@ class procedure(plotFigures):
             funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
 
-        if funcArgs[-1]["kir2"] > 3:  # to compensate for mathematical unstability
-            funcArgs[-1]["dt"] *= 0.2
-
         if self.NMDAR and self.GluStim:
-            funcArgs[-1]["multiple"] = self.optNMDAR
+            funcArgs[-1]["multiple"] = self.optNMDAR * syn_count
         else:
             funcArgs[-1]["multiple"] = None
         if self.GluT and self.GluStim:
-            funcArgs[-1]["GluTrans"] = self.optGluT
+            funcArgs[-1]["GluTrans"] = self.optGluT * syn_count
         if self.GABAR and self.GabaStim:
-            funcArgs[-1]["GABACount"] = self.optGABAR
+            funcArgs[-1]["GABACount"] = self.optGABAR * syn_count
+            # GABA alread calculates per section
         else:
             funcArgs[-1]["GABACount"] = 0
 
@@ -4986,7 +4985,7 @@ class procedure(plotFigures):
             ],
             [
                 [
-                    {"total_shell": shell_range},
+                    {"total_shell": shell_range, "synapse": syn_count},
                     {},
                     {},
                     {},
@@ -5012,12 +5011,34 @@ class procedure(plotFigures):
                     resList.append(min(VCI) - VCI[-1])
                     shell_num.append(cell.shell)
 
+            shell_num, resList = zip(
+                *[(i, j) for i, j in sorted(zip(shell_num, resList))]
+            )
+            resList = np.array(resList) * 1000  # nA to pA
+
             plt.cla()
             plt.clf()
-            ax = plt.figure().gca()
+            ax = plt.figure(figsize=(8, 5)).gca()
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.scatter(shell_num, resList)
-            plt.savefig(f"minAmplitude_shellcomp{self.tag}.pdf")
+            ax.plot(shell_num, resList)
+            ax.set_xlabel(gl.free("Shell number"))
+            ax.set_ylabel(gl.free("Electrode " + gl.curr))
+            ax.set_ylim(gl.lim_min_amp)
+            ax2 = ax.inset_axes(
+                [0.75, 0.55, 0.5, 0.5]
+            )  # Define the position and size of the new subplot
+            ax2.plot(
+                shell_num,
+                resList,
+            )
+            ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax2.set_xlim((3, 9))
+            ax2.set_ylim((-60, 10))
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes", f"minAmplitude_shellcomp{self.tag}.pdf"
+                )
+            )
 
     def optRMPSearch(self, x, optmV=-76.3):
         # x = leak value

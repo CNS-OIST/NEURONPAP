@@ -16,7 +16,7 @@ size = comm.Get_size()
 rank = comm.Get_rank()
 
 
-def plot_distance_shells(ax, origin, step_num=5, alpha=0.15, color="k", resolution=30):
+def plot_distance_shells(ax, origin, step_num=5, alpha=0.05, color="k", resolution=30):
     center = (h.x3d(0, sec=origin), h.y3d(0, sec=origin), h.z3d(0, sec=origin))
     xlist, ylist, zlist = get_all_coords()
     all_x = np.concatenate(xlist)

@@ -119,12 +119,12 @@ for i in $( # for ten random PAPs
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --GluT 1 --stimCount 10 $i #Fig 2ABCD
   for j in 0.5 10; do                                                                       # for extracellular potassium condition 0.5 and 10
     echo "seed $i-Ko$j" >>$output
-    for k in 1 10; do                                                                                                                # for stimCoutn
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i               # Fig 3A
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i              # Fig 4CD
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i               # Fig 5AC
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --GluT 0 --NMDAR 0 --GABAR 0 --GAP 1 --stimCount $k --ko $j $i       # Fig 5AC
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --PAPCount 10 --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i # Fig 5AC
+    for k in 1 10; do                                                                                                                          # for stimCoutn
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i                         # Fig 3A
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i                        # Fig 4CD
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i                         # Fig 5AC
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --GluT 0 --NMDAR 0 --GABAR 0 --GAP 1 --stimCount $k --ko $j $i                 # Fig 5AC
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --PAPCount 10 --GluT 1 --NMDAR 1 --GABAR 0 --stimCount $k --ko $j $i # Fig 5AC
       if (($k == 10)); then
         if (($video_bool == 1)); then
           python NEURONPAP.py -v --stimCount $k --ko $j $i            #

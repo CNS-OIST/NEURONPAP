@@ -55,6 +55,8 @@ def callExperimentMode(**kwargs):
         exp.singleRun()
 
     if "shell" in kwargs.keys() and kwargs["shell"]:
+        exp.GluStim = kwargs["glustim"]
+        exp.GabaStim = kwargs["gabastim"]
         exp.distance_analysis()
 
     if "cond" in kwargs.keys() and kwargs["cond"]:
