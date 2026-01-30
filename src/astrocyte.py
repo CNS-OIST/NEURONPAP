@@ -605,6 +605,16 @@ class PAPModel(ResultsPAPModel):
             for nc in list(h.ncGluList):
                 nc.active(False)
 
+        if hasattr(self, "shell_synapse"):
+            for nc in list(h.ncGluList):
+                nc.active(False)
+
+            import random
+
+            random.seed(self.seed)
+            for nc in random.sample(list(h.ncGluList), k=self.shell_synapse):
+                nc.active(True)
+
     def setGLT_TC(self, *args):
         names = ["tau1", "tau2"]
         if "GluTrans" not in self.GENEDict.keys() or self.GENEDict["GluTrans"] == None:
@@ -674,6 +684,13 @@ class PAPModel(ResultsPAPModel):
             print(nc.weight[0])
             print(nc.syn())
 
+    def set_cvode(self, force_print_progress=False):
+        self.cvode = False
+        if hasattr(h, "cvode"):
+            self.cvode = True
+            if size < 2 or force_print_progress:
+                h.print_progress(self.tstop)
+
     def initialize(
         self,
         saveState=False,
@@ -685,12 +702,9 @@ class PAPModel(ResultsPAPModel):
         TBS=None,
         force_print_progress=False,
     ):
-        self.cvode = False
+        self.set_cvode(force_print_progress=force_print_progress)
         if hasattr(h, "cvode"):
-            self.cvode = True
             voltageClamp = False
-            if size < 2 or force_print_progress:
-                h.print_progress(self.tstop)
         # print('initializing')
         # sys.stdout.flush()
         if kblock:
@@ -721,8 +735,8 @@ class PAPModel(ResultsPAPModel):
         # print('placed GluT')
         # sys.stdout.flush()
         self.setGABAas()
-        # print('placed GluT')
         # sys.stdout.flush()
+        # print('placed GluT')
         # self.checkNetCons()
         PAPGluT = [
             s.syn() for s in list(h.ncGluList) if s.postseg().sec in self.flattenPAP()
@@ -1311,6 +1325,7 @@ class PAPModel(ResultsPAPModel):
 
     def define_shell(self, total_shell=5, synapse=10000):
         self.total_shell = total_shell
+        self.shell_synapse = synapse
         h.define_shell(total_shell, synapse)
         # [print(len(list(i))) for i in h.shell_compartments]
         h.clampSwitch(1, -40)
@@ -1383,6 +1398,7 @@ class PAPModel(ResultsPAPModel):
             h.setK(h.getWholetree(), Ko - papk, Ko, 0)
 
     def GABABath(self, number, freq, video=False):
+        self.set_cvode()
         self.setStimStart()
         # all section besides soma
         h.slPAP = h.SectionList(
@@ -1392,6 +1408,7 @@ class PAPModel(ResultsPAPModel):
         # since the whole astrocyte is manipulated as PAP we convert to all slPAP having the initially defined GABACount
         numSecs = len(list(h.slPAP))
         self.GABACount *= numSecs
+        self.setGap()
         self.setGABAas()
         self.KoSize = 0
 

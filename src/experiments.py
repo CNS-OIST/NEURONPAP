@@ -103,6 +103,7 @@ class plotFigures:
             if self.global_rw_data or rank == 0:
                 AllCells = args[0]
                 if type(AllCells) is list:
+
                     tmpCells = AllCells
                     while type(tmpCells) is list:
                         tmpCells = tmpCells[0]
@@ -3299,8 +3300,8 @@ class procedure(plotFigures):
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
-            self.channelCompareMax *= 3
-            self.channelCompareStep *= 3
+            self.channelCompareMax *= 2
+            self.channelCompareStep *= 2
         if self.GAP and not self.GABAR:
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
@@ -3351,6 +3352,7 @@ class procedure(plotFigures):
         )
         ccList = ["kir2"]
         if self.GABAR:
+            funcArgs[-1]["dt"] *= 0.2
             funcArgs[-1]["multiple"] = None
             funcArgs[-1]["GABA"] = True
             ccList.append("GABACount")
@@ -4929,6 +4931,103 @@ class procedure(plotFigures):
             if rank == 0:
                 self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
 
+
+    def split_and_remove(self,key,*args):
+        original_len = len(args)
+        new_list = []
+        for s in args:
+            if type(s) is list:
+                s = s[0]
+            new_list += s.split(key)
+
+        for i,s in enumerate(new_list):
+            new_list[i] = s.replace(key,'')
+
+        new_len = len(new_list)
+        if original_len == new_len:
+            return new_list
+        else:
+            return self.split_and_remove(key,*new_list)
+            
+
+    def combine_distance_analysis_plots(self):
+        if rank != 0:
+            return
+        curr_tag = self.tag
+        curr_tag = self.split_and_remove('_Glu',curr_tag)
+        curr_tag = self.split_and_remove('_NoGlu',curr_tag)
+        curr_tag = self.split_and_remove('_GABA',curr_tag)
+        curr_tag = self.split_and_remove('_GABAR',curr_tag)
+        curr_tag = self.split_and_remove('_NMDAR',curr_tag)
+
+        found_files = 0
+        for chan in ['_GABAR_NoGlu_GABA', '_Glu','_NMDAR']:
+            tmp_tag = ['distance_analysis'] + curr_tag[:-1] + [chan,curr_tag[-1]]
+            tmp_tag = ''.join(tmp_tag)
+            path = os.path.join("intermediaryData", f'{tmp_tag}.pickle')
+            if os.path.isfile(path):
+                with open(
+                    path, "rb"
+                ) as handle:
+                    AllCells = pickle.load(handle)
+
+                if found_files == 0:
+                    plt.cla()
+                    plt.clf()
+                    ax2 = None
+                    ax = plt.figure(figsize=(8, 5)).gca()
+                ax,ax2 = self.plot_shell(AllCells,ax,ax2=ax2)
+
+                for ax_obj in [ax,ax2]:
+                    lines = ax_obj.get_lines()
+                    path = path.replace('_Glu','_GluT')
+                    color = self.returnColor(path)
+                    lines[found_files].set_color(color)
+
+                found_files += 1
+        plt.savefig(
+            os.path.join(
+                "../results/paperRes", "combined_minAmplitude_shellcomp.pdf"
+            )
+        )
+
+
+
+
+    def plot_shell(self,results,ax,ax2=None):    
+        resList = []
+        shell_num = []
+        for cells in results:
+            for cell in cells:
+                VCI = list(cell.VClampI)
+                resList.append(min(VCI) - VCI[-1])
+                shell_num.append(cell.shell)
+
+        shell_num, resList = zip(
+            *[(i, j) for i, j in sorted(zip(shell_num, resList))]
+        )
+        resList = np.array(resList) * 1000  # nA to pA
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.plot(shell_num, resList)
+        ax.set_xlabel(gl.free("Shell number"))
+        ax.set_ylabel(gl.free("Electrode " + gl.curr))
+        ax.set_ylim(gl.lim_min_amp)
+
+        if ax2 is None:
+            ax2 = ax.inset_axes(
+                [0.55, 0.25, 0.4, 0.4]
+            )  # Define the position and size of the new subplot
+        ax2.plot(
+            shell_num,
+            resList,
+        )
+        ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax2.set_xlim((2, 9))
+        ax2.set_ylim((-20, 1))
+        return ax,ax2
+
+
+
     @read_data
     def distance_analysis(self, shell_range=10):
         self.addChannelTag()
@@ -5002,38 +5101,14 @@ class procedure(plotFigures):
         comm.Barrier()
         self.free_figure(results)
 
+        self.combine_distance_analysis_plots()
+        comm.Barrier()
+
         if rank == 0:
-            resList = []
-            shell_num = []
-            for cells in results:
-                for cell in cells:
-                    VCI = list(cell.VClampI)
-                    resList.append(min(VCI) - VCI[-1])
-                    shell_num.append(cell.shell)
-
-            shell_num, resList = zip(
-                *[(i, j) for i, j in sorted(zip(shell_num, resList))]
-            )
-            resList = np.array(resList) * 1000  # nA to pA
-
             plt.cla()
             plt.clf()
             ax = plt.figure(figsize=(8, 5)).gca()
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax.plot(shell_num, resList)
-            ax.set_xlabel(gl.free("Shell number"))
-            ax.set_ylabel(gl.free("Electrode " + gl.curr))
-            ax.set_ylim(gl.lim_min_amp)
-            ax2 = ax.inset_axes(
-                [0.75, 0.55, 0.5, 0.5]
-            )  # Define the position and size of the new subplot
-            ax2.plot(
-                shell_num,
-                resList,
-            )
-            ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
-            ax2.set_xlim((3, 9))
-            ax2.set_ylim((-60, 10))
+            self.plot_shell(results,ax)
             plt.savefig(
                 os.path.join(
                     "../results/paperRes", f"minAmplitude_shellcomp{self.tag}.pdf"
