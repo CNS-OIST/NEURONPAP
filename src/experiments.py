@@ -1911,7 +1911,7 @@ class procedure(plotFigures):
         # get data
 
         if not figObj:
-            fig, axs = plt.subplots(2, 2, figsize=(10, 6), sharex=True, sharey=True)
+            fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharex=True, sharey=True)
         else:
             fig, axs = figObj
 
@@ -2168,10 +2168,14 @@ class procedure(plotFigures):
         NTChannelComp = [700]
         if self.NMDAR:
             NTChannelComp = [self.optNMDAR] + NTChannelComp
-            self.tag += "NMDAR"
-        else:
+            NT_name = "NMDAR"
+        elif self.GABAR:
             NTChannelComp += [self.optGABAR]
-            self.tag += "GABAR"
+            NT_name = "GABAR"
+        elif self.GluT:
+            NTChannelComp = [0, 100]
+            NT_name = "GluT"
+        self.tag += NT_name
 
         if not self.free_read_data():
             for kircount in [self.KirMax, self.optKir]:
@@ -2203,7 +2207,7 @@ class procedure(plotFigures):
                         else:
                             funcArgs[-1]["GABACount"] = 0
                             funcArgs[-1]["multiple"] = None
-                            funcArgs[-1]["GluTrans"] = 0
+                            funcArgs[-1]["GluTrans"] = chanCount
                             chanName = "GluTrans"
                     else:
                         if self.NMDAR:
@@ -2301,10 +2305,10 @@ class procedure(plotFigures):
                     kw_args = {}
                     if id == 2 and j == len(AllCells[i]) - 1:
                         kw_args["finalize"] = [
-                            "PAP Length 0.3 $\mu$m",
-                            "5 $\mu$m",
-                            "Kir Channels",
-                            "",
+                            f"{NT_name} Channels\n{NTChannelComp[0]}",
+                            NTChannelComp[1],
+                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
+                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
                         kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
                     initStep = self.get_initStep(cell, shift=0) - 200
@@ -3567,6 +3571,9 @@ class procedure(plotFigures):
             controlIndex = None
             vListarray = np.zeros((sampleNum, len(iterations)))
             self.free_figure(results)
+            fig = plt.figure(figsize=(9, 9))
+            ax = fig.add_axes([0.1, 0.52, 0.8, 0.40])
+            ax_inset = fig.add_axes([0.1, 0.15, 0.8, 0.25])
             for cells in results:
                 for cell in cells:
                     i = np.where(cell.PAPLen == iterations)[0][
@@ -3575,8 +3582,13 @@ class procedure(plotFigures):
                     cindex = i / len(iterations)
                     color = cm.winter(cindex)
                     initStep = self.get_initStep(cell)
-                    plt.plot(
+                    ax.plot(
                         np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
+                        np.array(list(cell.vPAP)[initStep:]) - cell.RMP,
+                        color=color,
+                    )
+                    ax_inset.plot(
+                        np.array(list(cell.time)[initStep:]),  # ms
                         np.array(list(cell.vPAP)[initStep:]) - cell.RMP,
                         color=color,
                     )
@@ -3588,17 +3600,57 @@ class procedure(plotFigures):
                 0
             ]  # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex]) / sampleNum
-            plt.xlabel(gl.s)
-            plt.ylabel(gl.d_volt)
+            ax.set_xlabel(gl.s)
+            ax.set_ylabel(gl.d_volt)
+            x0 = 145 * 1e-3
+            x1 = 165 * 1e-3
+            y0 = -0.01
+            y1 = 3.01
+            ax.set_ylim((y0, y1))
+
+            ax_inset.set_xlim((x0 * 1e3, x1 * 1e3))
+            ax_inset.set_ylim((y0, y1))
+            ax_inset.set_xlabel(gl.ms)
+            ax_inset.set_ylabel(gl.d_volt)
+
+            grey = "0.5"
+            rect = Rectangle(
+                (x0, y0),
+                x1 - x0,
+                y1 - y0,
+                fill=False,
+                linewidth=1.5,
+                edgecolor=grey,
+                zorder=2,
+            )
+            ax.add_patch(rect)
+            con1 = ConnectionPatch(
+                xyA=(x0, y0),
+                coordsA=ax.transData,
+                xyB=(x0 * 1e3, y1),
+                coordsB=ax_inset.transData,
+                color=grey,
+                linewidth=1,
+                zorder=3,
+                linestyle="--",
+            )
+            con2 = ConnectionPatch(
+                xyA=(x1, y0),
+                coordsA=ax.transData,
+                xyB=(x1 * 1e3, y1),
+                coordsB=ax_inset.transData,
+                color=grey,
+                linewidth=1,
+                zorder=3,
+                linestyle="--",
+                connectionstyle="arc3,rad=0.1",
+            )
+
+            fig.add_artist(con1)
+            fig.add_artist(con2)
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
-            )
-            plt.xlim((0.140, 0.160))
-            plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.savefig(
-                os.path.join(
-                    "../results/paperRes", f"GlutamateSpillOver{self.tag}_zoom.pdf"
-                )
             )
             plt.cla()
             plt.clf()
@@ -3645,7 +3697,6 @@ class procedure(plotFigures):
                 #     zorder=-1,
                 # )
             maxIndex = vList.index(max(vList))
-            maxY = max(vList) * 1.1
 
             # self.peakLen = iterations[maxIndex]
             ax.scatter(
@@ -3665,7 +3716,7 @@ class procedure(plotFigures):
                         zorder=-2,
                     )
             ax.legend()
-            ax.set_ylim((0, maxY))
+            ax.set_ylim((y0, y1))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
             ax.set_xlabel(gl.pap_affect)
@@ -4931,70 +4982,75 @@ class procedure(plotFigures):
             if rank == 0:
                 self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
 
+    def flatten_list(self, nested_data):
+        for item in nested_data:
+            if isinstance(item, list):
+                yield from self.flatten_list(item)
+            else:
+                yield item
 
-    def split_and_remove(self,key,*args):
+    def split_and_remove(self, key, *args):
         original_len = len(args)
         new_list = []
-        for s in args:
-            if type(s) is list:
-                s = s[0]
+        flat_list = list(self.flatten_list(args))
+
+        for s in flat_list:
             new_list += s.split(key)
 
-        for i,s in enumerate(new_list):
-            new_list[i] = s.replace(key,'')
+        for i, s in enumerate(new_list):
+            new_list[i] = s.replace(key, "")
 
         new_len = len(new_list)
         if original_len == new_len:
             return new_list
         else:
-            return self.split_and_remove(key,*new_list)
-            
+            return self.split_and_remove(key, *new_list)
 
     def combine_distance_analysis_plots(self):
         if rank != 0:
             return
         curr_tag = self.tag
-        curr_tag = self.split_and_remove('_Glu',curr_tag)
-        curr_tag = self.split_and_remove('_NoGlu',curr_tag)
-        curr_tag = self.split_and_remove('_GABA',curr_tag)
-        curr_tag = self.split_and_remove('_GABAR',curr_tag)
-        curr_tag = self.split_and_remove('_NMDAR',curr_tag)
+        curr_tag = self.split_and_remove("_Glu", curr_tag)
+        curr_tag = self.split_and_remove("_NoGlu", curr_tag)
+        curr_tag = self.split_and_remove("_GABA", curr_tag)
+        curr_tag = self.split_and_remove("_GABAR", curr_tag)
+        curr_tag = self.split_and_remove("_NMDAR", curr_tag)
 
         found_files = 0
-        for chan in ['_GABAR_NoGlu_GABA', '_Glu','_NMDAR']:
-            tmp_tag = ['distance_analysis'] + curr_tag[:-1] + [chan,curr_tag[-1]]
-            tmp_tag = ''.join(tmp_tag)
-            path = os.path.join("intermediaryData", f'{tmp_tag}.pickle')
+        for chan in ["_GABAR_NoGlu_GABA", "_Glu", "_NMDAR"]:
+            tmp_tag = ["distance_analysis"] + curr_tag[:-1] + [chan, curr_tag[-1]]
+            tmp_tag = "".join(tmp_tag)
+            path = os.path.join("intermediaryData", f"{tmp_tag}.pickle")
+            print(f"loading {path}")
             if os.path.isfile(path):
-                with open(
-                    path, "rb"
-                ) as handle:
+                with open(path, "rb") as handle:
                     AllCells = pickle.load(handle)
 
                 if found_files == 0:
                     plt.cla()
                     plt.clf()
                     ax2 = None
-                    ax = plt.figure(figsize=(8, 5)).gca()
-                ax,ax2 = self.plot_shell(AllCells,ax,ax2=ax2)
-
-                for ax_obj in [ax,ax2]:
+                    ax = plt.figure(figsize=(8, 4)).gca()
+                ax, ax2 = self.plot_shell(AllCells, ax, ax2=ax2)
+                for ax_obj in [ax, ax2]:
                     lines = ax_obj.get_lines()
-                    path = path.replace('_Glu','_GluT')
+                    path = path.replace("_Glu", "_GluT")
                     color = self.returnColor(path)
                     lines[found_files].set_color(color)
 
                 found_files += 1
+        plt.legend(
+            loc="center left",
+            bbox_to_anchor=(1.01, 0.5),
+            labels=["GABAR", "GLT-1", "NMDAR"],
+        )
+        plt.tight_layout()
+
         plt.savefig(
-            os.path.join(
-                "../results/paperRes", "combined_minAmplitude_shellcomp.pdf"
-            )
+            os.path.join("../results/paperRes", "combined_minAmplitude_shellcomp.pdf")
         )
 
-
-
-
-    def plot_shell(self,results,ax,ax2=None):    
+    def plot_shell(self, results, ax, ax2=None):
         resList = []
         shell_num = []
         for cells in results:
@@ -5003,9 +5059,7 @@ class procedure(plotFigures):
                 resList.append(min(VCI) - VCI[-1])
                 shell_num.append(cell.shell)
 
-        shell_num, resList = zip(
-            *[(i, j) for i, j in sorted(zip(shell_num, resList))]
-        )
+        shell_num, resList = zip(*[(i, j) for i, j in sorted(zip(shell_num, resList))])
         resList = np.array(resList) * 1000  # nA to pA
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.plot(shell_num, resList)
@@ -5024,9 +5078,7 @@ class procedure(plotFigures):
         ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax2.set_xlim((2, 9))
         ax2.set_ylim((-20, 1))
-        return ax,ax2
-
-
+        return ax, ax2
 
     @read_data
     def distance_analysis(self, shell_range=10):
@@ -5108,7 +5160,7 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
             ax = plt.figure(figsize=(8, 5)).gca()
-            self.plot_shell(results,ax)
+            self.plot_shell(results, ax)
             plt.savefig(
                 os.path.join(
                     "../results/paperRes", f"minAmplitude_shellcomp{self.tag}.pdf"
