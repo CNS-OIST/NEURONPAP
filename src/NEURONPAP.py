@@ -31,6 +31,7 @@ def callExperimentMode(**kwargs):
     exp.NMDAR = bool(kwargs["nmdar"])
     exp.GABAR = bool(kwargs["gabar"])
     exp.GAP = bool(kwargs["gap"])
+    exp.NKA = bool(kwargs["nka"])
     exp.GluT = bool(kwargs["glut"])
     exp.PAPCount = kwargs["papcount"]
     exp.stimCount = kwargs["stimcount"]
@@ -172,9 +173,9 @@ def callExperimentMode(**kwargs):
         print(
             minimize(
                 exp.optDepolarizationSearch,
-                (10, 10, 10),
+                (20),
                 method="Nelder-Mead",
-                bounds=[(0, None), (0, None), (0, None)],
+                bounds=[(0, None)],
             )
         )
 

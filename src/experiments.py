@@ -73,11 +73,15 @@ class LegendTitle(object):
 
 
 class plotFigures:
+    k_color = "orange"
+    gaba_color = "purple"
     colorDict = {
         "NMDAR": "steelblue",
-        "GABAR": "purple",
+        "GABAR": gaba_color,
+        "GABA$_A$R": gaba_color,
         "GluT": "lightblue",
-        "iK": "orange",
+        "iK": k_color,
+        "K$^+$": k_color,
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
         "fluor": "black",
@@ -230,13 +234,13 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
-                        label=f"GABAR {gl.vm}({int(cell.GABADensity)})",
+                        label=f"GABA$_A$R {gl.vm}({int(cell.GABADensity)})",
                         color=self.returnColor("GABAR"),
                     )
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.fluorVPAP)[initStep:],
-                        label="GABAR fluor",
+                        label="GABA$_A$R fluor",
                         color=self.returnColor("GABAR"),
                         linestyle="-.",
                     )
@@ -402,6 +406,7 @@ class plotFigures:
                     )
 
                 if not bath:
+                    plt.tight_layout()
                     plt.savefig(
                         os.path.join(
                             "../results/paperRes",
@@ -456,7 +461,8 @@ class plotFigures:
                     )
 
                 # must set before calculating height for rectangle
-                ax.set_ylim(gl.lim_ek)
+                if setekylim:
+                    ax.set_ylim(gl.lim_ek)
 
                 if bath:
                     lowerBound, upperBound = gl.lim_ek
@@ -516,6 +522,7 @@ class plotFigures:
                         gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
                     )
 
+                plt.tight_layout()
                 if not bath:
                     plt.savefig(
                         os.path.join(
@@ -524,7 +531,6 @@ class plotFigures:
                         )
                     )
                 else:
-                    plt.tight_layout()
                     plt.savefig(
                         os.path.join(
                             "../results/paperRes",
@@ -608,7 +614,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGABA)[initStep:],
-                        label=gl.current_ion("GABAa"),
+                        label=gl.current_ion("GABA$_A$R"),
                         color=self.returnColor("GABAR"),
                     )
                 if hasattr(cell, "iGluT") and self.GluT:
@@ -633,6 +639,7 @@ class plotFigures:
                     ax.set_xlim(
                         gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
                     )
+                plt.tight_layout()
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -893,6 +900,7 @@ class plotFigures:
             "Kir": (370 * area + 1 * 4.7e3 * area, 1 * area),
             "GluT": (14248 * area, 812 * area),
             "GABAR": (np.inf, 0),
+            "GABA$_A$R": (np.inf, 0),
             "PAPLen": (
                 0.425,
                 0.225,
@@ -932,7 +940,7 @@ class plotFigures:
                     l.set_color("grey")
 
     def combined_heatmap(self, results, PAPattr, Kir=True):
-        caller = inspect.stack()[2].function
+        caller = inspect.stack()[3].function
         fName = f"{caller}{self.tag}.pickle"
         if "_multiSpikex10" in fName:
             singleFName = "".join(fName.split("_multiSpikex10"))
@@ -941,7 +949,7 @@ class plotFigures:
 
         fPath = os.path.join("intermediaryData", singleFName)
         if os.path.isfile(fPath):
-            with open(os.path.join("intermediaryData", f), "rb") as handle:
+            with open(fPath, "rb") as handle:
                 AllCells = pickle.load(handle)
 
         else:
@@ -953,14 +961,171 @@ class plotFigures:
         imarray_single = self.createIMArray(single_res, PAPattr, Kir=Kir)
 
         vmin, vmax = gl.clim_volt
+        plt.cla()
+        plt.clf()
+        plt.close("all")
 
-        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+        fig, axes = plt.subplots(1, 2, figsize=(9, 9), sharey=True)
 
-        im1 = axes[0].imshow(imarray_single, vmin=vmin, vmax=vmax, cmap="magma")
-        im2 = axes[1].imshow(imarray_multi, vmin=vmin, vmax=vmax, cmap="magma")
+        im1 = axes[0].imshow(
+            imarray_single,
+            vmin=vmin,
+            vmax=vmax,
+            cmap="magma",
+            origin="lower",
+            interpolation="nearest",
+        )
+        im2 = axes[1].imshow(
+            imarray_multi,
+            vmin=vmin,
+            vmax=vmax,
+            cmap="magma",
+            origin="lower",
+            interpolation="nearest",
+        )
 
-        fig.colorbar(im1, ax=axes.ravel().tolist(), shrink=0.6)
-        plt.savefig(f"combined_heatmap{PAPattr}{self.tag}.pdf")
+        res = results[0]
+
+        for ax in axes:
+            if self.GluT:
+                addChan = 1
+                chanStart = -1 * int(self.channelCompareMax / self.channelCompareStep)
+                skip = 2
+                xlabels = (
+                    np.arange(
+                        chanStart,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        skip,
+                    )
+                    * self.channelCompareStep
+                    * res[0].PAPGluTCount_std
+                    + res[0].PAPGluTCount
+                )
+                xlabels = [int(val) if val > 0 else 0 for val in xlabels]
+
+                ax.set_xticks(
+                    range(
+                        0,
+                        2 * int(self.channelCompareMax / self.channelCompareStep)
+                        + addChan,
+                        skip,
+                    ),
+                    xlabels,
+                    rotation=45,
+                    ha="right",
+                )
+            else:
+                chanStart = 0
+                addChan = 1
+
+            if not self.GluT:
+                ax.set_xticks(
+                    range(
+                        0,
+                        int(self.channelCompareMax / self.channelCompareStep) + addChan,
+                    ),
+                    np.arange(
+                        chanStart,
+                        int(self.channelCompareMax / self.channelCompareStep) + 1,
+                        1,
+                    )
+                    * self.channelCompareStep,
+                    rotation=45,
+                    ha="right",
+                )
+        if self.NMDAR:
+            xlabel = gl.chan_num("NMDAR")
+        elif self.GluT:
+            xlabel = gl.chan_num("GLT-1")
+        elif self.GABAR and Kir:
+            xlabel = gl.chan_num("GABA$_A$R")
+        elif self.GAP:
+            xlabel = gl.chan_num("Cx43")
+        else:
+            xlabel = None
+        if Kir:
+            ytick_labels = (
+                np.arange(
+                    -1 * int(self.KirMax / self.KirStep),
+                    int(self.KirMax / self.KirStep) + 1,
+                    1,
+                )
+                * self.KirStep
+                * res[0].PAPKirCount_std
+                + res[0].PAPKirCount
+            )
+            ytick_labels /= res[0].PAPCount
+            ytick_labels[ytick_labels < 0] = 0
+            ytick_labels = ytick_labels.astype(int)
+
+            axes[0].set_yticks(
+                range(2 * int(self.KirMax / self.KirStep) + 1),
+                ytick_labels,
+            )
+            axes[0].set_ylabel(gl.chan_num("Kir"))
+        elif self.GABAR:
+            axes[0].set_yticks(
+                range(
+                    0,
+                    int(self.channelCompareMax / self.channelCompareStep) + addChan,
+                ),
+                np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    1,
+                )
+                * self.channelCompareStep,
+            )
+            axes[0].set_ylabel(gl.chan_num("GABA") + f" /{gl.unit_micron_raw}$^2$")
+        else:
+            axes[0].set_yticks(
+                range(0, 5),
+                [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
+            )
+            ax[0].set_ylabel(gl.pap_affect)
+        _, cbarMax = gl.clim_volt
+        fig.colorbar(
+            im1,
+            label=gl.vm,
+            ticks=np.arange(0, cbarMax, 2),
+            extend="max",
+            ax=axes.ravel().tolist(),
+            shrink=0.8 if not self.GluT else 0.5,
+        )
+        left = axes[0].get_position().x0
+        right = axes[1].get_position().x1
+        bottom = axes[0].get_position().y0
+        top = axes[0].get_position().y1
+        fig.text(
+            (left + right) / 2,
+            bottom - 0.08,
+            xlabel,
+            fontsize=plt.rcParams["axes.labelsize"],
+            ha="center",
+            va="top",
+        )
+        fig.text(
+            axes[0].get_position().x0,
+            top + 0.01,
+            "single stim.",
+            fontsize=plt.rcParams["axes.labelsize"],
+            ha="left",
+            va="bottom",
+        )
+        fig.text(
+            axes[1].get_position().x0,
+            top + 0.01,
+            "10 stim.",
+            ha="left",
+            va="bottom",
+            fontsize=plt.rcParams["axes.labelsize"],
+        )
+
+        plt.savefig(
+            os.path.join(
+                "../results/paperRes", f"combined_heatmap{PAPattr}{self.tag}.pdf"
+            )
+        )
 
     def createIMArray(self, results, PAPattr, Kir=True):
         if Kir:
@@ -1036,7 +1201,6 @@ class plotFigures:
             results,
             setKoylim=True,
             setekylim=True,
-            setyLim=[-15, 1],
         )
 
         res = results[0]
@@ -1046,7 +1210,7 @@ class plotFigures:
             cmap = "magma"
             plt.cla()
             plt.clf()
-            plt.figure(figsize=(6, 7))
+            plt.figure(figsize=(7.7, 9))
             imArray /= divedend
             plt.imshow(
                 imArray,
@@ -1148,9 +1312,11 @@ class plotFigures:
                 plt.xlabel(gl.chan_num("GLT-1"))
             elif self.GABAR and Kir:
                 # plt.xlabel("# of GABAR channels / um2")
-                plt.xlabel(gl.chan_num("GABAR"))
+                plt.xlabel(gl.chan_num("GABA$_A$R"))
             elif self.GAP:
                 plt.xlabel(gl.chan_num("Cx43"))
+            elif self.NKA:
+                plt.xlabel(gl.chan_num("NKA"))
             _, cbarMax = gl.clim_volt
             plt.colorbar(label=gl.vm, ticks=np.arange(0, cbarMax, 2), extend="max")
             plt.clim((0, cbarMax))
@@ -1176,37 +1342,169 @@ class plotFigures:
     def plot_physiological(self, AllCells, stim, papcounts, models):
         if rank != 0:
             return
-        plt.cla()
-        plt.clf()
+            # for cell in AllCells:
+            #    print(
+            #        cell.PAPCount,
+            #        "theta" if not hasattr(cell, "SpikeFreq") else cell.SpikeFreq,
+            #    )
         for k, location in enumerate(["vPAP", "vSoma"]):
             index = 0
-            for i, s in enumerate(stim):
-                for j, p in enumerate(papcounts):
-                    plt.figure(
-                        i + j * len(stim) + k * len(stim) * len(papcounts),
-                        figsize=(9, 5),
-                    )
+            for i, p in enumerate(papcounts):
+                plt.cla()
+                plt.clf()
+                plt.close("all")
+                fig = plt.figure(figsize= (9,5))
+                gs = fig.add_gridspec(nrows=6,ncols=2)
+                ax = []
+                ax_r = []
+                inset = (375,385) 
+                inset_y =(-86,-83)
+                ax.append(fig.add_subplot(gs[0:2,0]))
+                ax.append(fig.add_subplot(gs[2:4,0],sharex=ax[0]))
+                ax.append(fig.add_subplot(gs[4:6,0],sharex=ax[0]))
+                ax_r.append(fig.add_subplot(gs[4,1]))
+                ax_r.append(fig.add_subplot(gs[5,1],sharex=ax_r[0]))
+                for j, s in enumerate(stim):
+                    if j != len(stim):
+                        ax[j].tick_params(labelbottom=False)
                     for m in models:
                         # flattened
-                        cell = AllCells[index]
+                        # Forced may be buggy
+                        #
+                        cell = AllCells[index + j * len(models)]
+
                         initStep = self.get_initStep(cell)
-                        plt.plot(
+                        ax[j].plot(
                             list(cell.time)[initStep:],
                             list(getattr(cell, location))[initStep:],
                             label=m,
+                            color=self.returnColor(m),
                         )
                         index += 1
-                    plt.legend()
-                    plt.ylim(gl.lim_Vmemb)
-                    plt.ylabel(gl.volt)
-                    plt.xlabel(gl.ms)
-                    plt.title(f"stim:{s} PAP counts = {p}")
-                    plt.savefig(
-                        os.path.join(
-                            "../results/paperRes",
-                            f"stim{s}{'Hz' if s == 50 else ''}_pap={p}_{location}{self.tag}.pdf",
-                        )
+                        if s == 'theta':
+                            if "K$^+$" in m:
+                                ax_r[0].plot(
+                                    list(cell.time)[initStep:],
+                                    list(getattr(cell, location))[initStep:],
+                                    label=m,
+                                    color=self.returnColor(m),
+                                )
+                                ax_r[0].set_xlim(*inset)
+                                ax_r[0].set_ylim(*inset_y)
+                                ax_r[0].tick_params(labelbottom=False)
+                            elif "GluT" in m:
+                                ax_r[1].plot(
+                                    list(cell.time)[initStep:],
+                                    list(getattr(cell, location))[initStep:],
+                                    label=m,
+                                    color=self.returnColor(m),
+                                )
+                                ax_r[1].set_xlim(*inset)
+                                ax_r[1].set_ylim(*inset_y)
+                                ax_r[1].set_xlabel(gl.ms)
+
+                    if location == "vPAP":
+                        ax[j].set_ylim(gl.lim_Vmemb)
+                    else:
+                        ax[j].set_ylim(gl.lim_VmembSoma)
+                    ax[j].set_xlim(right=500)
+                index -= len(models) * (len(stim) - 1)
+                handle, label = ax[-1].get_legend_handles_labels()
+                leg = fig.legend(
+                    handle,
+                    label,
+                    loc="center left",
+                    bbox_to_anchor=(0.6, 0.7),
+                    fancybox=True,
+                    shadow=True,
+                    ncol=1,
+                )
+                ax[-1].set_xlabel(gl.ms)
+                # plt.title(f"stim:{s} PAP counts = {p}")
+                bottom = ax[-1].get_position().y0
+                top = ax[0].get_position().y1
+
+                left = ax[0].get_position().x0
+                fig.text(
+                    left - 0.07,
+                    (bottom + top) / 2,
+                    gl.volt,
+                    ha="center",
+                    va="center",
+                    rotation=90,
+                    fontsize=plt.rcParams["axes.labelsize"],
+                )
+
+                fig.text(
+                    left + 0.01,
+                    ax[0].get_position().y1 - 0.02,
+                    "50 Hz",
+                    fontsize=plt.rcParams["axes.labelsize"],
+                    ha="left",
+                    va="top",
+                )
+                fig.text(
+                    left + 0.01,
+                    ax[1].get_position().y1 - 0.02,
+                    "100 Hz",
+                    ha="left",
+                    va="top",
+                    fontsize=plt.rcParams["axes.labelsize"],
+                )
+                fig.text(
+                    left + 0.01,
+                    ax[2].get_position().y1 - 0.02,
+                    "Theta",
+                    ha="left",
+                    va="top",
+                    fontsize=plt.rcParams["axes.labelsize"],
+                )
+                x0,x1 = inset
+                y0,y1 = inset_y
+                grey = "0.5"
+                rect = Rectangle(
+                    (x0, y0),
+                    x1 - x0,
+                    y1 - y0,
+                    fill=False,
+                    linewidth=1.5,
+                    edgecolor=grey,
+                    zorder=2,
+                )
+                ax[-1].add_patch(rect)
+
+
+                con1 = ConnectionPatch(
+                    xyA=(x1, y0),
+                    coordsA=ax[-1].transData,
+                    xyB=(x0-1.5, y0),
+                    coordsB=ax_r[1].transData,
+                    color=grey,
+                    linewidth=1,
+                    zorder=3,
+                    linestyle="--",
+                )
+                con2 = ConnectionPatch(
+                    xyA=(x1, y1),
+                    coordsA=ax[-1].transData,
+                    xyB=(x0-1, y1),
+                    coordsB=ax_r[0].transData,
+                    color=grey,
+                    linewidth=1,
+                    zorder=3,
+                    linestyle="--",
+                )
+
+                fig.add_artist(con1)
+                fig.add_artist(con2)
+
+
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f"combined_pap={p}_{location}{self.tag}.pdf",
                     )
+                )
         plt.close("all")
 
 
@@ -1703,7 +2001,7 @@ class procedure(plotFigures):
 
         self.free_figure(results)
         if rank == 0:
-            fig = plt.figure(figsize=(8, 5))
+            fig = plt.figure(figsize=(9, 5.6))
             gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
             ax1 = fig.add_axes([0.1, 0.75, 0.85, 0.2])
             for v in vClampList:
@@ -1811,7 +2109,8 @@ class procedure(plotFigures):
             "Soma",
             color="white",
             ha="left",
-            va="center",
+            va="bottom",
+            fontsize=plt.rcParams["axes.labelsize"],
         )
         plt.text(
             9.5,
@@ -1819,7 +2118,8 @@ class procedure(plotFigures):
             "PAP",
             color="white",
             ha="right",
-            va="center",
+            va="bottom",
+            fontsize=plt.rcParams["axes.labelsize"],
         )
 
         max_time = len(list(cells.branchAtten[-1])[initStep:]) * cells.dt
@@ -1906,12 +2206,20 @@ class procedure(plotFigures):
             )
 
     def plot_phase_panel(
-        self, id, data, label, figObj=None, finalize=None, final_label=None, **plt_args
+        self,
+        id,
+        data,
+        label,
+        figObj=None,
+        finalize=None,
+        legend_label=None,
+        final_label=None,
+        **plt_args,
     ):
         # get data
 
         if not figObj:
-            fig, axs = plt.subplots(2, 2, figsize=(8, 6), sharex=True, sharey=True)
+            fig, axs = plt.subplots(2, 2, figsize=(9, 7.7), sharex=True, sharey=True)
         else:
             fig, axs = figObj
 
@@ -1920,7 +2228,7 @@ class procedure(plotFigures):
 
         if finalize and final_label:
             plt.tight_layout(rect=[0.18, 0.12, 0.95, 0.90])
-            plt.subplots_adjust(left=0.2, right=0.7, wspace=0.1)
+            plt.subplots_adjust(left=0.2, right=0.8, wspace=0.2)
             left = axs[0, 0].get_position().x0
             right = axs[0, 1].get_position().x1
             bottom = axs[1, 0].get_position().y0
@@ -1938,33 +2246,57 @@ class procedure(plotFigures):
                 reverse=True,
             )
             sorted_label, sorted_handle = zip(*sortedpair)
-            fig.legend(
+            if legend_label is None:
+                legend_label = gl.delta_ion_o("K", short=True)
+
+            leg = fig.legend(
                 sorted_handle,
                 sorted_label,
+                title=legend_label,
                 loc="center left",
-                bbox_to_anchor=(0.75, 0.5),
+                bbox_to_anchor=(0.81, 0.5),
                 fancybox=True,
                 shadow=True,
                 ncol=1,
             )
+            leg._legend_box.align = "left"
 
-            fig.text((left + right) / 2, bottom - 0.07, x_label, ha="center", va="top")
             fig.text(
-                left - 0.10,
+                (left + right) / 2,
+                bottom - 0.07,
+                x_label,
+                ha="center",
+                va="top",
+                fontsize=plt.rcParams["axes.labelsize"],
+            )
+
+            fig.text(
+                left - 0.09,
                 (bottom + top) / 2,
                 y_label,
                 ha="center",
                 va="center",
                 rotation=90,
+                fontsize=plt.rcParams["axes.labelsize"],
             )
 
             col1, col2, row1, row2 = finalize
 
             fig.text(
-                axs[0, 0].get_position().x0, top + 0.03, col1, ha="left", va="bottom"
+                axs[0, 0].get_position().x0,
+                top + 0.03,
+                col1,
+                ha="left",
+                va="bottom",
+                fontsize=plt.rcParams["axes.labelsize"],
             )
             fig.text(
-                axs[0, 1].get_position().x0, top + 0.03, col2, ha="left", va="bottom"
+                axs[0, 1].get_position().x0,
+                top + 0.03,
+                col2,
+                ha="left",
+                va="bottom",
+                fontsize=plt.rcParams["axes.labelsize"],
             )
 
             fig.text(
@@ -1974,6 +2306,7 @@ class procedure(plotFigures):
                 ha="left",
                 va="center",
                 rotation=90,
+                fontsize=plt.rcParams["axes.labelsize"],
             )
             fig.text(
                 left - 0.16,
@@ -1982,6 +2315,7 @@ class procedure(plotFigures):
                 ha="left",
                 va="center",
                 rotation=90,
+                fontsize=plt.rcParams["axes.labelsize"],
             )
 
         return fig, axs
@@ -1996,7 +2330,7 @@ class procedure(plotFigures):
         self.addChannelTag()
 
         AllCells = []
-        KoSteps = np.arange(2, 19, 2)
+        KoSteps = np.arange(2, gl.max_ko + 1, 2)
         KoSteps = np.concatenate(([0.5], KoSteps))
         if not self.free_read_data():
             for kircount in [self.KirMax, self.optKir]:
@@ -2123,7 +2457,7 @@ class procedure(plotFigures):
                     figobj = self.plot_phase_panel(
                         (0 if id < 2 else 1, id % 2),
                         (list(cell.KoPAP)[initStep:], list(cell.vPAP)[initStep:]),
-                        f"{gl.ion_o('K',short=True)}: {cell.KoSize}",
+                        f"{cell.KoSize:.1f}",
                         figObj=None if id == 0 and j == 0 else figobj,
                         color=color,
                         zorder=z,
@@ -2148,7 +2482,6 @@ class procedure(plotFigures):
             for ax in axs.flat:
                 ax.set_xlim(gl.lim_ko)
                 ax.set_ylim(gl.lim_ek)
-
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -2234,11 +2567,11 @@ class procedure(plotFigures):
                     if funcArgs[-1]["GABACount"] > 0:
                         funcArgs[-1]["GABA"] = True
 
+                    KoSteps = np.arange(2, gl.max_ko + 1, 2)
+                    KoSteps = np.concatenate(([0.5], KoSteps))
+
                     iterations = comm.bcast(
-                        [
-                            (kircount, conc)
-                            for conc in np.array([0, 0.5, 1.0, 5.0, 10.0, 16.0])
-                        ],
+                        [(kircount, conc) for conc in KoSteps],
                         root=0,
                     )
                     ccList = comm.bcast(["kir2", "KoSize"], root=0)
@@ -2288,6 +2621,18 @@ class procedure(plotFigures):
                         and hasattr(cell, "GABACount")
                         and cell.GABACount == self.optGABAR
                     ):
+                        id += 1
+                    elif (
+                        cell.multiple == 0
+                        and "GluTrans" in cell.GENEDict.keys()
+                        and cell.GENEDict["GluTrans"] is not None
+                        and cell.GENEDict["GluTrans"] > 0
+                    ):
+                        NTChannelComp = (
+                            np.array(NTChannelComp) * cell.PAPGluTCount_std
+                            + cell.PAPGluTCount
+                        )
+                        NTChannelComp = NTChannelComp.astype(int)
                         id += 1
                     elif cell.multiple != self.optNMDAR and not hasattr(
                         cell, "GABACount"
@@ -2643,7 +2988,7 @@ class procedure(plotFigures):
                     self.tag += "_KOComp"
                     if cell.PAPLen > 0.3:
                         self.tag += f"spillover"
-                    self.plotIKSeries([[cell]], setyLim=[-10, 10])
+                    self.plotIKSeries([[cell]])
                     resMat[k][cell.seed] = max(cell.vPAP) - cell.RMP
 
             title = "One-way ANOVA "
@@ -2834,7 +3179,7 @@ class procedure(plotFigures):
             flux = np.array(list(cells.flux)[initStep:])
             kbath = np.array(list(cells.kbath)[initStep:]) * -1
             kbath[kbath == 0] = np.nan
-            _, ax = plt.subplots(figsize=(11, 6))
+            _, ax = plt.subplots(figsize=(9, 5))
             ax.plot(list(cells.time)[initStep:], np.divide(flux, kbath))
             ax.set_xlabel(gl.ms)
             ax.set_ylabel(gl.free("Ratio of\ninflux / diffusion\nfor potassium"))
@@ -2942,9 +3287,7 @@ class procedure(plotFigures):
             #     setKoylim = True
             # else:
             #     setKoylim = False
-            self.plotIKSeries(
-                AllCells, setKoylim=setKoylim, setekylim=not nearSoma, setyLim=[-5, 5]
-            )
+            self.plotIKSeries(AllCells, setKoylim=setKoylim, setekylim=not nearSoma)
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
@@ -3136,7 +3479,6 @@ class procedure(plotFigures):
             AllCells,
             setKoylim=setKoylim,
             setekylim=True,
-            setyLim=[-20, 10],
             define_initStep=50,
             bath=True,
         )
@@ -3195,9 +3537,7 @@ class procedure(plotFigures):
         #     setKoylim = True
         # else:
         #     setKoylim = False
-        self.plotIKSeries(
-            AllCells, setKoylim=setKoylim, setekylim=True, setyLim=[-20, 10], bath=True
-        )
+        self.plotIKSeries(AllCells, setKoylim=setKoylim, setekylim=True, bath=True)
         # results = AllCells[0][0]
         # print(max(list(results.vPAP)))
 
@@ -3374,6 +3714,11 @@ class procedure(plotFigures):
                 ccList.append("gapCount")
                 funcArgs[-1]["GABA"] = False
                 funcArgs[-1]["Glu"] = False
+            elif self.NKA:
+                ccList.append("nakpump")
+                funcArgs[-1]["GABA"] = False
+                funcArgs[-1]["Glu"] = False
+
             else:
                 iterations = [
                     i
@@ -3463,7 +3808,7 @@ class procedure(plotFigures):
             cmap = "magma"
             plt.cla()
             plt.clf()
-            plt.figure(figsize=(4, 7))
+            plt.figure(figsize=(5.1, 9))
             plt.imshow(
                 imArray,
                 cmap=cmap,
@@ -3735,10 +4080,14 @@ class procedure(plotFigures):
             for cell in cellList:
                 self.tag = self.tag.split("_PAPLen")[0]
                 self.tag += f"_PAPLen{cell[0][0].PAPLen}"
-                self.plotIKSeries(cell, setekylim=True, setKoylim=True, setyLim=[-6, 2])
+                self.plotIKSeries(
+                    cell,
+                    setekylim=True,
+                    setKoylim=True,
+                )
 
     def potassiumComparison(self):
-        self.KoCompMax = 18
+        self.KoCompMax = gl.max_ko
         self.KoCompStep = 2
         for comparison in ["seed", "PAPLen", "KoSize", "durStim"]:
             if comparison == "KoSize":
@@ -4222,7 +4571,7 @@ class procedure(plotFigures):
                         plt.savefig("dual_patch.pdf")
             plt.cla()
             plt.clf()
-            fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(figsize=(9, 4.5))
             ax.plot(test_conductance, sensitivity)
             ax.set_xlabel(gl.free("1/Rm ($\Omega^{-1}$ cm$^{-2}$)"))
             ax.set_ylabel(gl.free("Projected $\lambda$"))
@@ -4240,16 +4589,13 @@ class procedure(plotFigures):
             plt.tight_layout()
             plt.savefig("dual_patch_sensitivity.pdf")
 
-    def optDepolarizationSearch(self, x, optmV=4.0):
-        # 28.812 mV for block
-        # 10.0 for OE
+    def optDepolarizationSearch(self, x, optmV=20.0):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
         # single run
         funcArgs = []
-        gluCount, stimAmp, papLen = x
         funcArgs.append(
             {
                 "mode": 0,
@@ -4262,17 +4608,14 @@ class procedure(plotFigures):
                 "dt": self.dt,
                 "seed": self.seed,
                 "multiple": None,
-                "GluTrans": int(gluCount),
-                "PAPLen": papLen,
             }
         )
-        if funcArgs[-1]["kir2"] > 5:
-            funcArgs[-1]["dt"] *= 0.1
+        print(x)
         cells = PAPModel(**funcArgs[-1])
         cells.initialize()
-        cells.multiSpike(number=10, freq=100, KoSize=0.5, amp=stimAmp)
+        cells.setTstop(tstop=151)
+        cells.multiSpike(number=1, freq=100, KoSize=x[0])
         cells.run()
-        print(x)
         print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
@@ -4298,7 +4641,7 @@ class procedure(plotFigures):
         AllCells = []
         funcArgs = []
         models = ["K$^+$ Model", "GluT Model", "GABA$_A$R Model", "NMDAR Model"]
-        stim = [50, "theta"]
+        stim = [50, 100, "theta"]
         papcounts = [1, 10]
         for s in stim:
             for p in papcounts:
@@ -4349,7 +4692,7 @@ class procedure(plotFigures):
 
         if not self.free_read_data():
             for index in range(minimum, maximum):
-                print(f"started sim {funcArgs[index]}")
+                # print(f"started sim {funcArgs[index]}")
                 stype = funcArgs[index].pop("stimtype")
                 cells = PAPModel(**funcArgs[index])
                 cells.setTstop(500)
@@ -4359,7 +4702,7 @@ class procedure(plotFigures):
                     cells.TBS()
                 else:
                     cells.initialize()
-                    cells.multiSpike(number=int(cells.tstop / 20), freq=50)
+                    cells.multiSpike(number=int(3 * stype / 10), freq=stype)
                     cells.run()
                 AllCells.append(cells.copyAttr())
             print(f"ran_sim {rank}")
@@ -4839,7 +5182,6 @@ class procedure(plotFigures):
                         [AllCells],
                         setKoylim=True,
                         setekylim=True,
-                        setyLim=[-15, 1],
                         tagReset=True,
                     )
 
@@ -5009,19 +5351,17 @@ class procedure(plotFigures):
         if rank != 0:
             return
         curr_tag = self.tag
-        curr_tag = self.split_and_remove("_Glu", curr_tag)
-        curr_tag = self.split_and_remove("_NoGlu", curr_tag)
-        curr_tag = self.split_and_remove("_GABA", curr_tag)
-        curr_tag = self.split_and_remove("_GABAR", curr_tag)
-        curr_tag = self.split_and_remove("_NMDAR", curr_tag)
+        # split tag with longer string first
+        for splitter in ["_NoGlu", "_Glu", "_GABAR", "_GABA", "_NMDAR"]:
+            curr_tag = self.split_and_remove(splitter, curr_tag)
 
         found_files = 0
         for chan in ["_GABAR_NoGlu_GABA", "_Glu", "_NMDAR"]:
             tmp_tag = ["distance_analysis"] + curr_tag[:-1] + [chan, curr_tag[-1]]
             tmp_tag = "".join(tmp_tag)
             path = os.path.join("intermediaryData", f"{tmp_tag}.pickle")
-            print(f"loading {path}")
             if os.path.isfile(path):
+                print("loading", path)
                 with open(path, "rb") as handle:
                     AllCells = pickle.load(handle)
 
@@ -5029,7 +5369,7 @@ class procedure(plotFigures):
                     plt.cla()
                     plt.clf()
                     ax2 = None
-                    ax = plt.figure(figsize=(8, 4)).gca()
+                    ax = plt.figure(figsize=(9, 4.5)).gca()
                 ax, ax2 = self.plot_shell(AllCells, ax, ax2=ax2)
                 for ax_obj in [ax, ax2]:
                     lines = ax_obj.get_lines()
@@ -5041,13 +5381,21 @@ class procedure(plotFigures):
         plt.legend(
             loc="center left",
             bbox_to_anchor=(1.01, 0.5),
-            labels=["GABAR", "GLT-1", "NMDAR"],
+            labels=["GABA$_A$R", "GLT-1", "NMDAR"],
         )
         plt.tight_layout()
 
-        plt.savefig(
-            os.path.join("../results/paperRes", "combined_minAmplitude_shellcomp.pdf")
-        )
+        if found_files == 3:
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    f"combined_minAmplitude_{tmp_tag}shellcomp.pdf",
+                )
+            )
+        else:
+            plt.cla()
+            plt.clf()
+            plt.close("all")
 
     def plot_shell(self, results, ax, ax2=None):
         resList = []
@@ -5158,7 +5506,7 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
-            ax = plt.figure(figsize=(8, 5)).gca()
+            ax = plt.figure(figsize=(9, 5.625)).gca()
             self.plot_shell(results, ax)
             plt.savefig(
                 os.path.join(
@@ -5452,24 +5800,24 @@ if __name__ == "__main__":
                     initParms = (
                         exp.optGluT,
                         exp.optKir,
-                        2.95467474,
-                        4.98841321e1,
+                        1.93825396e00,
+                        4.56907947e01,
                     )
                     bounds = [(0, 1e5), (0, 1e5), (0.3, 50), (0.5, 50)]
 
                     if forcedAccum and use_tau:
                         initParms += (
-                            7.39739135e2,
-                            9.89730213e3,
+                            6.79258427e02,
+                            9.98155414e03,
                         )
                         initParms = list(initParms)
                         initParms = [
                             5.38257517e-04,
                             9.78283818e-04,
-                            1.93825396e+00,
-                            4.56907947e+01,
-                            6.79258427e+02, 
-                            9.98155414e+03
+                            1.93825396e00,
+                            4.56907947e01,
+                            6.79258427e02,
+                            9.98155414e03,
                         ]
                         # initParms[0] = 0
                         # initParms[1] = 1
@@ -5509,12 +5857,11 @@ if __name__ == "__main__":
                     )
                     mprint(res.x)
                     if res.success:
-                        kwargs['showFig'] = True
-                        kwargs['skipsave'] = False
+                        kwargs["showFig"] = True
+                        kwargs["skipsave"] = False
                         exp.fitExpDepolarization(res.x, **kwargs)
                 exp.foundfitExperiment = False
-                if not PAP:
-                    break
+
     elif size == 5 or size == 2 or size == 4:
         mprint("running bathExp")
         exp = procedure(4, 0)

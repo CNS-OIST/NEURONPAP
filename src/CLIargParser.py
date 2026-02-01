@@ -304,6 +304,13 @@ def argParser(rangeInt=100):
         default=0,
         help="Used to set GAP; 1 True; 0 False",
     )
+    parser.add_argument(
+        "--NKA",
+        type=int,
+        dest="nka",
+        default=0,
+        help="Used to set NKA; 1 True; 0 False",
+    )
 
     parser.add_argument(
         "--OE",

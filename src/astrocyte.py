@@ -76,6 +76,7 @@ class PAPModel(ResultsPAPModel):
         g_pas=0.69,
         shell=0,
         shift_PAP=0.7,
+        getPeriphery=True,
         **kwargs,
     ):
         # Load NEURON GUI and parameters
@@ -121,7 +122,7 @@ class PAPModel(ResultsPAPModel):
         self.ComplexMorph = ComplexMorph
         self.PAPLen = PAPLen
         self.RiSec = str(RiSec)
-        self.getPeriphery = True
+        self.getPeriphery = getPeriphery
 
         # only used for dual patch protocol
         self.g_pas = g_pas

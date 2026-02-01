@@ -25,12 +25,14 @@ class gl:
     fluor = "$\Delta F/F_0$ (%)"
     volt_atten = f"{vm}/V$_0$"
     abs_distance = f"Distance {unit_micron}"
+    max_ko = 22
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
+    lim_VmembSoma = (-86, -84)
     lim_d_volt = (0, 70)
     lim_ko = (0, 30)
     lim_ek = (-100, 20)
-    lim_curr = (-500, 500)
+    lim_curr = (-5000, 5000)
     lim_min_amp = (-1000, 100)
 
     @staticmethod
@@ -48,13 +50,13 @@ class gl:
     @staticmethod
     def ion_o(ion, short=False):
         if short:
-            return f"{ion}" + "$_\mathrm{o}$ "
+            return f"{ion}" + "$_\mathrm{o}$"
         else:
             return f"Extracellular [{ion}] " + gl.unit_mM
 
     @staticmethod
-    def delta_ion_o(ion):
-        return "$\Delta$" + gl.ion_o(ion)
+    def delta_ion_o(ion, short=False):
+        return "$\Delta$" + gl.ion_o(ion, short=short)
 
     @staticmethod
     def chan_num(chan):
