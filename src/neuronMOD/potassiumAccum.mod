@@ -69,7 +69,6 @@ INITIAL {
 
 BREAKPOINT {
         kbathRate()
-        det_flag()
         SOLVE state METHOD derivimplicit
         if (ko <= 0){
             ko = 0
@@ -97,6 +96,9 @@ PROCEDURE kbathRate(){
         tauk = slowing * tauk_0: slowing 
         kbath =  1
         :printf("%g, ",kbath)
+        if (tauk < 0.01) {
+            flag = 2
+          }
     }
     
     if (flag == 1) {
@@ -105,7 +107,7 @@ PROCEDURE kbathRate(){
     }
 }
 PROCEDURE det_flag() {
-    if (tauk < 0.01) {
+    if (tauk_0 < 0.01) {
       : dont simulate very fast dissipation
       flag = 2
       }else{
