@@ -61,15 +61,9 @@ INITIAL {
     :perm = (10) * partition*Dk/memL
     :perm_outside =0.5 * diam/6.5 : lineraly scale permeability
     tauk_0 = 1/(d_eff * 2*openMem/log(2*(fhspace*(1e-4)+diam/2)/diam)/(fhspace*fhspace*(1e-8)+diam*fhspace*(1e-4)))
-    if (tauk_0 < 0.01) {
-      : dont simulate very fast dissipation
-      flag = 2
-      }else{
-        :printf("%g\n",tauk)
-        flag = 0
-        }
     tauk = tauk_0
     kbathRate()
+    det_flag()
         :printf("%g\n",tauk)
 }
 
@@ -102,6 +96,9 @@ PROCEDURE kbathRate(){
         tauk = slowing * tauk_0: slowing 
         kbath =  1
         :printf("%g, ",kbath)
+        if (tauk < 0.01) {
+            flag = 2
+          }
     }
     
     if (flag == 1) {
@@ -109,4 +106,14 @@ PROCEDURE kbathRate(){
         flag = 0   
     }
 }
+PROCEDURE det_flag() {
+    if (tauk_0 < 0.01) {
+      : dont simulate very fast dissipation
+      flag = 2
+      }else{
+        :printf("%g\n",tauk)
+        flag = 0
+        }
+  }
+
     

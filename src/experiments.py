@@ -4522,7 +4522,6 @@ class procedure(plotFigures):
                 if PAP:
                     cells.setNMDA_Mgblock(k, d, s)
                     cells.setNMDA_TC(tau1, tau2)
-                    # cells.setSlowing(slow)
                 else:
                     cells.setSlowing(slowing)
             cells.multiSpike(number=stim, freq=100)
@@ -5459,15 +5458,23 @@ if __name__ == "__main__":
                     bounds = [(0, 1e5), (0, 1e5), (0.3, 50), (0.5, 50)]
 
                     if forcedAccum and use_tau:
-                        initParms = list(initParms)
-                        # initParms[0] = 0
-                        # initParms[1] = 1
-                        initParms = tuple(initParms)
-
                         initParms += (
                             7.39739135e2,
                             9.89730213e3,
                         )
+                        initParms = list(initParms)
+                        initParms = [
+                            5.38257517e-04,
+                            9.78283818e-04,
+                            1.93825396e+00,
+                            4.56907947e+01,
+                            6.79258427e+02, 
+                            9.98155414e+03
+                        ]
+                        # initParms[0] = 0
+                        # initParms[1] = 1
+                        initParms = tuple(initParms)
+
                         bounds += [
                             (5.8, 10000),
                             (0, 10000),
@@ -5488,7 +5495,7 @@ if __name__ == "__main__":
                     initParms,
                     showFig=True,
                     PAP=PAP,
-                    skipsave=True,
+                    skipsave=False,
                     use_tau=use_tau,
                 )
                 if not exp.foundFitExperiment:
@@ -5502,7 +5509,9 @@ if __name__ == "__main__":
                     )
                     mprint(res.x)
                     if res.success:
-                        exp.fitExpDepolarization(res.x, showFig=True, PAP=PAP)
+                        kwargs['showFig'] = True
+                        kwargs['skipsave'] = False
+                        exp.fitExpDepolarization(res.x, **kwargs)
                 exp.foundfitExperiment = False
                 if not PAP:
                     break
