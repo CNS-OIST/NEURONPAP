@@ -6,6 +6,7 @@ from mpi4py import MPI
 import types
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.animation import FuncAnimation
 from global_labels import gl
 import os
@@ -70,7 +71,7 @@ def animate_morphology(
 ):
     if rank != 0:
         return
-    fig = plt.figure(figsize=(10, 8))
+    fig = plt.figure(figsize=(9, 8))
     ax = fig.add_subplot(111, projection="3d")
 
     h.tstop = tstop
@@ -130,6 +131,7 @@ def plot_3d_morphology(
     ax=None,
     add_colorbar=True,
     add_shell=None,
+    add_null=False,
     show=False,
     zoom=None,
     clim=None,
@@ -141,13 +143,16 @@ def plot_3d_morphology(
         return
 
     # Get colormap
-    cmap = plt.colormaps[colormap_name]
+    if type(colormap_name) is list:
+        cmap = mcolors.ListedColormap(colormap_name)
+    else:
+        cmap = plt.colormaps[colormap_name]
 
     # Prepare new fig/ax if none provided
     if fig is None or ax is None:
         plt.cla()
         plt.clf()
-        fig = plt.figure(figsize=(10, 8))
+        fig = plt.figure(figsize=(9, 8))
         ax = fig.add_subplot(111, projection="3d", computed_zorder=not add_shell)
 
     if add_shell:
@@ -173,7 +178,15 @@ def plot_3d_morphology(
         dlist.append(np.array(ds))
         varlist.append(rv)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap)
+    if type(colormap_name) is list:
+        if clim is None:
+            min_clim, max_clim = min(varlist), max(varlist)
+        else:
+            min_clim, max_clim = clim
+        norm = mcolors.Normalize(vmin=min_clim, vmax=max_clim)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    else:
+        sm = plt.cm.ScalarMappable(cmap=cmap)
 
     if clim:
         vmin, vmax = clim
@@ -225,6 +238,8 @@ def plot_3d_morphology(
     # Plot each section with diameter scaling and color mapping
     for xs, ys, zs, ds, rv in zip(xlist, ylist, zlist, dlist, varlist):
         color = sm.to_rgba(rv)
+        if add_null:
+            color = color[:-1] + (1,)
         ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2)
 
     # Integer ticks
@@ -266,7 +281,7 @@ def plot_combined(
         fName = f"combined_{rangevar}_{origin=}"
     plt.cla()
     plt.clf()
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(9, 5))
     xmin = np.inf
     xmax = -np.inf
     if not precomputed_toward and not precomputed_away:
@@ -311,7 +326,7 @@ def plot_combined(
 def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     plt.cla()
     plt.clf()
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(9, 5))
     if not precomputed:
         precomputed = []
         section_dict = convert_list_section_to_python(list_section)
@@ -322,7 +337,8 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     for dist, var in precomputed:
         plt.plot(dist, var, color="black")
 
-    plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
+    # plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
+    plt.axvline(x=3.6, ymin=0, ymax=1, color="deepskyblue", linestyle="--")
     if rangevar == "v":
         plt.axhline(
             y=1 / np.e, xmin=0, xmax=1, label="1/e", color="grey", linestyle="--"

@@ -55,14 +55,18 @@ UNITS {
 	(nA) = (nanoamp)
 	(mV) = (millivolt)
 	(uS) = (microsiemens)
+  (uM) = (micro/liter)
+  (mM) = (milli/liter)
         (pS) = (picosiemens)
 }
 
 PARAMETER {
+  hilln = 1.5  (1)
+  gabaEC = 7 (uM)  :Gnirich (1195) J Physiology
 	tau1=.1 (ms) <1e-9,1e9>
 	tau2 = 10 (ms) <1e-9,1e9>
 	e=-70	(mV)
-        g_max = 28 (pS)
+  g_max = 28 (pS)
 	vgat=0
 	sst=0
 	npy=0
@@ -92,8 +96,8 @@ STATE {
 
 INITIAL {
 	LOCAL tp
-	if (tau1/tau2 > .9999) {
-		tau1 = .9999*tau2
+	if (tau1/tau2 > .999) {
+		tau1 = .999*tau2
 	}
 	A = 0
 	B = 0
@@ -103,7 +107,7 @@ INITIAL {
     }
     
     BREAKPOINT {
-	SOLVE state METHOD cnexp
+	SOLVE state METHOD derivimplicit
 	g = g_max*rect(v)*(B - A)*isOn*multiple
         : printf("%g\n",ecl)
 	iGaba = (1e-06)*g*(v - ecl)
@@ -115,8 +119,8 @@ DERIVATIVE state {
 }
 
 NET_RECEIVE(weight) {
-	A = A + weight*factor
-	B = B + weight*factor
+	A = A + hillGaba(weight * 1 (mM))*factor
+	B = B + hillGaba(weight * 1 (mM))*factor
 }
 
 
@@ -124,3 +128,7 @@ FUNCTION rect (v(mV))( ){
 	rect= 1+(0.25-1)/ ( 1. + exp (( v - V50 )/slope_factor) ) 
     }
     
+FUNCTION hillGaba(gabaConc (mM)){
+
+    hillGaba = 1/(1 + pow((1e-3)*gabaEC/gabaConc,hilln))
+  }

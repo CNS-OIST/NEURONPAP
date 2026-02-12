@@ -336,13 +336,27 @@ proc setNMDAs(){local lenPAP
         //sNMDA = new Exp5NMDA(0.5)
         //NMDAs.append(sNMDA)
         //nc = new NetCon(stim,NMDAs.o(lenPAP))
-        sNMDA = new Exp5NMDA_N2C(0.5)
-        NMDAs.append(sNMDA)
-        nc = new NetCon(stim,NMDAs.o(lenPAP))
-        ncNMDAList.append(nc)
-        lenPAP = lenPAP + 1
+        segLen = L / nseg
+        if (segLen >= lenUnits){
+          for i = 0,nseg-1 {
+              pos = segLen * (i+0.5)
+              normPos = pos/L
+              sNMDA = new Exp5NMDA_N2C(normPos)
+              NMDAs.append(sNMDA)
+              nc = new NetCon(stim,NMDAs.o(lenPAP))
+              ncNMDAList.append(nc)
+              lenPAP = lenPAP + 1
+          }
+          } else {
+              sNMDA = new Exp5NMDA_N2C(0.5)
+              NMDAs.append(sNMDA)
+              nc = new NetCon(stim,NMDAs.o(lenPAP))
+              ncNMDAList.append(nc)
+              lenPAP = lenPAP + 1
+          }
+        }
     }
-}
+
 
 proc fINITNMDA(){
     for i = 0, ncNMDAList.count - 1 {
@@ -366,12 +380,25 @@ proc setGABAas(){local lenPAP
     lenPAP = 0
     // $o1.printnames()
     forsec $o1 {
+        segLen = L / nseg
+        if (segLen >= lenUnits){
+          for i = 0,nseg-1 {
+              pos = segLen * (i+0.5)
+              normPos = pos/L
+              sGABAa = new inhSyn(normPos)
+              GABAas.append(sGABAa)
+              nc = new NetCon(stim,GABAas.o(lenPAP))
+              ncGABAaList.append(nc)
+              lenPAP = lenPAP + 1
+          }
+      } else {
         sGABAa = new inhSyn(0.5)
         GABAas.append(sGABAa)
         nc = new NetCon(stim,GABAas.o(lenPAP))
         ncGABAaList.append(nc)
         lenPAP = lenPAP + 1
     }
+}
 }
 
 proc fINITGABAa(){
@@ -533,6 +560,13 @@ proc setSlowing(){
         slowing_k_acc = $2
     }
 }
+
+proc changeBaseline(){
+    forsec $o1 {
+        ko0_k_acc = $2
+    }
+}
+
 
 func getkin(){
     forsec "soma" {
@@ -861,7 +895,7 @@ forall {
 objref shell_compartments
 shell_compartments = new List()
 
-proc define_shell() {local max_p,tmp,j,maxDist,total_shells,shell_width,synapse localobj synapse_track,sl
+obfunc define_shell() {local max_p,tmp,j,maxDist,total_shells,shell_width,synapse localobj synapse_track,sl,removed
 total_shells = $1
 synapse = $2
 maxDist = get_max_dist()
@@ -879,7 +913,7 @@ if (max_p > 0) {
 
 synapse_track = new Vector(total_shells)
 for i=0,total_shells-1 {
-  synapse_track.x[i] = synapse
+  synapse_track.x[i] = 0
     shell_compartments.append(new SectionList())
   }
 
@@ -892,13 +926,29 @@ for i=0,total_shells-1 {
             tmp = tmp - shell_width
             j = j + 1
         }
-              shell_compartments.o(j).append()
-              synapse_track.x[j] = synapse_track.x[j] + 1
-  }
+        insert shell
+        num_shell = j
+        if (synapse_track.x[j] < synapse*lenUnits) {
+            shell_compartments.o(j).append()
+            if (L > lenUnits){
+                syn_add = int(L / lenUnits)
+                if (syn_add < L/lenUnits){
+                  syn_add = syn_add + 1
+                  }
+
+            } else {
+                syn_add = 1
+            }
+            synapse_track.x[j] = synapse_track.x[j] +syn_add 
+        }
+  }}
+  removed = new Vector()
   for i=0,total_shells-1 {
-    shell_compartments.o(i).unique()
+    removed.append(shell_compartments.o(i).unique())
   }
-}}
+  return removed
+
+}
 
 proc set_all_pp(){
       for i=0, ncNMDAList.count - 1{
@@ -914,8 +964,19 @@ proc set_all_pp(){
 
   }
 
-  proc select_shell() {
-    slPAP = shell_compartments.o($1-1)
+  proc select_shell() { localobj tmpsl
+  tmpsl = new SectionList()
+    if ($1 > shell_compartments.count){
+      print "adding all shells"
+      for i=0,shell_compartments.count-1 {
+      forsec shell_compartments.o(i) {
+        tmpsl.append()
+        }
+      }
+      } else {
+    tmpsl = shell_compartments.o($1-1)
+        }
+        slPAP = tmpsl
     }
 
 proc set_vgap(){

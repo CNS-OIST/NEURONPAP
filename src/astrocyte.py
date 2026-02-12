@@ -4,6 +4,7 @@ import sys, subprocess, os
 from classResults import ResultsPAPModel
 from utils import *
 from geneManip import GENExpression
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import json
 import pandas as pd
@@ -228,6 +229,8 @@ class PAPModel(ResultsPAPModel):
             elif self.gapcount is not None:
                 # 0 should be also included
                 self.comparecount = self.gapcount
+            elif "nakpump" in self.GENEDict.keys() and self.GENEDict["nakpump"] != None:
+                self.comparecount = self.GENEDict["nakpump"]
             else:
                 self.comparecount = self.multiple
 
@@ -397,7 +400,7 @@ class PAPModel(ResultsPAPModel):
             #
         if self.cvode:
             maxCVODEstep = h.cvode.maxstep()
-            h.cvode.maxstep(1)
+            h.cvode.maxstep(0.5)
 
         if amp is not None:
             for nc in self.NCs:
@@ -606,15 +609,17 @@ class PAPModel(ResultsPAPModel):
             for nc in list(h.ncGluList):
                 nc.active(False)
 
-        if hasattr(self, "shell_synapse"):
-            for nc in list(h.ncGluList):
-                nc.active(False)
+            # if hasattr(self, "shell_synapse"):
+            #    for nc in list(h.ncGluList):
+            #        nc.active(False)
 
-            import random
+            #    import random
 
-            random.seed(self.seed)
-            for nc in random.sample(list(h.ncGluList), k=self.shell_synapse):
-                nc.active(True)
+            #    self.shell_synapse_glut = []
+            #    random.seed(self.seed)
+            #    for nc in random.sample(list(h.ncGluList), k=self.shell_synapse):
+            #        nc.active(True)
+            #        self.shell_synapse_glut.append(nc)
 
     def setGLT_TC(self, *args):
         names = ["tau1", "tau2"]
@@ -742,7 +747,31 @@ class PAPModel(ResultsPAPModel):
         PAPGluT = [
             s.syn() for s in list(h.ncGluList) if s.postseg().sec in self.flattenPAP()
         ]
-        # print(PAPGluT)
+        if self.shell > 0:
+            PAPGluT = [s.syn() for s in list(h.ncGluList)]
+            for s in list(h.ncGluList):
+                # syn = s.syn()
+                # L = len(list(h.ncGluList))
+                # syn.multiple = (
+                #    syn.density * (1 - L) / L / syn.density_std + syn.multiple / L
+                # )
+                # to recalculate total GLTs to match initial set expected GLT count
+                s.weight[0] = self.shell_synapse / len(PAPGluT)
+                s.syn().density *= 10  # Radelescu PCB (2022)
+                if self.shell == 1:
+                    s.syn().density *= 1.4  # Radelescu PCB (2022)
+                if self.shell > 2:
+                    s.syn().density *= 2.3  # Radelescu PCB (2022)
+            for i, ncs in enumerate([h.ncNMDAList, h.ncGABAaList]):
+                for s in list(ncs):
+                    if i == 0:
+                        default = 1
+                    else:
+                        EI_balance = 2
+                        default = 1.5 * EI_balance
+                    self.synapse_factor = self.shell_synapse / len(list(ncs))
+                    s.weight[0] = self.synapse_factor * default
+
         recordDictArgs = {}
         if len(PAPGluT) > 0:
             recordDictArgs["sGluT"] = PAPGluT[-1]
@@ -821,8 +850,28 @@ class PAPModel(ResultsPAPModel):
         if self.shell > 0 and rank == 0 and hasattr(self, "total_shell"):
             plt.cla()
             plt.clf()
+            alpha = 0.05
+            colors = [
+                (
+                    255 * (1 - n / (self.total_shell - 1)),
+                    255 * (1 - n / (self.total_shell - 1)),
+                    255 * (1 - n / (self.total_shell - 1)),
+                    1,
+                )
+                for n in range(0, self.total_shell - 1)
+            ]
+            solid_colors = []
+            bkg = (255, 255, 255)
+            for r, g, b, a in colors:
+                rgb = np.array((r, g, b)) * a + (1 - a) * np.array(bkg)
+                rgb /= 255
+                solid_colors.append(mcolors.to_rgba(tuple(rgb) + (1,)))
+
             plot_3d_morphology(
-                rangevar="v", add_shell=self.total_shell, clim=gl.lim_Vmemb
+                rangevar="num_shell",
+                add_shell=self.total_shell,
+                colormap_name=solid_colors,
+                add_null=True,
             )
             plt.savefig(
                 os.path.join(
@@ -1275,9 +1324,11 @@ class PAPModel(ResultsPAPModel):
             currentSection = h.SectionRef(sec=currentSection.parent)
         return sl
 
-    def setSlowing(self, slow):
+    def setSlowing(self, slow, changeBaseline=None):
         if slow:
             h.setSlowing(self.flattenPAP(), slow)
+        if changeBaseline is not None:
+            h.changeBaseline(self.flattenPAP(), changeBaseline)
 
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
         if dur == 0 or KoSize == 0:
@@ -1308,6 +1359,7 @@ class PAPModel(ResultsPAPModel):
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
             if hasattr(h, "cvode"):
+                h.cvode.re_init()
                 h.cvode.active(True)
 
         self.KoSize = KoSize
@@ -1327,7 +1379,9 @@ class PAPModel(ResultsPAPModel):
     def define_shell(self, total_shell=5, synapse=10000):
         self.total_shell = total_shell
         self.shell_synapse = synapse
-        h.define_shell(total_shell, synapse)
+        removed = h.define_shell(total_shell, synapse)
+        self.removed = list(removed)
+
         # [print(len(list(i))) for i in h.shell_compartments]
         h.clampSwitch(1, -40)
 
@@ -1338,7 +1392,7 @@ class PAPModel(ResultsPAPModel):
         vc = h.electrodeList[-1]
         self.VClampI.record(vc._ref_i)
 
-    def select_shell(self):
+    def select_shell(self, scale=False):
         # clean up all previous synapses
         i = self.shell
         if i == 0:
@@ -1348,6 +1402,19 @@ class PAPModel(ResultsPAPModel):
             if hasattr(self, channel):
                 delattr(self, channel)
         h.select_shell(i)
+
+        if scale:
+            scale_multiple = 1 + self.removed[i] / len(list(h.slPAP))
+        else:
+            scale_multiple = 1
+
+        if self.multiple is None:
+            if self.GABA:
+                self.GABACount *= scale_multiple
+        else:
+            self.multiple *= scale_multiple
+        if "GluTrans" in self.GENEDict.keys() and self.GENEDict["GluTrans"] != None:
+            self.GENEDict["GluTrans"] *= scale_multiple
 
     def setKBath(
         self,

@@ -19,6 +19,7 @@ class ResultsPAPModel:
         "NCs",
         "GENEobj",
         "equiDistSec",
+        "shell_synapse_glut",
     ]
     memcurrents = [
         "iKPAP",

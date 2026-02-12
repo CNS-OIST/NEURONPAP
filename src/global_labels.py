@@ -5,7 +5,8 @@ class gl:
     unit_mV = "(mV)"
     unit_s = "(s)"
     unit_ms = "(ms)"
-    unit_mM = "(mM)"
+    mM_raw = "mM"
+    unit_mM = f"({mM_raw})"
     unit_pA = "(pA)"
     unit_micron_raw = "$\mu$m"
     unit_micron = f"({unit_micron_raw})"
@@ -18,6 +19,7 @@ class gl:
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
     vm = "V$_\mathrm{m}$"
+    d_volt_short = "$\Delta$" + vm
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
     seed_num = "Seed number"
@@ -33,7 +35,7 @@ class gl:
     lim_ko = (0, 30)
     lim_ek = (-100, 20)
     lim_curr = (-5000, 5000)
-    lim_min_amp = (-1000, 100)
+    lim_min_amp = (-5, 1)
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):

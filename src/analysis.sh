@@ -118,9 +118,9 @@ for i in $( # for ten random PAPs
     echo "seed $i-Ko$j" >>$output
     for k in 1 10; do # for stimCoutn
       if (($j == 0.5)); then
-        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 1 --Glu 0 --stimCount $k --stimGlu 1
-        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 0 --Glu 1 --stimCount $k --stimGlu 1
-        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 1 --NMDAR 0 --Glu 0 --stimCount $k --stimGaba 1
+        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 1 --Glu 0 --stimCount $k --stimGlu 1
+        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 0 --Glu 1 --stimCount $k --stimGlu 1
+        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 1 --NMDAR 0 --Glu 0 --stimCount $k --stimGaba 1
       fi
 
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i                         # Fig 3A
@@ -130,24 +130,19 @@ for i in $( # for ten random PAPs
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --GluT 0 --NMDAR 0 --GABAR 0 --GAP 1 --stimCount $k --ko $j $i                 # Fig 5AC
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --PAPCount 10 --GluT 1 --NMDAR 1 --GABAR 0 --stimCount $k --ko $j $i # Fig 5AC
       if (($k == 10)); then
-        python NEURONPAP.py -s --NMDAR 0 --GABAR 0 --GluT 0 --stimCount $k --ko $j $seed
+        python NEURONPAP.py -s --NMDAR 0 --GABAR 0 --GluT 0 --stimCount $k --ko $j $i
         if (($video_bool == 1)); then
           python NEURONPAP.py -v --stimCount $k --ko $j $i            #
           python NEURONPAP.py -v --stimCount $k --stimGlu --ko $j $i  #
           python NEURONPAP.py -v --stimCount $k --stimGaba --ko $j $i # Fig 4A
         fi
-        python NEURONPAP.py -b --stimCount $k --ko $j $i                                                      #
-        python NEURONPAP.py -b --stimCount $k --stimGlu --ko $j $i                                            # Fig 5B
-        python NEURONPAP.py -b --stimCount $k --stimGaba --ko $j $i                                           # Fig 4B
-        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount $k --ko $j $i # Fig 5abcd
+        python NEURONPAP.py -b --stimCount $k --ko $j $i                                                                       #
+        python NEURONPAP.py -b --stimCount $k --stimGlu --ko $j $i                                                             # Fig 5B
+        python NEURONPAP.py -b --stimCount $k --stimGaba --ko $j $i                                                            # Fig 4B
+        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount $k --ko $j $i # Fig 6A
+        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount $k --ko $j $i                  # Fig 5abcd
       fi
     done
-    if (($i == 1)); then
-      echo "KO spillover Comparison"
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount 10 --ko $j $i # Fig 6A
-      echo "Glu spillover Comparison"
-      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount 10 --ko $j $i # Fig 4B
-    fi
   done
   echo "Running KO experiments" >>$output
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu --stimK $i

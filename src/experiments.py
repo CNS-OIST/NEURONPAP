@@ -75,11 +75,16 @@ class LegendTitle(object):
 class plotFigures:
     k_color = "orange"
     gaba_color = "purple"
+    nmda_color = "steelblue"
+    glt_color = "lightblue"
     colorDict = {
-        "NMDAR": "steelblue",
+        "NMDAR": nmda_color,
+        "NMDA": nmda_color,
+        "GABA": gaba_color,
         "GABAR": gaba_color,
         "GABA$_A$R": gaba_color,
-        "GluT": "lightblue",
+        "GluT": glt_color,
+        "GLT-1": glt_color,
         "iK": k_color,
         "K$^+$": k_color,
         "Soma": "deepskyblue",
@@ -266,7 +271,7 @@ class plotFigures:
         define_initStep=None,
         bath=False,
         tagReset=False,
-        panelF=True,
+        panelF=False,
     ):
         for cells in AllCells:
             for cell in cells:
@@ -614,7 +619,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGABA)[initStep:],
-                        label=gl.current_ion("GABA$_A$R"),
+                        label=gl.current_ion("GABAR"),
                         color=self.returnColor("GABAR"),
                     )
                 if hasattr(cell, "iGluT") and self.GluT:
@@ -822,6 +827,21 @@ class plotFigures:
 
                     for lbl in ax_inset.get_xticklabels() + ax_inset.get_yticklabels():
                         lbl.set_zorder(5)
+                    left = ax.get_position().x0
+                    top = ax.get_position().y1
+
+                    if int(cell.KoSize) > 0:
+                        format_ko = int(cell.KoSize)
+                    else:
+                        format_ko = f"{cell.KoSize:.1f}"
+                    fig.text(
+                        left + 0.01,
+                        top + 0.01,
+                        f'{format_ko}{gl.mM_raw} {gl.delta_ion_o("K",short=True)}',
+                        fontsize=plt.rcParams["axes.labelsize"],
+                        ha="left",
+                        va="bottom",
+                    )
 
                     plt.savefig(
                         os.path.join(
@@ -1041,6 +1061,8 @@ class plotFigures:
             xlabel = gl.chan_num("GABA$_A$R")
         elif self.GAP:
             xlabel = gl.chan_num("Cx43")
+        elif self.NKA:
+            xlabel = gl.chan_num("NKA")
         else:
             xlabel = None
         if Kir:
@@ -1086,7 +1108,7 @@ class plotFigures:
         _, cbarMax = gl.clim_volt
         fig.colorbar(
             im1,
-            label=gl.vm,
+            label=gl.d_volt_short,
             ticks=np.arange(0, cbarMax, 2),
             extend="max",
             ax=axes.ravel().tolist(),
@@ -1318,14 +1340,16 @@ class plotFigures:
             elif self.NKA:
                 plt.xlabel(gl.chan_num("NKA"))
             _, cbarMax = gl.clim_volt
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, cbarMax, 2), extend="max")
+            plt.colorbar(
+                label=gl.d_volt_short, ticks=np.arange(0, cbarMax, 2), extend="max"
+            )
             plt.clim((0, cbarMax))
             if stdLabels:
                 self.setLabelColors(
                     res[0].PAParea,
                     Kir=Kir,
                     x=True,
-                    y=True,
+                    y=False,
                     chanOverride={
                         "GluT": (res[0].PAPGluTCount, res[0].PAPGluTCount_std),
                         "Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std),
@@ -1353,17 +1377,17 @@ class plotFigures:
                 plt.cla()
                 plt.clf()
                 plt.close("all")
-                fig = plt.figure(figsize= (9,5))
-                gs = fig.add_gridspec(nrows=6,ncols=2)
+                fig = plt.figure(figsize=(18, 9))
+                gs = fig.add_gridspec(nrows=6, ncols=2)
                 ax = []
                 ax_r = []
-                inset = (375,385) 
-                inset_y =(-86,-83)
-                ax.append(fig.add_subplot(gs[0:2,0]))
-                ax.append(fig.add_subplot(gs[2:4,0],sharex=ax[0]))
-                ax.append(fig.add_subplot(gs[4:6,0],sharex=ax[0]))
-                ax_r.append(fig.add_subplot(gs[4,1]))
-                ax_r.append(fig.add_subplot(gs[5,1],sharex=ax_r[0]))
+                inset = (375, 385)
+                inset_y = (-86, -83)
+                ax.append(fig.add_subplot(gs[0:2, 0]))
+                ax.append(fig.add_subplot(gs[2:4, 0], sharex=ax[0]))
+                ax.append(fig.add_subplot(gs[4:6, 0], sharex=ax[0]))
+                ax_r.append(fig.add_subplot(gs[4, 1]))
+                ax_r.append(fig.add_subplot(gs[5, 1], sharex=ax_r[0]))
                 for j, s in enumerate(stim):
                     if j != len(stim):
                         ax[j].tick_params(labelbottom=False)
@@ -1381,7 +1405,7 @@ class plotFigures:
                             color=self.returnColor(m),
                         )
                         index += 1
-                        if s == 'theta':
+                        if s == "theta":
                             if "K$^+$" in m:
                                 ax_r[0].plot(
                                     list(cell.time)[initStep:],
@@ -1459,8 +1483,8 @@ class plotFigures:
                     va="top",
                     fontsize=plt.rcParams["axes.labelsize"],
                 )
-                x0,x1 = inset
-                y0,y1 = inset_y
+                x0, x1 = inset
+                y0, y1 = inset_y
                 grey = "0.5"
                 rect = Rectangle(
                     (x0, y0),
@@ -1473,11 +1497,10 @@ class plotFigures:
                 )
                 ax[-1].add_patch(rect)
 
-
                 con1 = ConnectionPatch(
                     xyA=(x1, y0),
                     coordsA=ax[-1].transData,
-                    xyB=(x0-1.5, y0),
+                    xyB=(x0 - 1.5, y0),
                     coordsB=ax_r[1].transData,
                     color=grey,
                     linewidth=1,
@@ -1487,7 +1510,7 @@ class plotFigures:
                 con2 = ConnectionPatch(
                     xyA=(x1, y1),
                     coordsA=ax[-1].transData,
-                    xyB=(x0-1, y1),
+                    xyB=(x0 - 1, y1),
                     coordsB=ax_r[0].transData,
                     color=grey,
                     linewidth=1,
@@ -1497,7 +1520,6 @@ class plotFigures:
 
                 fig.add_artist(con1)
                 fig.add_artist(con2)
-
 
                 plt.savefig(
                     os.path.join(
@@ -1511,8 +1533,8 @@ class plotFigures:
 class procedure(plotFigures):
     leak = 1.4  # ideal calculated from stable model
     optKir = 0  # std * optkir  + mean
-    optNMDAR = 378
-    optGABAR = 998
+    optNMDAR = 344
+    optGABAR = 1000
     optGluT = 0  # std * optGluT + mean
     optNKA = 1
     # default NMDAR counts
@@ -1526,6 +1548,7 @@ class procedure(plotFigures):
     NMDAR = True
     GABAR = True
     GAP = False
+    NKA = False
     GluT = True
     GluStim = True
     GabaStim = False
@@ -1570,6 +1593,8 @@ class procedure(plotFigures):
             self.tag += "_GABAR"
         if self.GAP:
             self.tag += "_GAP"
+        if self.NKA:
+            self.tag += "_NKA"
         if not self.GluStim:
             self.tag += "_NoGlu"
         if self.GabaStim:
@@ -2093,10 +2118,10 @@ class procedure(plotFigures):
         # Plot the array using a heatmap
         plt.imshow(timeVoltageArray, cmap="magma", interpolation="none", aspect="auto")
         if replay:
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, 10, 2), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 10, 2), extend="max")
             plt.clim((0, 10))
         else:
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
         plt.xlabel(gl.free("Normalized distance"))
         plt.xticks(
@@ -2481,7 +2506,7 @@ class procedure(plotFigures):
             _, axs = figobj
             for ax in axs.flat:
                 ax.set_xlim(gl.lim_ko)
-                ax.set_ylim(gl.lim_ek)
+                ax.set_ylim(gl.lim_Vmemb)
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -2504,10 +2529,13 @@ class procedure(plotFigures):
             NT_name = "NMDAR"
         elif self.GABAR:
             NTChannelComp += [self.optGABAR]
-            NT_name = "GABAR"
+            NT_name = "GABA$_A$R"
         elif self.GluT:
             NTChannelComp = [0, 100]
             NT_name = "GluT"
+        elif self.NKA:
+            NTChannelComp = [1, 10]
+            NT_name = "Na/K-ATPase"
         self.tag += NT_name
 
         if not self.free_read_data():
@@ -2554,6 +2582,8 @@ class procedure(plotFigures):
                             funcArgs[-1]["GluTrans"] = None
                             chanName = "GABAR"
                         else:
+                            if self.NKA:
+                                funcArgs[-1]["nakpump"] = chanCount
                             funcArgs[-1]["GABACount"] = 0
                             funcArgs[-1]["multiple"] = None
                             funcArgs[-1]["GluTrans"] = None
@@ -2566,6 +2596,11 @@ class procedure(plotFigures):
                         funcArgs[-1]["Glu"] = True
                     if funcArgs[-1]["GABACount"] > 0:
                         funcArgs[-1]["GABA"] = True
+
+                    if self.NKA:
+                        for key in funcArgs[-1].keys():
+                            if key in ["GABA", "Glu"]:
+                                funcArgs[key] = False
 
                     KoSteps = np.arange(2, gl.max_ko + 1, 2)
                     KoSteps = np.concatenate(([0.5], KoSteps))
@@ -2638,6 +2673,11 @@ class procedure(plotFigures):
                         cell, "GABACount"
                     ):
                         id += 1
+                    elif (
+                        "nakpump" in cell.GENEDict.keys()
+                        and cell.GENEDict["nakpump"] > 1
+                    ):
+                        id += 1
 
                     initStep = self.get_initStep(cell, shift=0) - 200
                     if cell.KoSize == 0.5:
@@ -2655,6 +2695,14 @@ class procedure(plotFigures):
                             f"Kir Channels\n{int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
                             f"Kir Channels\n{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
+                        if self.NKA:
+                            kw_args["finalize"][
+                                0
+                            ] = f"{NT_name} Channel Density x{NTChannelComp[0]}"
+                            kw_args["finalize"][
+                                1
+                            ] = f"{NT_name} Channel Density x{NTChannelComp[1]}"
+
                         kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
                     initStep = self.get_initStep(cell, shift=0) - 200
                     figobj = self.plot_phase_panel(
@@ -3287,7 +3335,9 @@ class procedure(plotFigures):
             #     setKoylim = True
             # else:
             #     setKoylim = False
-            self.plotIKSeries(AllCells, setKoylim=setKoylim, setekylim=not nearSoma)
+            self.plotIKSeries(
+                AllCells, panelF=True, setKoylim=setKoylim, setekylim=not nearSoma
+            )
             results = AllCells[0][0]
             # print(max(list(results.vPAP)))
             if expOverlay:
@@ -3650,8 +3700,8 @@ class procedure(plotFigures):
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
         if not (self.GABAR or self.NMDAR) and self.GluT:
-            self.channelCompareMax = 5
-            self.channelCompareStep = int(self.channelCompareMax / 5)
+            self.channelCompareMax = 2
+            self.channelCompareStep = int(self.channelCompareMax / 2)
             iterations = [
                 (i, j)
                 for i in np.arange(
@@ -3817,7 +3867,9 @@ class procedure(plotFigures):
                 aspect="equal",
             )
             maxv = 30
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, maxv, 2), extend="max")
+            plt.colorbar(
+                label=gl.d_volt_short, ticks=np.arange(0, maxv, 2), extend="max"
+            )
             plt.clim((5, maxv))
             plt.xlabel(gl.chan_num("Cx43"))
             plt.ylabel(gl.free(f"PAP distance from GJ {gl.unit_micron}"))
@@ -3928,7 +3980,7 @@ class procedure(plotFigures):
                     color = cm.winter(cindex)
                     initStep = self.get_initStep(cell)
                     ax.plot(
-                        np.array(list(cell.time)[initStep:]) * 1e-3,  # ms to s
+                        np.array(list(cell.time)[initStep:]),  # ms to s
                         np.array(list(cell.vPAP)[initStep:]) - cell.RMP,
                         color=color,
                     )
@@ -3945,15 +3997,15 @@ class procedure(plotFigures):
                 0
             ]  # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex]) / sampleNum
-            ax.set_xlabel(gl.s)
+            ax.set_xlabel(gl.ms)
             ax.set_ylabel(gl.d_volt)
-            x0 = 145 * 1e-3
-            x1 = 165 * 1e-3
+            x0 = 145
+            x1 = 155
             y0 = -0.01
             y1 = 3.01
             ax.set_ylim((y0, y1))
 
-            ax_inset.set_xlim((x0 * 1e3, x1 * 1e3))
+            ax_inset.set_xlim((x0, x1))
             ax_inset.set_ylim((y0, y1))
             ax_inset.set_xlabel(gl.ms)
             ax_inset.set_ylabel(gl.d_volt)
@@ -3972,7 +4024,7 @@ class procedure(plotFigures):
             con1 = ConnectionPatch(
                 xyA=(x0, y0),
                 coordsA=ax.transData,
-                xyB=(x0 * 1e3, y1),
+                xyB=(x0, y1),
                 coordsB=ax_inset.transData,
                 color=grey,
                 linewidth=1,
@@ -3982,7 +4034,7 @@ class procedure(plotFigures):
             con2 = ConnectionPatch(
                 xyA=(x1, y0),
                 coordsA=ax.transData,
-                xyB=(x1 * 1e3, y1),
+                xyB=(x1, y1),
                 coordsB=ax_inset.transData,
                 color=grey,
                 linewidth=1,
@@ -3993,7 +4045,10 @@ class procedure(plotFigures):
 
             fig.add_artist(con1)
             fig.add_artist(con2)
+            ax.yaxis.set_major_locator(MaxNLocator(integer=True))
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax_inset.yaxis.set_major_locator(MaxNLocator(integer=True))
+            ax_inset.xaxis.set_major_locator(MaxNLocator(integer=True))
             plt.savefig(
                 os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
             )
@@ -4018,7 +4073,6 @@ class procedure(plotFigures):
                 iterations,
                 vList,
                 cmap="winter",
-                s=10,
                 edgecolor="black",
                 linewidth=1,
                 c=[i / len(iterations) for i in range(len(iterations))],
@@ -4044,13 +4098,13 @@ class procedure(plotFigures):
             maxIndex = vList.index(max(vList))
 
             # self.peakLen = iterations[maxIndex]
-            ax.scatter(
-                iterations[maxIndex],
-                vList[maxIndex],
-                color=cm.winter(maxIndex / len(iterations)),
-                label="Spillover",
-                zorder=-1,
-            )
+            # ax.scatter(
+            #    iterations[maxIndex],
+            #    vList[maxIndex],
+            #    color=cm.winter(maxIndex / len(iterations)),
+            #    label="Spillover",
+            #    zorder=-1,
+            # )
             if self.GluStim and self.KStim:
                 if self.peakLen is not None:
                     ax.axvline(
@@ -4279,14 +4333,14 @@ class procedure(plotFigures):
                     np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                 ).astype(printType),
             )
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
             self.setLabelColors(
                 res[0].PAParea,
                 Kir=True,
-                y=True,
+                y=False,
                 x=True if comparison == "PAPLen" else False,
                 chanOverride={"Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std)},
             )
@@ -4458,7 +4512,7 @@ class procedure(plotFigures):
                         np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                     ).astype(printType),
                 )
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 20, 2), extend="max")
             plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
@@ -4479,7 +4533,7 @@ class procedure(plotFigures):
             self.setLabelColors(
                 res[0].PAParea,
                 Kir=True,
-                y=True,
+                y=False,
                 x=True if comparison == "PAPLen" else False,
                 chanOverride=chanOverride,
             )
@@ -5347,6 +5401,28 @@ class procedure(plotFigures):
         else:
             return self.split_and_remove(key, *new_list)
 
+
+
+    def plot_GluT_experiment(self,xlim,ylim):
+        plt.cla()
+        plt.clf()
+        plt.close()
+        df=pd.read_csv(
+            os.path.join('Data','corrected_gluTrace.csv')
+        )
+        plt.plot(df['t'],df['i'])
+        for loc in ["top", "right"]:
+            plt.gca().spines[loc].set_visible(False)
+        plt.xlabel(gl.ms)
+        plt.ylabel(gl.curr)
+        xmin,xmax = xlim
+        xlim = (min(df['t']),xmax-xmin+min(df['t']))
+        ymin,ymax=ylim
+        ylim = (max(df['i'])-(ymax-ymin)-3,max(df['i']))
+        plt.xlim(xlim)  
+        plt.ylim(ylim)  
+        plt.savefig(os.path.join('../results/paperRes','gluT_experiment.pdf'))  
+
     def combine_distance_analysis_plots(self):
         if rank != 0:
             return
@@ -5356,7 +5432,9 @@ class procedure(plotFigures):
             curr_tag = self.split_and_remove(splitter, curr_tag)
 
         found_files = 0
-        for chan in ["_GABAR_NoGlu_GABA", "_Glu", "_NMDAR"]:
+        found_cells = []
+        mask = [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2)]
+        for i,chan in enumerate(["_Glu", "_NMDAR", "_GABAR_NoGlu_GABA"]):
             tmp_tag = ["distance_analysis"] + curr_tag[:-1] + [chan, curr_tag[-1]]
             tmp_tag = "".join(tmp_tag)
             path = os.path.join("intermediaryData", f"{tmp_tag}.pickle")
@@ -5364,13 +5442,14 @@ class procedure(plotFigures):
                 print("loading", path)
                 with open(path, "rb") as handle:
                     AllCells = pickle.load(handle)
+                found_cells.append(AllCells)
 
                 if found_files == 0:
                     plt.cla()
                     plt.clf()
                     ax2 = None
                     ax = plt.figure(figsize=(9, 4.5)).gca()
-                ax, ax2 = self.plot_shell(AllCells, ax, ax2=ax2)
+                ax, ax2 = self.plot_shell(AllCells, ax, ax2=ax2,mask=[shell-1 for cell,shell in mask if cell == i])
                 for ax_obj in [ax, ax2]:
                     lines = ax_obj.get_lines()
                     path = path.replace("_Glu", "_GluT")
@@ -5392,22 +5471,204 @@ class procedure(plotFigures):
                     f"combined_minAmplitude_{tmp_tag}shellcomp.pdf",
                 )
             )
+            plt.cla()
+            plt.clf()
+            plt.close()
+            fig = plt.figure(figsize=(9, 10))
+            emptyrow = 6
+            cutoff = 7
+            gs = fig.add_gridspec(nrows=cutoff + emptyrow + 1, ncols=3, hspace=0.1)
+            axes = []
+            total_current = [0] * 3
+            for i, all_cells in enumerate(found_cells):
+                cell_id = i
+                if i != 0:
+                    sharey = axes[0][0]
+                else:
+                    sharey = None
+                axes.append([fig.add_subplot(gs[0, cell_id], sharey=sharey)])
+
+                for i in range(1, cutoff+1):
+
+                    axes[cell_id].append(
+                        fig.add_subplot(
+                            gs[i + emptyrow, cell_id],
+                            sharex=axes[cell_id][0],
+                            sharey=axes[0][0],
+                        )
+                    )
+
+                for cells in all_cells:
+                    for cell in cells:
+                        shell_id = cell.shell
+                        if shell_id > cutoff:
+                            if shell_id == cell.total_shell:
+                                grey = "0.5"
+                                for loc in ["top", "right", "left", "bottom"]:
+                                    axes[cell_id][0].spines[loc].set_visible(False)
+                                    if loc == "left":
+                                        # axes[cell_id][0].yaxis.set_ticks_position('left')
+                                        if cell_id == 0:
+                                            axes[cell_id][0].set_ylabel(
+                                                gl.free("Electrode\n" + gl.curr)
+                                            )
+                                        else:
+                                            for label in axes[cell_id][0].get_yticklabels():
+                                                label.set_visible(False)
+                                        for label in axes[cell_id][0].get_xticklabels():
+                                            label.set_visible(False)
+                                axes[cell_id][0].tick_params(
+                                    axis="y", color=grey, labelcolor=grey
+                                )
+                                axes[cell_id][0].tick_params(
+                                    axis="x", color=grey, labelcolor=grey
+                                )
+
+                                for spine in axes[cell_id][0].spines.values():
+                                    spine.set_color(grey)
+
+                                axes[cell_id][0].plot(
+                                    list(cell.time)[initStep:],
+                                    list(cell.VClampI)[initStep:],
+                                    color="grey",
+                                )  
+                            break
+                        initStep = self.get_initStep(cell, shift=50)
+                        if (cell_id, shell_id) not in mask:
+                            total_current[cell_id] += (
+                                min(np.array(list(cell.VClampI)[initStep:]))
+                                - list(cell.VClampI)[initStep]
+                            )
+                            axes[cell_id][shell_id].plot(
+                                list(cell.time)[initStep:],
+                                list(cell.VClampI)[initStep:],
+                                color="black",
+                            )
+                        current = "fake_current"
+                        if cell_id == 0:
+                            current = "iGluT"
+                        elif cell_id == 1:
+                            current = "iNMDA"
+                        elif cell_id == 2:
+                            current = "iGABA"
+                        else:
+                            wMessage(f"no current set for {cell_id=}")
+
+                        if hasattr(cell, current) and (cell_id,shell_id) not in mask:
+                            axes[cell_id][shell_id].plot(
+                                list(cell.time)[initStep:],
+                                np.array(getattr(cell, current))[initStep:],
+                                color=self.returnColor(current[1:]),
+                            )
+                            # if cell_id == 1 and hasattr(cell, "iGluT"):
+                            #    axes[cell_id][1].plot(
+                            #        list(cell.time)[initStep:],
+                            #        list(cell.iGluT)[initStep:],
+                            #        color=self.returnColor("GluT"),
+                            #    )
+                            #if cell_id == 0:
+                            #    axes[cell_id][1].set_ylabel(gl.curr)
+                            #else:
+                            #    for label in axes[cell_id][1].get_yticklabels():
+                            #        label.set_visible(False)
+                            #for loc in ["top", "right"]:
+                            #    axes[cell_id][1].spines[loc].set_visible(False)
+                            #axes[cell_id][1].set_xlabel(gl.ms)
+
+                        axes[cell_id][shell_id].spines["right"].set_visible(False)
+                        axes[cell_id][shell_id].spines["top"].set_visible(False)
+                        # axes[cell_id][shell_id].set_ylim(gl.lim_currSoma)
+
+                        if cell_id == 0:
+                            top = axes[cell_id][shell_id].get_position().y1
+                            right = axes[cell_id][shell_id].get_position().x1
+                            fig.text(
+                                right - 0.01,
+                                top - 0.01,
+                                f"Shell {shell_id - 1}",
+                                color="grey",
+                                ha="right",
+                                va="top",
+                            )
+
+                        if shell_id != cutoff:
+                            axes[cell_id][shell_id].spines["bottom"].set_visible(False)
+                            axes[cell_id][shell_id].spines["left"].set_visible(False)
+                            axes[cell_id][shell_id].tick_params(axis="y", left=False)
+                            axes[cell_id][shell_id].tick_params(axis="x", bottom=False)
+                            for label in axes[cell_id][shell_id].get_xticklabels():
+                                label.set_visible(False)
+                            for label in axes[cell_id][shell_id].get_yticklabels():
+                                label.set_visible(False)
+
+                        else:
+                            if cell_id == 0:
+                                axes[cell_id][shell_id].set_ylabel(
+                                    gl.free("Electrode\n" + gl.curr)
+                                )
+                            else:
+                                for label in axes[cell_id][shell_id].get_yticklabels():
+                                    label.set_visible(False)
+                            axes[cell_id][shell_id].set_xlabel(gl.ms)
+
+
+            xlim_raw=axes[0][-1].get_xlim()
+            ylim_raw=axes[0][-1].get_ylim()
+
+            top = axes[0][0].get_position().y1
+            bottom = axes[0][-1].get_position().y0
+            nt_pos = [axes[0][0], axes[1][0], axes[2][0]]
+            nt_labels = ["GLT-1", "NMDAR", "GABA$_A$R"]
+            i = 0
+            for label, ax in zip(nt_labels, nt_pos):
+                pos = ax.get_position().x0
+                fig.text(
+                    pos + 0.01,
+                    top + 0.01,
+                    label,
+                    color=self.returnColor(label),
+                    fontsize=plt.rcParams["axes.labelsize"],
+                    ha="left",
+                    va="bottom",
+                )
+                #fig.text(
+                #    pos + 0.01,
+                #    bottom - 0.07,
+                #    f"Total Amplitude\n{total_current[i]:.1f} {gl.unit_pA}",
+                #    fontsize=plt.rcParams["axes.labelsize"],
+                #    ha="left",
+                #    va="top",
+                #)
+                i += 1
+
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    f"combined_currPlots_{tmp_tag}shellcomp.pdf",
+                )
+            )
+            self.plot_GluT_experiment(xlim_raw,ylim_raw)
         else:
             plt.cla()
             plt.clf()
             plt.close("all")
 
-    def plot_shell(self, results, ax, ax2=None):
+    def plot_shell(self, results, ax, ax2=None,mask=None):
         resList = []
         shell_num = []
         for cells in results:
             for cell in cells:
                 VCI = list(cell.VClampI)
-                resList.append(min(VCI) - VCI[-1])
-                shell_num.append(cell.shell)
+                if mask is not None and len(mask) > 0:
+                    if cell.shell not in mask:
+                        resList.append(min(VCI) - VCI[-1])
+                        shell_num.append(cell.shell)
+                else:
+                    resList.append(min(VCI) - VCI[-1])
+                    shell_num.append(cell.shell)
 
         shell_num, resList = zip(*[(i, j) for i, j in sorted(zip(shell_num, resList))])
-        resList = np.array(resList) * 1000  # nA to pA
+        resList = np.array(resList) 
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.plot(shell_num, resList)
         ax.set_xlabel(gl.free("Shell number"))
@@ -5423,14 +5684,15 @@ class procedure(plotFigures):
             resList,
         )
         ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax2.set_xlim((2, 9))
-        ax2.set_ylim((-20, 1))
+        ax2.set_xlim((4, 9))
+        ax2.set_ylim((-1, 0.1))
         return ax, ax2
 
     @read_data
     def distance_analysis(self, shell_range=10):
         self.addChannelTag()
-        syn_count = 50
+        syn_count = 90
+        # clustered input into n sections
         funcArgs = []
         funcArgs.append(
             {
@@ -5452,20 +5714,24 @@ class procedure(plotFigures):
             funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
 
+        # 1 PAP is 3 sections(synapses) for seed 1
+        PAPLen = funcArgs[-1]["PAPLen"]
         if self.NMDAR and self.GluStim:
             funcArgs[-1]["multiple"] = self.optNMDAR * syn_count
         else:
             funcArgs[-1]["multiple"] = None
         if self.GluT and self.GluStim:
-            funcArgs[-1]["GluTrans"] = self.optGluT * syn_count
+            funcArgs[-1]["GluTrans"] = self.optGluT  # 17.55 * (syn_count - 1)
+            # value matches avg/std count per synapse
         if self.GABAR and self.GabaStim:
-            funcArgs[-1]["GABACount"] = self.optGABAR * syn_count
-            # GABA alread calculates per section
+            funcArgs[-1]["GABACount"] = (
+                self.optGABAR  * syn_count
+            )  # GABA alread calculates per section
         else:
             funcArgs[-1]["GABACount"] = 0
 
         ccList = ["shell"]
-        iterations = [i for i in range(1, shell_range)]
+        iterations = [i for i in range(1, shell_range + 1)]
         results = parallizeFor(
             iterations,
             [PAPModel],
@@ -5486,7 +5752,7 @@ class procedure(plotFigures):
                     {"total_shell": shell_range, "synapse": syn_count},
                     {},
                     {},
-                    {},
+                    {"force_print_progress": True},
                     {
                         "number": self.stimCount,
                         "freq": self.freq,
@@ -5721,7 +5987,7 @@ class procedure(plotFigures):
                 range(int(spikeNumMax / spikeNumStep) + 1),
                 np.arange(0, spikeNumMax + 1, spikeNumStep),
             )
-            plt.colorbar(label=gl.vm, ticks=np.arange(0, 30, 5), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 30, 5), extend="max")
             plt.clim(gl.clim_volt)
             plt.savefig(
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")
@@ -5800,25 +6066,22 @@ if __name__ == "__main__":
                     initParms = (
                         exp.optGluT,
                         exp.optKir,
-                        1.93825396e00,
-                        4.56907947e01,
+                        0.5,
+                        1e02,
                     )
                     bounds = [(0, 1e5), (0, 1e5), (0.3, 50), (0.5, 50)]
 
                     if forcedAccum and use_tau:
-                        initParms += (
-                            6.79258427e02,
-                            9.98155414e03,
-                        )
+                        initParms += (10, 1e2)
                         initParms = list(initParms)
-                        initParms = [
-                            5.38257517e-04,
-                            9.78283818e-04,
-                            1.93825396e00,
-                            4.56907947e01,
-                            6.79258427e02,
-                            9.98155414e03,
-                        ]
+                        # initParms = [
+                        #    5.38257517e-04,
+                        #    9.78283818e-04,
+                        #    1.93825396e00,
+                        #    4.56907947e01,
+                        #    6.79258427e02,
+                        #    9.98155414e03,
+                        # ]
                         # initParms[0] = 0
                         # initParms[1] = 1
                         initParms = tuple(initParms)
@@ -5839,14 +6102,15 @@ if __name__ == "__main__":
                     "showFig": False,
                 }
 
+                skipsave = True
                 exp.fitExpDepolarization(
                     initParms,
                     showFig=True,
                     PAP=PAP,
-                    skipsave=False,
+                    skipsave=skipsave,
                     use_tau=use_tau,
                 )
-                if not exp.foundFitExperiment:
+                if not exp.foundFitExperiment and skipsave:
                     print(kwargs["use_tau"])
                     res = minimize(
                         lambda x: exp.fitExpDepolarization(x, **kwargs),

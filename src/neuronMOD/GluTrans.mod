@@ -29,7 +29,7 @@ NEURON {
     USEION na READ nao,nai
     NONSPECIFIC_CURRENT iGluT
     RANGE part, C1, C2, C3, C4, C5, C6,tau1,tau2
-    RANGE  iGluT, Gluout, density, itransLog,multiple
+    RANGE  iGluT, Gluout, density, density_std,itransLog,multiple
     RANGE count,count_std
 }
 
