@@ -33,7 +33,7 @@ class ResultsPAPModel:
         "iNCXPAP",
         # "iNMDA"
     ]
-    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma", "iGABA"]
+    ppcurrents = ["iGluT", "iNMDA", "iGluTSoma", "iGABA", "VClampI"]
 
     def copyAttr(self):
         # print("copying to result class")
@@ -52,9 +52,19 @@ class ResultsPAPModel:
                 else:
                     area = self.somaArea
                 newInstance.__dict__[attr] = (
-                    np.array(newInstance.__dict__[attr]) * area * 0.01
+                    np.array(newInstance.__dict__[attr]) * area * 1e-8
                 )
 
+        # sum all ppcurrents
+        if not self.record_single_synapse:
+            for attr in newInstance.__dict__:
+                if attr in self.ppcurrents and type(newInstance.__dict__[attr]) is list:
+                    for i, vec in enumerate(newInstance.__dict__[attr]):
+                        if i == 0:
+                            tmp = np.array(vec)
+                        else:
+                            tmp += np.array(vec)
+                    newInstance.__dict__[attr] = tmp
         # nA to pA
         currList = self.memcurrents + self.ppcurrents
         for attr in newInstance.__dict__:

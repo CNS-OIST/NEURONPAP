@@ -49,6 +49,7 @@ NEURON {
 	RANGE g
 	RANGE vgat,sst,npy,pv,xEff,V50,slope_factor
 	RANGE isOn,multiple
+  THREADSAFE
 }
 
 UNITS {
@@ -73,7 +74,7 @@ PARAMETER {
 	pv=0
 	xEff=-1
 	isOn=1
-        multiple=1
+        multiple=0
     V50=-52 (mV)
     slope_factor=3 (mV)
 }
@@ -96,8 +97,8 @@ STATE {
 
 INITIAL {
 	LOCAL tp
-	if (tau1/tau2 > .999) {
-		tau1 = .999*tau2
+	if (tau1/tau2 > .99) {
+		tau1 = .99*tau2
 	}
 	A = 0
 	B = 0

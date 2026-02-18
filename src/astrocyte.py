@@ -13,6 +13,7 @@ import numpy as np
 from textSDIO import *
 from plot_shape import *
 from global_labels import gl
+import random
 
 
 class PAPModel(ResultsPAPModel):
@@ -27,6 +28,7 @@ class PAPModel(ResultsPAPModel):
     # NMDA parms
     multiple = int()
     readParms = False
+    record_single_synapse = True
     Tau2_0 = float()
     Tau3_0 = float()
     A2 = float()
@@ -159,6 +161,7 @@ class PAPModel(ResultsPAPModel):
         # sys.stdout.flush()
 
         self.seed = seed
+        random.seed(seed)
         h.setSeed(seed)
         # print(self.PAPLen)
         self.PAPCount = PAPCount
@@ -194,7 +197,9 @@ class PAPModel(ResultsPAPModel):
             self.PAParea /= len(list(self.flattenPAP()))
             self.PAParea /= len(self.PAPs)
         # print(self.PAParea)
-        self.somaArea = h.area(0.5, sec=self.soma)
+        self.somaArea = 0
+        for seg in h.soma:
+            self.somaArea += seg.area()
 
         # self.allarea = 0
         # for sec in h.allsec():
@@ -400,7 +405,7 @@ class PAPModel(ResultsPAPModel):
             #
         if self.cvode:
             maxCVODEstep = h.cvode.maxstep()
-            h.cvode.maxstep(0.5)
+            h.cvode.maxstep(0.1)
 
         if amp is not None:
             for nc in self.NCs:
@@ -748,37 +753,54 @@ class PAPModel(ResultsPAPModel):
             s.syn() for s in list(h.ncGluList) if s.postseg().sec in self.flattenPAP()
         ]
         if self.shell > 0:
-            PAPGluT = [s.syn() for s in list(h.ncGluList)]
-            for s in list(h.ncGluList):
-                # syn = s.syn()
-                # L = len(list(h.ncGluList))
-                # syn.multiple = (
-                #    syn.density * (1 - L) / L / syn.density_std + syn.multiple / L
-                # )
-                # to recalculate total GLTs to match initial set expected GLT count
-                s.weight[0] = self.shell_synapse / len(PAPGluT)
-                s.syn().density *= 10  # Radelescu PCB (2022)
-                if self.shell == 1:
-                    s.syn().density *= 1.4  # Radelescu PCB (2022)
-                if self.shell > 2:
-                    s.syn().density *= 2.3  # Radelescu PCB (2022)
-            for i, ncs in enumerate([h.ncNMDAList, h.ncGABAaList]):
-                for s in list(ncs):
-                    if i == 0:
-                        default = 1
+            self.record_single_synapse = False
+            PAPGluT = [
+                s.syn() for s in list(h.ncGluList) if s.postseg().sec in list(h.slPAP)
+            ]
+            synapse_factor = self.shell_synapse / len(PAPGluT)
+            if synapse_factor > 1:
+                for s in list(h.ncGluList):
+                    s.syn().density *= synapse_factor
+            else:
+                sample_ncs = random.sample(list(h.ncGluList), k=int(self.shell_synapse))
+                for s in list(h.ncGluList):
+                    if s in sample_ncs:
+                        s.active(True)
                     else:
-                        EI_balance = 2
-                        default = 1.5 * EI_balance
-                    self.synapse_factor = self.shell_synapse / len(list(ncs))
-                    s.weight[0] = self.synapse_factor * default
+                        s.active(False)
+                PAPGluT = [s for s in PAPGluT if s not in sample_ncs]
+
+            for s in PAPGluT:
+                s.density *= 2
+                if self.shell == 1:
+                    s.density *= 1.4  # Radelescu PCB (2022)
+                if self.shell > 2:
+                    s.density *= 2.3  # Radelescu PCB (2022)
+            for i, ncs in enumerate([h.ncNMDAList, h.ncGABAaList]):
+                synapse_factor = self.shell_synapse / len(list(ncs))
+                if synapse_factor > 1:
+                    for s in list(ncs):
+                        s.syn().multiple *= synapse_factor
+                else:
+                    sample_ncs = random.sample(list(ncs), k=int(self.shell_synapse))
+                    for s in list(ncs):  # sample_ncs:
+                        if s in sample_ncs:
+                            s.active(True)
+                        else:
+                            s.active(False)
+                    if i == 1:
+                        attr = "GABAas"
+                    else:
+                        attr = "NMDAs"
+                    setattr(self, attr, [s.syn() for s in sample_ncs])
 
         recordDictArgs = {}
         if len(PAPGluT) > 0:
-            recordDictArgs["sGluT"] = PAPGluT[-1]
+            recordDictArgs["sGluT"] = PAPGluT
         if self.Glu and len(self.NMDAs) > 0:
-            recordDictArgs["sNMDA"] = self.NMDAs[-1]
+            recordDictArgs["sNMDA"] = self.NMDAs
         if self.GABA and len(self.GABAas) > 0:
-            recordDictArgs["sGABA"] = self.GABAas[-1]
+            recordDictArgs["sGABA"] = self.GABAas
         self.record(**recordDictArgs)
         # print('setup Record')
         # sys.stdout.flush()
@@ -1098,32 +1120,56 @@ class PAPModel(ResultsPAPModel):
 
         return sNMDA
 
+    def set_list_record(self, attr, rec_attr, list_syn):
+        setattr(self, attr, [])
+        for s in list_syn:
+            getattr(self, attr).append(h.Vector())
+            getattr(self, attr)[-1].record(getattr(s, rec_attr))
+
     def record(self, sNMDA=None, sGABA=None, sGluT=None, toFile=False):
         # Function recording each individual aspect of astrocyte variable
         h.frecord_init()
         # Save Stuff
         if sNMDA != None:
-            self.iNMDA = h.Vector()
-            # self.iNMDA.record(sNMDA._ref_iNMDA)
-            self.iNMDA.record(sNMDA._ref_iNMDA_N2C)
+            if self.record_single_synapse:
+                if len(list(sNMDA)) > 1:
+                    sNMDA = sNMDA[-1]
+                self.iNMDA = h.Vector()
+                # self.iNMDA.record(sNMDA._ref_iNMDA)
+                self.iNMDA.record(sNMDA._ref_iNMDA_N2C)
+            else:
+                self.set_list_record("iNMDA", "_ref_iNMDA_N2C", sNMDA)
 
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
 
         if sGABA != None:
-            self.iGABA = h.Vector()
-            self.iGABA.record(sGABA._ref_iGaba)
+            if self.record_single_synapse:
+                if len(list(sGABA)) > 1:
+                    sGABA = sGABA[-1]
+                self.iGABA = h.Vector()
+                self.iGABA.record(sGABA._ref_iGaba)
+            else:
+                self.set_list_record("iGABA", "_ref_iGaba", sGABA)
+
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
 
         if sGluT != None:
-            self.iGluT = h.Vector()
-            self.iGluT.record(sGluT._ref_iGluT)
+            if self.record_single_synapse:
+                if len(list(sGluT)) > 1:
+                    sGluT = sGluT[-1]
+                self.iGluT = h.Vector()
+                self.iGluT.record(sGluT._ref_iGluT)
+            else:
+                self.set_list_record("iGluT", "_ref_iGluT", sGluT)
             if toFile:
                 self.iFile = h.File("iFile.dat")
                 self.iFile.wopen("iFile.dat")
+            if type(sGluT) is list:
+                sGluT = sGluT[-1]
             self.GluTGlu = h.Vector()
             self.GluTGlu.record(sGluT._ref_Gluout)
             self.GluTC1 = h.Vector()
@@ -1359,7 +1405,6 @@ class PAPModel(ResultsPAPModel):
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
             if hasattr(h, "cvode"):
-                h.cvode.re_init()
                 h.cvode.active(True)
 
         self.KoSize = KoSize
@@ -1401,20 +1446,48 @@ class PAPModel(ResultsPAPModel):
         for channel in ["NMDAs", "GABAas", "GluTs"]:
             if hasattr(self, channel):
                 delattr(self, channel)
-        h.select_shell(i)
 
         if scale:
             scale_multiple = 1 + self.removed[i] / len(list(h.slPAP))
         else:
             scale_multiple = 1
 
-        if self.multiple is None:
+        PAPSecLen = 0
+        for pap in list(self.PAPs[0]):
+            if pap.L > 1:
+                PAPSecLen += int(pap.L)
+            else:
+                PAPSecLen += 1
+        mask = 0
+        if self.multiple == 0:
+            if self.GABA:
+                mask = 4
+        else:
+            mask = 5
+
+        if self.shell == self.total_shell:
+            scale_multiple *= self.total_shell - mask - 1
+            self.shell_synapse *= self.total_shell - mask - 1
+        mode = 0
+
+        if self.multiple == 0:
             if self.GABA:
                 self.GABACount *= scale_multiple
+                self.GABACount /= PAPSecLen
+                mode = 1
         else:
             self.multiple *= scale_multiple
+            self.multiple /= PAPSecLen
+            mode = 2
         if "GluTrans" in self.GENEDict.keys() and self.GENEDict["GluTrans"] != None:
-            self.GENEDict["GluTrans"] *= scale_multiple
+            # self.GENEDict["GluTrans"] *= scale_multiple
+            mode = 0
+
+        h.select_shell(i, mode)
+        self.PAParea = 0
+        for s in h.slPAP:
+            for sec in s:
+                self.PAParea += sec.area()
 
     def setKBath(
         self,

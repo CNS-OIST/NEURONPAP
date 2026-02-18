@@ -97,7 +97,7 @@ b1 = 0.03 (1/mV)
 	: delta = 0.01 	(1)		: the electrical distance of t        he Mg2+ binding site from the outside of the membrane from Spruston95
         : The Parameter Controls Ohm haw in NMDAR
         e = -3.3		(mV)	: in CA1-CA3 region = -0.7 from Spruston Lalo et al. 2006 from Verkhratsky lab
-        multiple = 1 (1)
+        multiple = 0 (1)
         flag = 0 (1)
         : glu = 1 (mM) 
         gluEC = 4.3 (uM) : From Nahum-Levy et al. 2001 Biophysical Journal
@@ -254,8 +254,8 @@ FUNCTION Mgblock(v(mV)) {
 	}
 	if (tau2/tau3 > .9999) {
 		tau2 = tau3*.9999
-	    }
-        }
+  }
+  }
         
     
     FUNCTION hillGluc(gluConc (mM)){

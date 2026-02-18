@@ -35,7 +35,7 @@ class gl:
     lim_ko = (0, 30)
     lim_ek = (-100, 20)
     lim_curr = (-5000, 5000)
-    lim_min_amp = (-5, 1)
+    lim_min_amp = (-50, 1)
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):

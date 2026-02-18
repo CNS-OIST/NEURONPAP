@@ -28,6 +28,7 @@ import matplotlib.text as mtext
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Rectangle, ConnectionPatch
+import matplotlib.patheffects as pe
 
 
 from global_labels import gl
@@ -5401,27 +5402,9 @@ class procedure(plotFigures):
         else:
             return self.split_and_remove(key, *new_list)
 
-
-
-    def plot_GluT_experiment(self,xlim,ylim):
-        plt.cla()
-        plt.clf()
-        plt.close()
-        df=pd.read_csv(
-            os.path.join('Data','corrected_gluTrace.csv')
-        )
-        plt.plot(df['t'],df['i'])
-        for loc in ["top", "right"]:
-            plt.gca().spines[loc].set_visible(False)
-        plt.xlabel(gl.ms)
-        plt.ylabel(gl.curr)
-        xmin,xmax = xlim
-        xlim = (min(df['t']),xmax-xmin+min(df['t']))
-        ymin,ymax=ylim
-        ylim = (max(df['i'])-(ymax-ymin)-3,max(df['i']))
-        plt.xlim(xlim)  
-        plt.ylim(ylim)  
-        plt.savefig(os.path.join('../results/paperRes','gluT_experiment.pdf'))  
+    def plot_GluT_experiment(self, ax, cell):
+        df = pd.read_csv(os.path.join("Data", "glut_somato.csv"))
+        ax.axhline(min(df["i"]), 0, 1, linestyle="--", color="grey")
 
     def combine_distance_analysis_plots(self):
         if rank != 0:
@@ -5433,8 +5416,19 @@ class procedure(plotFigures):
 
         found_files = 0
         found_cells = []
-        mask = [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2)]
-        for i,chan in enumerate(["_Glu", "_NMDAR", "_GABAR_NoGlu_GABA"]):
+        mask = [
+            (1, 1),
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (1, 5),
+            (2, 1),
+            (2, 2),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+        ]
+        for i, chan in enumerate(["_Glu", "_NMDAR", "_GABAR_NoGlu_GABA"]):
             tmp_tag = ["distance_analysis"] + curr_tag[:-1] + [chan, curr_tag[-1]]
             tmp_tag = "".join(tmp_tag)
             path = os.path.join("intermediaryData", f"{tmp_tag}.pickle")
@@ -5449,7 +5443,12 @@ class procedure(plotFigures):
                     plt.clf()
                     ax2 = None
                     ax = plt.figure(figsize=(9, 4.5)).gca()
-                ax, ax2 = self.plot_shell(AllCells, ax, ax2=ax2,mask=[shell-1 for cell,shell in mask if cell == i])
+                ax, ax2 = self.plot_shell(
+                    AllCells,
+                    ax,
+                    ax2=ax2,
+                    mask=[shell - 1 for cell, shell in mask if cell == i],
+                )
                 for ax_obj in [ax, ax2]:
                     lines = ax_obj.get_lines()
                     path = path.replace("_Glu", "_GluT")
@@ -5474,12 +5473,20 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
             plt.close()
-            fig = plt.figure(figsize=(9, 10))
-            emptyrow = 6
-            cutoff = 7
-            gs = fig.add_gridspec(nrows=cutoff + emptyrow + 1, ncols=3, hspace=0.1)
+            fig = plt.figure(figsize=(8, 12))
+            emptyrow = 1
+            cutoff = 9
+            gs = fig.add_gridspec(
+                nrows=2 * cutoff + emptyrow + 1, ncols=3, hspace=0.1, wspace=0.5
+            )
             axes = []
             total_current = [0] * 3
+            ax_inset = fig.add_subplot(gs[2:7, 1:])
+            for spine in ax_inset.spines.values():
+                spine.set_visible(True)
+                spine.set_linewidth(1.5)
+            ax_inset.set_facecolor("white")
+
             for i, all_cells in enumerate(found_cells):
                 cell_id = i
                 if i != 0:
@@ -5488,11 +5495,26 @@ class procedure(plotFigures):
                     sharey = None
                 axes.append([fig.add_subplot(gs[0, cell_id], sharey=sharey)])
 
-                for i in range(1, cutoff+1):
+                for i in range(1, cutoff + 1):
+                    if i != 1:
+                        sharey = axes[0][1][1]
+                    else:
+                        sharey = None
 
-                    axes[cell_id].append(
+                    axes[cell_id].append([])
+                    if (cell_id, i) in mask:
+                        continue
+
+                    axes[cell_id][-1].append(
                         fig.add_subplot(
-                            gs[i + emptyrow, cell_id],
+                            gs[2 * i - 1 + emptyrow, cell_id],
+                            sharex=axes[cell_id][0],
+                            sharey=axes[0][0],
+                        )
+                    )
+                    axes[cell_id][-1].append(
+                        fig.add_subplot(
+                            gs[2 * i + emptyrow, cell_id],
                             sharex=axes[cell_id][0],
                             sharey=axes[0][0],
                         )
@@ -5500,6 +5522,9 @@ class procedure(plotFigures):
 
                 for cells in all_cells:
                     for cell in cells:
+                        axes[cell_id][0].set_xlim((145, 170))
+                        initStep = self.get_initStep(cell, shift=50)
+                        avg = list(cell.VClampI)[initStep]
                         shell_id = cell.shell
                         if shell_id > cutoff:
                             if shell_id == cell.total_shell:
@@ -5508,12 +5533,10 @@ class procedure(plotFigures):
                                     axes[cell_id][0].spines[loc].set_visible(False)
                                     if loc == "left":
                                         # axes[cell_id][0].yaxis.set_ticks_position('left')
-                                        if cell_id == 0:
-                                            axes[cell_id][0].set_ylabel(
-                                                gl.free("Electrode\n" + gl.curr)
-                                            )
-                                        else:
-                                            for label in axes[cell_id][0].get_yticklabels():
+                                        if cell_id != 0:
+                                            for label in axes[cell_id][
+                                                0
+                                            ].get_yticklabels():
                                                 label.set_visible(False)
                                         for label in axes[cell_id][0].get_xticklabels():
                                             label.set_visible(False)
@@ -5529,21 +5552,33 @@ class procedure(plotFigures):
 
                                 axes[cell_id][0].plot(
                                     list(cell.time)[initStep:],
-                                    list(cell.VClampI)[initStep:],
+                                    np.array(cell.VClampI)[initStep:] - avg,
                                     color="grey",
-                                )  
+                                )
+                                if cell_id == 0:
+                                    self.plot_GluT_experiment(axes[0][0], cell)
                             break
-                        initStep = self.get_initStep(cell, shift=50)
+                        if (cell_id, shell_id) in mask:
+                            continue
+
                         if (cell_id, shell_id) not in mask:
                             total_current[cell_id] += (
                                 min(np.array(list(cell.VClampI)[initStep:]))
                                 - list(cell.VClampI)[initStep]
                             )
-                            axes[cell_id][shell_id].plot(
+                            axes[cell_id][shell_id][0].plot(
                                 list(cell.time)[initStep:],
-                                list(cell.VClampI)[initStep:],
+                                np.array(cell.VClampI)[initStep:] - avg,
                                 color="black",
                             )
+
+                        for id in range(2):
+                            axes[cell_id][shell_id][id].spines["right"].set_visible(
+                                False
+                            )
+                            axes[cell_id][shell_id][id].spines["top"].set_visible(False)
+                            # axes[cell_id][shell_id].set_ylim(gl.lim_currSoma)
+
                         current = "fake_current"
                         if cell_id == 0:
                             current = "iGluT"
@@ -5554,69 +5589,174 @@ class procedure(plotFigures):
                         else:
                             wMessage(f"no current set for {cell_id=}")
 
-                        if hasattr(cell, current) and (cell_id,shell_id) not in mask:
-                            axes[cell_id][shell_id].plot(
+                        if hasattr(cell, current) and (cell_id, shell_id) not in mask:
+                            axes[cell_id][shell_id][1].plot(
                                 list(cell.time)[initStep:],
-                                np.array(getattr(cell, current))[initStep:],
+                                np.array(getattr(cell, current))[initStep:]
+                                / cell.shell_synapse,
                                 color=self.returnColor(current[1:]),
                             )
+                            if cell_id == 0 and shell_id == 2:
+                                sub_ax = axes[cell_id][shell_id][0]
+                                ax = axes[cell_id][shell_id][1]
+                                lim = ax.get_xlim()
+                                ax_inset.set_xlim(lim)
+                                ax_inset.plot(
+                                    list(cell.time)[initStep:],
+                                    np.array(cell.VClampI)[initStep:] - avg,
+                                    color="black",
+                                )
+                                ax_inset.plot(
+                                    list(cell.time)[initStep:],
+                                    np.array(getattr(cell, current))[initStep:]
+                                    / cell.shell_synapse,
+                                    color=self.returnColor(current[1:]),
+                                    lw=2.5,
+                                )
+                                sub_ax = axes[cell_id][shell_id][0]
+                                x1 = sub_ax.get_xlim()[1]
+                                y0 = ax_inset.get_ylim()[0]
+                                y1 = ax_inset.get_ylim()[1]
+
+                                con1 = ConnectionPatch(
+                                    xyA=(x1, y1),
+                                    coordsA=sub_ax.transData,  # top-left of zoom box
+                                    xyB=(-0.15, 1.1),
+                                    coordsB=ax_inset.transAxes,  # top-left of inset
+                                    color="grey",
+                                    linestyle="--",
+                                )
+                                x1 = ax.get_xlim()[1]
+
+                                con2 = ConnectionPatch(
+                                    xyA=(x1, y0),
+                                    coordsA=ax.transData,  # bottom-right of zoom box
+                                    xyB=(-0.15, -0.15),
+                                    coordsB=ax_inset.transAxes,  # bottom-right of inset
+                                    color="grey",
+                                    linestyle="--",
+                                )
+
+                                fig.add_artist(con1)
+                                fig.add_artist(con2)
+
+                                rect = Rectangle(
+                                    (-0.15, -0.15),
+                                    1.25,
+                                    1.25,
+                                    transform=ax_inset.transAxes,
+                                    facecolor="white",
+                                    edgecolor="black",
+                                    fill=True,
+                                    lw=1.5,
+                                    clip_on=False,
+                                )
+                                rect.set_path_effects(
+                                    [
+                                        pe.SimplePatchShadow(offset=(4, -4), alpha=0.4),
+                                        pe.Normal(),
+                                    ]
+                                )
+                                ax_inset.add_patch(rect)
+
                             # if cell_id == 1 and hasattr(cell, "iGluT"):
                             #    axes[cell_id][1].plot(
                             #        list(cell.time)[initStep:],
                             #        list(cell.iGluT)[initStep:],
                             #        color=self.returnColor("GluT"),
                             #    )
-                            #if cell_id == 0:
+                            # if cell_id == 0:
                             #    axes[cell_id][1].set_ylabel(gl.curr)
-                            #else:
+                            # else:
                             #    for label in axes[cell_id][1].get_yticklabels():
                             #        label.set_visible(False)
-                            #for loc in ["top", "right"]:
+                            # for loc in ["top", "right"]:
                             #    axes[cell_id][1].spines[loc].set_visible(False)
-                            #axes[cell_id][1].set_xlabel(gl.ms)
-
-                        axes[cell_id][shell_id].spines["right"].set_visible(False)
-                        axes[cell_id][shell_id].spines["top"].set_visible(False)
-                        # axes[cell_id][shell_id].set_ylim(gl.lim_currSoma)
+                            # axes[cell_id][1].set_xlabel(gl.ms)
 
                         if cell_id == 0:
-                            top = axes[cell_id][shell_id].get_position().y1
-                            right = axes[cell_id][shell_id].get_position().x1
+
+                            def get_origin_y(ax):
+                                x0 = ax.get_xlim()[0]
+
+                                _, fig_y = fig.transFigure.inverted().transform(
+                                    ax.transData.transform((x0, 0))
+                                )
+                                return fig_y
+
+                            bottom = (
+                                get_origin_y(axes[cell_id][shell_id][0])
+                                + get_origin_y(axes[cell_id][shell_id][1])
+                            ) / 2
+                            left = axes[cell_id][shell_id][0].get_position().x0
+                            right = axes[cell_id][shell_id][0].get_position().x1
                             fig.text(
-                                right - 0.01,
-                                top - 0.01,
-                                f"Shell {shell_id - 1}",
+                                left - 0.07,
+                                bottom + 0.01,
+                                f"Shell {shell_id}",
                                 color="grey",
                                 ha="right",
-                                va="top",
+                                va="center",
+                                rotation=90,
                             )
 
                         if shell_id != cutoff:
-                            axes[cell_id][shell_id].spines["bottom"].set_visible(False)
-                            axes[cell_id][shell_id].spines["left"].set_visible(False)
-                            axes[cell_id][shell_id].tick_params(axis="y", left=False)
-                            axes[cell_id][shell_id].tick_params(axis="x", bottom=False)
-                            for label in axes[cell_id][shell_id].get_xticklabels():
-                                label.set_visible(False)
-                            for label in axes[cell_id][shell_id].get_yticklabels():
-                                label.set_visible(False)
+                            for id in range(2):
+                                axes[cell_id][shell_id][id].spines[
+                                    "bottom"
+                                ].set_visible(False)
+                                axes[cell_id][shell_id][id].spines["left"].set_visible(
+                                    False
+                                )
+                                axes[cell_id][shell_id][id].tick_params(
+                                    axis="y", left=False
+                                )
+                                axes[cell_id][shell_id][id].tick_params(
+                                    axis="x", bottom=False
+                                )
+
+                                for label in axes[cell_id][shell_id][
+                                    id
+                                ].get_xticklabels():
+                                    label.set_visible(False)
+                                for label in axes[cell_id][shell_id][
+                                    id
+                                ].get_yticklabels():
+                                    label.set_visible(False)
 
                         else:
-                            if cell_id == 0:
-                                axes[cell_id][shell_id].set_ylabel(
-                                    gl.free("Electrode\n" + gl.curr)
-                                )
-                            else:
-                                for label in axes[cell_id][shell_id].get_yticklabels():
+                            id = 0
+                            axes[cell_id][shell_id][id].spines["bottom"].set_visible(
+                                False
+                            )
+                            axes[cell_id][shell_id][id].spines["left"].set_visible(
+                                False
+                            )
+                            axes[cell_id][shell_id][id].tick_params(
+                                axis="y", left=False
+                            )
+                            axes[cell_id][shell_id][id].tick_params(
+                                axis="x", bottom=False
+                            )
+
+                            for label in axes[cell_id][shell_id][id].get_xticklabels():
+                                label.set_visible(False)
+                            for label in axes[cell_id][shell_id][id].get_yticklabels():
+                                label.set_visible(False)
+
+                            id = 1
+                            if cell_id != 0:
+                                for label in axes[cell_id][shell_id][
+                                    id
+                                ].get_yticklabels():
                                     label.set_visible(False)
-                            axes[cell_id][shell_id].set_xlabel(gl.ms)
+                            axes[cell_id][shell_id][1].set_xlabel(gl.ms)
 
-
-            xlim_raw=axes[0][-1].get_xlim()
-            ylim_raw=axes[0][-1].get_ylim()
+            xlim_raw = axes[0][-1][0].get_xlim()
+            ylim_raw = axes[0][-1][0].get_ylim()
 
             top = axes[0][0].get_position().y1
-            bottom = axes[0][-1].get_position().y0
+            # bottom = axes[0][-1][1].get_position().y0
             nt_pos = [axes[0][0], axes[1][0], axes[2][0]]
             nt_labels = ["GLT-1", "NMDAR", "GABA$_A$R"]
             i = 0
@@ -5630,35 +5770,40 @@ class procedure(plotFigures):
                     fontsize=plt.rcParams["axes.labelsize"],
                     ha="left",
                     va="bottom",
+                    fontweight="bold",
                 )
-                #fig.text(
-                #    pos + 0.01,
-                #    bottom - 0.07,
-                #    f"Total Amplitude\n{total_current[i]:.1f} {gl.unit_pA}",
-                #    fontsize=plt.rcParams["axes.labelsize"],
-                #    ha="left",
-                #    va="top",
-                #)
+
                 i += 1
 
+            left = axes[0][0].get_position().x0
+            center = 0.5
+            fig.text(
+                left - 0.11,
+                center,
+                f"Electrode {gl.curr}",
+                fontsize=plt.rcParams["axes.labelsize"],
+                ha="center",
+                va="center",
+                rotation=90,
+            )
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
                     f"combined_currPlots_{tmp_tag}shellcomp.pdf",
                 )
             )
-            self.plot_GluT_experiment(xlim_raw,ylim_raw)
         else:
             plt.cla()
             plt.clf()
             plt.close("all")
 
-    def plot_shell(self, results, ax, ax2=None,mask=None):
+    def plot_shell(self, results, ax, ax2=None, mask=None):
         resList = []
         shell_num = []
         for cells in results:
             for cell in cells:
                 VCI = list(cell.VClampI)
+                total_shell = cell.total_shell
                 if mask is not None and len(mask) > 0:
                     if cell.shell not in mask:
                         resList.append(min(VCI) - VCI[-1])
@@ -5667,8 +5812,10 @@ class procedure(plotFigures):
                     resList.append(min(VCI) - VCI[-1])
                     shell_num.append(cell.shell)
 
-        shell_num, resList = zip(*[(i, j) for i, j in sorted(zip(shell_num, resList))])
-        resList = np.array(resList) 
+        shell_num, resList = zip(
+            *[(i, j) for i, j in sorted(zip(shell_num, resList)) if i < total_shell]
+        )
+        resList = np.array(resList)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.plot(shell_num, resList)
         ax.set_xlabel(gl.free("Shell number"))
@@ -5691,7 +5838,7 @@ class procedure(plotFigures):
     @read_data
     def distance_analysis(self, shell_range=10):
         self.addChannelTag()
-        syn_count = 90
+        syn_count = 4e1
         # clustered input into n sections
         funcArgs = []
         funcArgs.append(
@@ -5721,11 +5868,11 @@ class procedure(plotFigures):
         else:
             funcArgs[-1]["multiple"] = None
         if self.GluT and self.GluStim:
-            funcArgs[-1]["GluTrans"] = self.optGluT  # 17.55 * (syn_count - 1)
+            funcArgs[-1]["GluTrans"] = self.optGluT
             # value matches avg/std count per synapse
         if self.GABAR and self.GabaStim:
             funcArgs[-1]["GABACount"] = (
-                self.optGABAR  * syn_count
+                self.optGABAR * syn_count
             )  # GABA alread calculates per section
         else:
             funcArgs[-1]["GABACount"] = 0
