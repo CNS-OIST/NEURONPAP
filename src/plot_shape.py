@@ -72,7 +72,7 @@ def animate_morphology(
 ):
     if rank != 0:
         return
-    fig = plt.figure(figsize=(9, 8))
+    fig = plt.figure(figsize=gl.figsize_distCurr_panel)
     ax = fig.add_subplot(111, projection="3d")
 
     h.tstop = tstop
@@ -296,7 +296,7 @@ def plot_combined(
         fName = f"combined_{rangevar}_{origin=}"
     plt.cla()
     plt.clf()
-    plt.figure(figsize=(9, 5))
+    plt.figure(figsize=gl.figsize_panel)
     xmin = np.inf
     xmax = -np.inf
     if not precomputed_toward and not precomputed_away:
@@ -341,7 +341,7 @@ def plot_combined(
 def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     plt.cla()
     plt.clf()
-    plt.figure(figsize=(9, 5))
+    plt.figure(figsize=gl.figsize_panel)
     if not precomputed:
         precomputed = []
         section_dict = convert_list_section_to_python(list_section)

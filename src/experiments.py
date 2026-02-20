@@ -407,7 +407,8 @@ class plotFigures:
 
                 ax.set_ylabel(gl.ion_o("K"))
                 ax.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
-                ax.legend()
+                if not bath:
+                    ax.legend()
 
                 if zoom:
                     ax.set_xlim(
@@ -492,7 +493,7 @@ class plotFigures:
                             height=height_data,
                             fc="w",
                             ec="k",
-                            label=f"Local stim",
+                            label=f"Local\nstim.",
                         )
                         ax.add_patch(r)
                     else:
@@ -502,7 +503,7 @@ class plotFigures:
                             endStim,
                             color=self.returnColor(self.locality),
                             linewidth=lineWidth,
-                            label=f"Global stim",
+                            label=f"Global\nstim.",
                         )
                     if second:
                         ax.set_xlabel(gl.s)
@@ -2064,6 +2065,7 @@ class procedure(plotFigures):
             ax2.set_ylabel(gl.volt)
             ax1.set_xlim((40, 240))
             ax2.set_xlim((40, 240))
+            fig.subplots_adjust(left=0.2, right=1, bottom=0.1, top=1)
             plt.tight_layout()
             plt.savefig(os.path.join("../results/paperRes", f"CurrentClampSoma.pdf"))
 
