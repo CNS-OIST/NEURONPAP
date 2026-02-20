@@ -1389,7 +1389,7 @@ class plotFigures:
                 plt.cla()
                 plt.clf()
                 plt.close("all")
-                fig = plt.figure(figsize=gl.figseize_halfh)
+                fig = plt.figure(figsize=gl.figsize_halfh)
                 gs = fig.add_gridspec(nrows=6, ncols=2)
                 ax = []
                 ax_r = []
@@ -6352,12 +6352,12 @@ if __name__ == "__main__":
                         initParms += (10, 1e2)
                         initParms = list(initParms)
                         initParms = [
-                                1.15740741e-04,
-                                4.16666667e-05,
-                                5.11574074e-01,
-                                5.00000000e+01,
-                                1.02314815e+01, 
-                                9.89814815e+01,
+                            1.15740741e-04,
+                            4.16666667e-05,
+                            5.11574074e-01,
+                            5.00000000e01,
+                            1.02314815e01,
+                            9.89814815e01,
                         ]
                         # initParms = [
                         #    5.38257517e-04,
@@ -6387,7 +6387,7 @@ if __name__ == "__main__":
                     "showFig": False,
                 }
 
-                skipsave = False
+                skipsave = True
                 exp.fitExpDepolarization(
                     initParms,
                     showFig=True,
