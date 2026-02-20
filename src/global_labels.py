@@ -36,6 +36,25 @@ class gl:
     lim_ek = (-100, 20)
     lim_curr = (-5000, 5000)
     lim_min_amp = (-50, 1)
+    lim_min_amp_bs = (-100, 100)
+    shell_num = "shell number"
+    figsize_full = (8, 11.5)
+    figsize_halfw = figsize_full[0] / 2, figsize_full[1]
+    figsize_halfh = figsize_full[0], figsize_full[1] / 2
+    figsize_panel = figsize_full[0] / 2, figsize_full[1] / 3
+    figsize_panel_long = figsize_full[0], figsize_full[1] / 3
+    figsize_ikPlots = figsize_full[0] / 3, figsize_full[1] / 3
+    figsize_distCurr = figsize_full[0] * 2 / 3, figsize_full[1] * 2 / 3
+    figsize_distCurr_panel = figsize_full[0] / 3, figsize_full[1] / 3
+    clampI = "$I_{clamp}$"
+    sigma_glt = "$\Sigma\ I_{GLT}$"
+    font = {
+        "font.family": "sans-serif",
+        "font.size": 10,
+        "axes.labelsize": 10,
+        "ytick.labelsize": 10,
+        "xtick.labelsize": 10,
+    }
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):

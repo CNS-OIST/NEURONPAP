@@ -869,43 +869,30 @@ class PAPModel(ResultsPAPModel):
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
         # self.ko_sim(False)
-        if self.shell > 0 and rank == 0 and hasattr(self, "total_shell"):
-            plt.cla()
-            plt.clf()
-            alpha = 0.05
-            colors = [
-                (
-                    255 * (1 - n / (self.total_shell - 1)),
-                    255 * (1 - n / (self.total_shell - 1)),
-                    255 * (1 - n / (self.total_shell - 1)),
-                    1,
-                )
-                for n in range(0, self.total_shell - 1)
-            ]
-            solid_colors = []
-            bkg = (255, 255, 255)
-            for r, g, b, a in colors:
-                rgb = np.array((r, g, b)) * a + (1 - a) * np.array(bkg)
-                rgb /= 255
-                solid_colors.append(mcolors.to_rgba(tuple(rgb) + (1,)))
-
-            plot_3d_morphology(
-                rangevar="num_shell",
-                add_shell=self.total_shell,
-                colormap_name=solid_colors,
-                add_null=True,
-            )
-            plt.savefig(
-                os.path.join(
-                    "../morphResults/", f"defined_shell_{self.total_shell}.pdf"
-                )
-            )
-
         if saveState:
             s = h.SaveState()
             s.save()
             with open(f"initializedState{rank}.dat", "wb") as f:
                 s.fwrite(f)
+
+    @staticmethod
+    def gen_colors(total_shell):
+        colors = [
+            (
+                255 * (1 - n / (total_shell - 1)),
+                255 * (1 - n / (total_shell - 1)),
+                255 * (1 - n / (total_shell - 1)),
+                1,
+            )
+            for n in range(0, total_shell - 1)
+        ]
+        solid_colors = []
+        bkg = (255, 255, 255)
+        for r, g, b, a in colors:
+            rgb = np.array((r, g, b)) * a + (1 - a) * np.array(bkg)
+            rgb /= 255
+            solid_colors.append(mcolors.to_rgba(tuple(rgb) + (1,)))
+        return solid_colors
 
     def run(self, printRes=False, video=False, koclamp=None, noclear=False):
         # print('running')
@@ -1429,6 +1416,21 @@ class PAPModel(ResultsPAPModel):
 
         # [print(len(list(i))) for i in h.shell_compartments]
         h.clampSwitch(1, -40)
+        if self.shell > 0 and rank == 0 and hasattr(self, "total_shell"):
+            plt.cla()
+            plt.clf()
+            solid_colors = PAPModel.gen_colors(self.total_shell)
+            plot_3d_morphology(
+                rangevar="num_shell",
+                add_shell=self.total_shell,
+                colormap_name=solid_colors,
+                add_null=True,
+            )
+            plt.savefig(
+                os.path.join(
+                    "../morphResults/", f"defined_shell_{self.total_shell}.pdf"
+                )
+            )
 
     # only for rank 0
 

@@ -118,9 +118,9 @@ for i in $( # for ten random PAPs
     echo "seed $i-Ko$j" >>$output
     for k in 1 10; do # for stimCoutn
       if (($j == 0.5)); then
-        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 1 --Glu 0 --stimCount $k --stimGlu 1
-        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 0 --Glu 1 --stimCount $k --stimGlu 1
-        mpiexec -n 9 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 1 --NMDAR 0 --Glu 0 --stimCount $k --stimGaba 1
+        mpiexec -n 10 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 1 --Glu 0 --stimCount $k --stimGlu 1
+        mpiexec -n 10 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 0 --NMDAR 0 --Glu 1 --stimCount $k --stimGlu 1
+        mpiexec -n 10 --use-hwthread-cpus python NEURONPAP.py --shellExp --GABAR 1 --NMDAR 0 --Glu 0 --stimCount $k --stimGaba 1
       fi
 
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i                         # Fig 3A

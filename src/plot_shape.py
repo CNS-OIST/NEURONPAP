@@ -8,6 +8,7 @@ import types
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.animation import FuncAnimation
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from global_labels import gl
 import os
 
@@ -152,7 +153,8 @@ def plot_3d_morphology(
     if fig is None or ax is None:
         plt.cla()
         plt.clf()
-        fig = plt.figure(figsize=(9, 8))
+        plt.rcParams.update(gl.font)
+        fig = plt.figure(figsize=gl.figsize_distCurr_panel, constrained_layout=True)
         ax = fig.add_subplot(111, projection="3d", computed_zorder=not add_shell)
 
     if add_shell:
@@ -243,27 +245,40 @@ def plot_3d_morphology(
         ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2)
 
     # Integer ticks
-    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.zaxis.set_major_locator(plt.MaxNLocator(integer=True))
-
-    # === Colorbar (optional) ===
-    if add_colorbar:
-        cbar = plt.colorbar(sm, ax=ax)
-        if rangevar == "v":
-            cbar.set_label(gl.volt)
-        elif type(rangevar) == types.FunctionType:
-            cbar.set_label(rangevar.__name__)
-
-    ax.set_xlabel(gl.free("x ") + gl.unit_micron)
-    ax.set_ylabel(gl.free("y ") + gl.unit_micron)
-    ax.set_zlabel(gl.free("z ") + gl.unit_micron)
+    # ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    # ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    # ax.zaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.tick_params(axis="x", pad=-5)
+    ax.tick_params(axis="y", pad=-5)
+    ax.tick_params(axis="z", pad=-2)
+    ax.set_xlabel(gl.free("x ") + gl.unit_micron, labelpad=-5)
+    ax.set_ylabel(gl.free("y ") + gl.unit_micron, labelpad=-5)
+    ax.set_zlabel(gl.free("z ") + gl.unit_micron, labelpad=-7)
     if zoom:
         ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
         ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
     plt.tight_layout()
+    fig.subplots_adjust(left=0, right=0.85, bottom=0.1, top=1)
+    # === Colorbar (optional) ===
+    if add_colorbar:
+        cbaxes = inset_axes(
+            ax,
+            width="60%",  # Width: 60% of the parent axes
+            height="5%",  # Height: 5% of the parent axes
+            loc="lower center",  # Center the new axes at the bottom
+            bbox_to_anchor=(0.0, -0.15, 1, 1),  # Position relative to the parent axes
+            bbox_transform=ax.transAxes,  # Use axes coordinates for bbox_to_anchor
+            borderpad=0,
+        )
+        cbar = plt.colorbar(sm, cax=cbaxes, orientation="horizontal")
+        if rangevar == "v":
+            cbar.set_label(gl.volt)
+        elif rangevar == "num_shell":
+            cbar.set_label(gl.shell_num, labelpad=-2)
+        elif type(rangevar) == types.FunctionType:
+            cbar.set_label(rangevar.__name__)
     if show:
         plt.show()
 
