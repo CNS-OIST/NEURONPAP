@@ -362,13 +362,11 @@ class plotFigures:
                         height_in_inches = lineWidth / 72
                         dpi = fig.dpi
                         height_in_pixels = height_in_inches * dpi
-                        print(height_in_pixels)
 
                         inv = ax.transData.inverted()
                         p1 = inv.transform((0, 0))
                         p2 = inv.transform((0, height_in_pixels))
                         height_data = p2[1] - p1[1]
-                        print(height_data)
                         r = patches.Rectangle(
                             xy=(startStim, startBar),
                             width=endStim - startStim,
@@ -891,7 +889,7 @@ class plotFigures:
                     total = np.array(total)
                     total = np.unique(total)
 
-                    mprint(total.mean(), total.std())
+                    #mprint(total.mean(), total.std())
                 for cell in AllRes[compVal].values():
                     alpha = 1
                     if getattr(cell, merge) != selected:
@@ -927,6 +925,119 @@ class plotFigures:
                     )
                 )
                 plt.close("all")
+    def plot_combined_cvk(
+        self,
+        AllCells,
+    ):
+        for cells in AllCells:
+            for cell in cells:
+                initStep = self.get_initStep(cell)
+                fig = plt.figure(figsize=gl.figsize_panel_long)
+                gs = fig.add_gridspec(nrows=1,ncols=3,wspace=0.3)
+                ax_curr = fig.add_subplot(gs[0,0])
+                ax_volt = fig.add_subplot(gs[0,1])
+                ax_ko = fig.add_subplot(gs[0,2])
+                ax_ko.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.KoPAP)[initStep:],
+                    label=f"PAP",
+                    color=self.returnColor("PAP"),
+                )
+                ax_ko.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.KoSoma)[initStep:],
+                    label="Soma",
+                    color=self.returnColor("Soma"),
+                )
+                ax_ko.set_ylim(gl.lim_ko)
+                ax_ko.set_ylabel(gl.ion_o("K"))
+                ax_ko.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
+                ax_volt.set_xlabel(gl.ms)
+                ax_ko.legend()
+
+                ax_volt.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.vPAP)[initStep:],
+                    label=f"PAP {gl.vm}",
+                    color=self.returnColor("PAP"),
+                )
+                ax_volt.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.ekPAP)[initStep:],
+                    label=f"PAP {gl.ek_raw}",
+                    color=self.returnColor("PAP"),
+                    linestyle="--",
+                )
+                ax_volt.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.vSoma)[initStep:],
+                    label=f"Soma {gl.vm}",
+                    color=self.returnColor("Soma"),
+                )
+                ax_volt.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.ekSoma)[initStep:],
+                    label=f"Soma {gl.ek_raw}",
+                    color=self.returnColor("Soma"),
+                    linestyle="--",
+                )
+
+                ax_volt.set_ylim(gl.lim_ek)
+                ax_volt.set_ylabel(gl.volt)
+                ax_volt.set_xlabel(gl.ms)
+                ax_volt.xaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
+                ax_volt.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
+                ax_volt.legend()
+
+                ax_curr.plot(
+                    list(cell.time)[initStep:],
+                    list(cell.iKPAP)[initStep:],
+                    label=gl.current_ion("K"),
+                    color=self.returnColor("iK"),
+                )
+                if hasattr(cell, "iNaPAP"):
+                    ax_curr.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iNaPAP)[initStep:],
+                        label=gl.current_ion("Na"),
+                        color=self.returnColor("Na"),
+                    )
+                if hasattr(cell, "iNMDA") and self.NMDAR:
+                    ax_curr.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iNMDA)[initStep:],
+                        label=gl.current_ion("NMDA"),
+                        color=self.returnColor("NMDAR"),
+                    )
+                if hasattr(cell, "iGABA") and self.GABAR:
+                    ax_curr.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iGABA)[initStep:],
+                        label=gl.current_ion("GABAR"),
+                        color=self.returnColor("GABAR"),
+                    )
+                if hasattr(cell, "iGluT") and self.GluT:
+                    ax_curr.plot(
+                        list(cell.time)[initStep:],
+                        list(cell.iGluT)[initStep:],
+                        label=gl.current_ion("GluT"),
+                        color=self.returnColor("GluT"),
+                    )
+                ax_curr.set_xlabel(gl.ms)
+                ax_curr.set_ylabel(gl.curr)
+                ax_curr.set_ylim(gl.lim_curr)
+                ax_curr.yaxis.set_major_locator(MaxNLocator(integer=True))
+                ax_curr.xaxis.set_major_locator(MaxNLocator(integer=True))
+                ax_curr.legend()
+
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f"combined_cvk{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
+                    )
+                )
+                plt.close("all")
+
 
     def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None,labelObj=None):
         stdChannelDict = {
@@ -1599,6 +1710,7 @@ class procedure(plotFigures):
     optGABAR = 1000
     optGluT = 0  # std * optGluT + mean
     optNKA = 1
+    maxNKA = 10
     # default NMDAR counts
     channelCompareMax = 500
     channelCompareStep = 100
@@ -2607,7 +2719,7 @@ class procedure(plotFigures):
             NTChannelComp = [0, 100]
             NT_name = "GluT"
         elif self.NKA:
-            NTChannelComp = [1, 10]
+            NTChannelComp = [self.optNKA, self.maxNKA]
             NT_name = "Na/K-ATPase"
         self.tag += NT_name
 
@@ -2765,8 +2877,8 @@ class procedure(plotFigures):
                         kw_args["finalize"] = [
                             f"{NT_name} Channels\n{NTChannelComp[0]}",
                             NTChannelComp[1],
-                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
-                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
+                            f"Kir Channels {int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
+                            f"Kir Channels {int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
                         if self.NKA:
                             kw_args["finalize"][
@@ -2782,7 +2894,7 @@ class procedure(plotFigures):
                         (0 if id < 2 else 1, id % 2),
                         (list(cell.KoPAP)[initStep:], list(cell.vPAP)[initStep:]),
                         f"{cell.KoSize:.1f}",
-                        figObj=figobj,
+                        figObj=None if id == 0 and j == 0 else figobj,
                         color=color,
                         zorder=z,
                     )
@@ -2799,6 +2911,7 @@ class procedure(plotFigures):
                             figObj=figobj,
                             linestyle="--",
                             color="black",
+                            zorder=-1,
                             **kw_args,
                         )
 
@@ -2806,7 +2919,6 @@ class procedure(plotFigures):
             for ax in axs.flat:
                 ax.set_xlim(gl.lim_ko)
                 ax.set_ylim(gl.lim_Vmemb)
-            plt.tight_layout()
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -3781,9 +3893,9 @@ class procedure(plotFigures):
         elif self.GAP:
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
-            #elif self.NKA:
-            #    self.channelComapreMax = 10
-            #    self.channelCompareStep = 2
+        elif self.NKA:
+            self.channelCompareMax = self.maxNKA
+            self.channelCompareStep = self.maxNKA / 5 
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 2
             self.channelCompareStep = int(self.channelCompareMax / 2)
@@ -4054,9 +4166,12 @@ class procedure(plotFigures):
             controlIndex = None
             vListarray = np.zeros((sampleNum, len(iterations)))
             self.free_figure(results)
-            fig = plt.figure(figsize=gl.figsize_panel)
-            ax = fig.add_axes([0.1, 0.52, 0.8, 0.40])
-            ax_inset = fig.add_axes([0.1, 0.15, 0.8, 0.25])
+            fig = plt.figure(figsize=gl.figsize_panel_long)
+            gs = fig.add_gridspec(nrows=4,ncols=2,hspace=0.3)
+            ax = fig.add_subplot(gs[0:2,0])
+            ax_inset = fig.add_subplot(gs[3,0])
+            ax_peak = fig.add_subplot(gs[2:,1])
+
             for cells in results:
                 for cell in cells:
                     i = np.where(cell.PAPLen == iterations)[0][
@@ -4084,7 +4199,7 @@ class procedure(plotFigures):
             ]  # get index of PAPLen position in iterations
             controlV = np.nansum(vListarray[controlIndex]) / sampleNum
             ax.set_xlabel(gl.ms)
-            ax.set_ylabel(gl.d_volt)
+            ax.set_ylabel(gl.d_volt_short)
             x0 = 145
             x1 = 155
             y0 = -0.01
@@ -4094,7 +4209,7 @@ class procedure(plotFigures):
             ax_inset.set_xlim((x0, x1))
             ax_inset.set_ylim((y0, y1))
             ax_inset.set_xlabel(gl.ms)
-            ax_inset.set_ylabel(gl.d_volt)
+            ax_inset.set_ylabel(gl.d_volt_short)
 
             grey = "0.5"
             rect = Rectangle(
@@ -4126,7 +4241,7 @@ class procedure(plotFigures):
                 linewidth=1,
                 zorder=3,
                 linestyle="--",
-                connectionstyle="arc3,rad=0.1",
+                connectionstyle="angle,angleA=110,angleB=-5,rad=20",
             )
 
             fig.add_artist(con1)
@@ -4135,18 +4250,12 @@ class procedure(plotFigures):
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             ax_inset.yaxis.set_major_locator(MaxNLocator(integer=True))
             ax_inset.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.tight_layout()
-            plt.savefig(
-                os.path.join("../results/paperRes", f"GlutamateSpillOver{self.tag}.pdf")
-            )
-            plt.cla()
-            plt.clf()
 
+            ax = ax_peak
             vList = [
                 np.nansum(vListarray[i]) / sampleNum for i in range(len(vListarray))
             ]
             vstdList = [np.nanstd(vListarray[i]) for i in range(len(vListarray))]
-            fig, ax = plt.subplots()
             ax.errorbar(
                 iterations,
                 vList,
@@ -4207,7 +4316,6 @@ class procedure(plotFigures):
 
             ax.set_xlabel(gl.pap_affect)
             ax.set_ylabel(gl.free("Peak Voltage Change (mV)"))
-            plt.tight_layout()
             plt.savefig(
                 os.path.join(
                     "../results/paperRes", f"GlutamateSpillOverMax{self.tag}.pdf"
@@ -4785,7 +4893,7 @@ class procedure(plotFigures):
         self.tag += "_physiological"
         AllCells = []
         funcArgs = []
-        models = ["K$^+$ Model", "GluT Model", "GABA$_A$R Model", "NMDAR Model"]
+        models = ["K$^+$ Model", "GLT-1 Model", "GABA$_A$R Model", "NMDAR Model"]
         stim = [50, 100, "theta"]
         papcounts = [1, 10]
         for s in stim:
@@ -4805,7 +4913,7 @@ class procedure(plotFigures):
                     )
                     funcArgs[-1]["PAPCount"] = p
                     funcArgs[-1]["stimtype"] = s
-                    if m == "GluTModel":
+                    if m == "GLT-1 Model":
                         funcArgs[-1]["Glu"] = True
                         funcArgs[-1]["GluTrans"] = self.optGluT
                     elif m == "GABA$_A$R Model":
@@ -5323,6 +5431,8 @@ class procedure(plotFigures):
                         total = np.inf
                     elif verbose:
                         print(f"{total=}")
+
+                    self.plot_combined_cvk([AllCells])
 
                     self.plotIKSeries.__wrapped__(
                         self,
