@@ -20,6 +20,7 @@ import pandas as pd
 import inspect
 from functools import wraps
 import sys
+from math import ceil
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -729,8 +730,8 @@ class plotFigures:
                     plt.clf()
                     fig = plt.figure(figsize=gl.figsize_panel)
 
-                    ax = fig.add_axes([0.1, 0.52, 0.8, 0.40])
-                    ax_inset = fig.add_axes([0.1, 0.15, 0.8, 0.25])
+                    ax = fig.add_axes([0.2, 0.52, 0.7, 0.40])
+                    ax_inset = fig.add_axes([0.2, 0.15, 0.7, 0.25])
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.vPAP)[initStep:],
@@ -758,7 +759,6 @@ class plotFigures:
                         linestyle="--",
                     )
 
-                    ax.set_xlabel(gl.ms)
                     ax.legend()
                     ax.set_ylim(gl.lim_ek)
                     ax_inset.plot(
@@ -771,6 +771,7 @@ class plotFigures:
                     x0, x1 = 145, 155
                     y0, y1 = gl.lim_ek
                     grey = "0.5"
+                    light_grey = grey
 
                     ax_inset.plot(
                         list(cell.time)[initStep:],
@@ -807,7 +808,7 @@ class plotFigures:
                         coordsA=ax.transData,
                         xyB=(x0, y1),
                         coordsB=ax_inset.transData,
-                        color=grey,
+                        color=light_grey,
                         linewidth=1,
                         zorder=3,
                         linestyle="--",
@@ -817,16 +818,18 @@ class plotFigures:
                         coordsA=ax.transData,
                         xyB=(x1, y1),
                         coordsB=ax_inset.transData,
-                        color=grey,
+                        color=light_grey,
                         linewidth=1,
                         zorder=3,
                         linestyle="--",
-                        connectionstyle="arc3,rad=0.1",
+                        connectionstyle="angle,angleA=96,angleB=-1,rad=30",
+                        # connectionstyle="arc3,rad=0.3",
                     )
 
                     fig.add_artist(con1)
                     fig.add_artist(con2)
 
+                    ax.set_xlabel(gl.ms, zorder=10)
                     ax.set_ylabel(gl.volt, zorder=4)
                     ax_inset.set_xlabel(gl.ms, color=grey, zorder=4)
                     ax_inset.set_ylabel(gl.volt, color=grey, zorder=4)
@@ -852,7 +855,6 @@ class plotFigures:
                         va="bottom",
                     )
 
-                    plt.tight_layout()
                     plt.savefig(
                         os.path.join(
                             "../results/paperRes",
@@ -926,31 +928,34 @@ class plotFigures:
                 )
                 plt.close("all")
 
-    def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None):
+    def setLabelColors(self, area, Kir=True, x=False, y=False, chanOverride=None,labelObj=None):
         stdChannelDict = {
             "Kir": (370 * area + 1 * 4.7e3 * area, 1 * area),
             "GluT": (14248 * area, 812 * area),
-            "GABAR": (np.inf, 0),
-            "GABA$_A$R": (np.inf, 0),
+            "GABAR": (self.optGABAR, 10),
+            "GABA$_A$R": (self.optGABAR, 10),
+            "NMDAR": (self.optNMDAR, 50),
+             "NKA":(1,1),
             "PAPLen": (
                 0.425,
                 0.225,
             ),  # 95th percentile of node sizes from Arizono M. Nat Comm. (2020)
         }
-        print(area)
         if chanOverride != None and type(chanOverride) == dict:
             for k, v in chanOverride.items():
                 stdChannelDict[k] = v
         if y:
             if Kir:
                 mean, std = stdChannelDict["Kir"]
-                _, labels = plt.yticks()
+                if labelObj is not None:
+                    _,labels = labelObj
+                else:
+                    _, labels = plt.yticks()
             else:
                 if self.GluT:
                     mean, std = stdChannelDict["GluT"]
                 else:
                     mean, std = stdChannelDict["PAPLen"]
-            _, labels = plt.yticks()
             for l in labels:
                 if abs(float(l.get_text()) - mean) > std:
                     l.set_color("grey")
@@ -964,8 +969,10 @@ class plotFigures:
                 mean, std = stdChannelDict["GABAR"]
             else:
                 mean, std = stdChannelDict["PAPLen"]
-
-            _, labels = plt.xticks()
+            if labelObj is not None:
+                labels,_ = labelObj
+            else:
+                _, labels = plt.xticks()
             for l in labels:
                 if abs(float(l.get_text()) - mean) > std:
                     l.set_color("grey")
@@ -997,6 +1004,7 @@ class plotFigures:
         plt.close("all")
 
         fig, axes = plt.subplots(1, 2, figsize=gl.figsize_panel, sharey=True)
+        fig.subplots_adjust(left=0.2, right=0.9, bottom=0.05, top=1)
 
         im1 = axes[0].imshow(
             imarray_single,
@@ -1014,14 +1022,13 @@ class plotFigures:
             origin="lower",
             interpolation="nearest",
         )
-
         res = results[0]
 
         for ax in axes:
             if self.GluT:
                 addChan = 1
                 chanStart = -1 * int(self.channelCompareMax / self.channelCompareStep)
-                skip = 2
+                skip = 1
                 xlabels = (
                     np.arange(
                         chanStart,
@@ -1043,7 +1050,8 @@ class plotFigures:
                     ),
                     xlabels,
                     rotation=45,
-                    ha="right",
+                    ha="center",
+                    va="top"
                 )
             else:
                 chanStart = 0
@@ -1062,7 +1070,8 @@ class plotFigures:
                     )
                     * self.channelCompareStep,
                     rotation=45,
-                    ha="right",
+                    ha="center",
+                    va="top",
                 )
         if self.NMDAR:
             xlabel = gl.chan_num("NMDAR")
@@ -1073,7 +1082,7 @@ class plotFigures:
         elif self.GAP:
             xlabel = gl.chan_num("Cx43")
         elif self.NKA:
-            xlabel = gl.chan_num("NKA")
+            xlabel = gl.density_num("NKA")
         else:
             xlabel = None
         if Kir:
@@ -1116,6 +1125,15 @@ class plotFigures:
                 [f"{i:.2f}" for i in np.arange(0.3, 3.1, 0.3)],
             )
             ax[0].set_ylabel(gl.pap_affect)
+        chanOverride = {
+            "Kir": (
+                int(res[0].PAPKirCount),
+                ceil(res[0].PAPKirCount_std),
+            )
+        }
+        self.setLabelColors(results[0][0].PAParea,Kir=True,y=True,x=True,labelObj=(axes[0].get_xticklabels(),axes[0].get_yticklabels()),chanOverride=chanOverride)
+        self.setLabelColors(results[0][0].PAParea,Kir=True,y=False,x=True,labelObj=(axes[1].get_xticklabels(),axes[1].get_yticklabels()),chanOverride=chanOverride)
+
         _, cbarMax = gl.clim_volt
         fig.colorbar(
             im1,
@@ -1131,7 +1149,7 @@ class plotFigures:
         top = axes[0].get_position().y1
         fig.text(
             (left + right) / 2,
-            bottom - 0.08,
+            bottom - 0.08 if not self.NKA else bottom-0.15,
             xlabel,
             fontsize=plt.rcParams["axes.labelsize"],
             ha="center",
@@ -1154,7 +1172,6 @@ class plotFigures:
             fontsize=plt.rcParams["axes.labelsize"],
         )
 
-        plt.tight_layout()
         plt.savefig(
             os.path.join(
                 "../results/paperRes", f"combined_heatmap{PAPattr}{self.tag}.pdf"
@@ -1350,10 +1367,13 @@ class plotFigures:
             elif self.GAP:
                 plt.xlabel(gl.chan_num("Cx43"))
             elif self.NKA:
-                plt.xlabel(gl.chan_num("NKA"))
+                plt.xlabel(gl.density_num("NKA"))
             _, cbarMax = gl.clim_volt
             plt.colorbar(
-                label=gl.d_volt_short, ticks=np.arange(0, cbarMax, 2), extend="max"
+                label=gl.d_volt_short,
+                ticks=np.arange(0, cbarMax, 2),
+                extend="max",
+                shrink=0.9,
             )
             plt.clim((0, cbarMax))
             if stdLabels:
@@ -1391,7 +1411,7 @@ class plotFigures:
                 plt.clf()
                 plt.close("all")
                 fig = plt.figure(figsize=gl.figsize_halfh)
-                gs = fig.add_gridspec(nrows=6, ncols=2)
+                gs = fig.add_gridspec(nrows=6, ncols=2,hspace=0.3)
                 ax = []
                 ax_r = []
                 inset = (375, 385)
@@ -1401,8 +1421,11 @@ class plotFigures:
                 ax.append(fig.add_subplot(gs[4:6, 0], sharex=ax[0]))
                 ax_r.append(fig.add_subplot(gs[4, 1]))
                 ax_r.append(fig.add_subplot(gs[5, 1], sharex=ax_r[0]))
+                ax_summary = fig.add_subplot(gs[:3,1])
+                summary_res = {} 
                 for j, s in enumerate(stim):
-                    if j != len(stim):
+                    summary_res[s] = [] 
+                    if j != len(stim) - 1:
                         ax[j].tick_params(labelbottom=False)
                     for m in models:
                         # flattened
@@ -1411,6 +1434,8 @@ class plotFigures:
                         cell = AllCells[index + j * len(models)]
 
                         initStep = self.get_initStep(cell)
+                        calc_max = self.get_initStep(cell,shift=-100)
+                        summary_res[s].append(max(list(getattr(cell,location))[calc_max:]) - cell.RMP)
                         ax[j].plot(
                             list(cell.time)[initStep:],
                             list(getattr(cell, location))[initStep:],
@@ -1445,16 +1470,40 @@ class plotFigures:
                     else:
                         ax[j].set_ylim(gl.lim_VmembSoma)
                     ax[j].set_xlim(right=500)
+
                 index -= len(models) * (len(stim) - 1)
+
+                groups = []
+                for k in summary_res.keys():
+                    label = f'{k} {gl.unit_hz_raw}' if type(k) is int else k.capitalize() 
+                    groups.append(label)
+
+                values = np.array(list(summary_res.values()))
+
+                n_groups = len(groups)
+                n_bars = values.shape[1]
+                bar_colors = [self.returnColor(m) for m in models]
+
+                x = np.arange(n_groups)
+                width = 0.2
+
+                for i in range(n_bars):
+                    ax_summary.bar(
+                        x + (i - (n_bars - 1) / 2) * width,
+                        values[:, i],
+                        width=width,
+                        color=bar_colors[i],
+                        edgecolor='black'
+                    )
+
+                ax_summary.set_xticks(x)
+                ax_summary.set_xticklabels(groups)
+                ax_summary.set_ylabel(gl.d_volt)
+                ax_summary.set_ylim(gl.lim_d_volt)
                 handle, label = ax[-1].get_legend_handles_labels()
-                leg = fig.legend(
+                ax_summary.legend(
                     handle,
                     label,
-                    loc="center left",
-                    bbox_to_anchor=(0.6, 0.7),
-                    fancybox=True,
-                    shadow=True,
-                    ncol=1,
                 )
                 ax[-1].set_xlabel(gl.ms)
                 # plt.title(f"stim:{s} PAP counts = {p}")
@@ -1475,7 +1524,7 @@ class plotFigures:
                 fig.text(
                     left + 0.01,
                     ax[0].get_position().y1 - 0.02,
-                    "50 Hz",
+                    f"50 {gl.unit_hz_raw}",
                     fontsize=plt.rcParams["axes.labelsize"],
                     ha="left",
                     va="top",
@@ -1483,7 +1532,7 @@ class plotFigures:
                 fig.text(
                     left + 0.01,
                     ax[1].get_position().y1 - 0.02,
-                    "100 Hz",
+                    f"100 {gl.unit_hz_raw}",
                     ha="left",
                     va="top",
                     fontsize=plt.rcParams["axes.labelsize"],
@@ -1534,7 +1583,6 @@ class plotFigures:
                 fig.add_artist(con1)
                 fig.add_artist(con2)
 
-                plt.tight_layout()
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
@@ -2044,7 +2092,7 @@ class procedure(plotFigures):
         if rank == 0:
             fig = plt.figure(figsize=gl.figsize_panel)
             gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
-            ax1 = fig.add_axes([0.1, 0.75, 0.85, 0.2])
+            ax1 = fig.add_axes([0.15, 0.75, 0.75, 0.2])
             for v in vClampList:
                 x = np.linspace(40, 240, 1000)
                 holdingpotentials = self.pseudotrace(x, v)
@@ -2055,7 +2103,7 @@ class procedure(plotFigures):
             ax1.tick_params(bottom=False, left=True, colors="grey")
             ax1.set_xticks([])
 
-            ax2 = fig.add_axes([0.1, 0.1, 0.85, 0.6])
+            ax2 = fig.add_axes([0.15, 0.15, 0.75, 0.6])
 
             for cells in results:
                 for cell in cells:
@@ -2134,6 +2182,7 @@ class procedure(plotFigures):
         timeVoltageArray -= timeVoltageArray[-1][-1]
         # print(timeVoltageArray)
         # Plot the array using a heatmap
+        plt.figure(figsize=gl.figsize_panel)
         plt.imshow(timeVoltageArray, cmap="magma", interpolation="none", aspect="auto")
         if replay:
             plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 10, 2), extend="max")
@@ -2143,11 +2192,11 @@ class procedure(plotFigures):
             plt.clim(gl.clim_volt)
         plt.xlabel(gl.free("Normalized distance"))
         plt.xticks(
-            range(0, 11, 2), [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+            range(0, 11, 5), [0, 0.5, 1.0]
         )  # float point generated by np.linspace
 
         plt.text(
-            0.5,
+            0.1,
             len(list(cells.branchAtten[0])[initStep:]) + 2,
             "Soma",
             color="white",
@@ -2156,7 +2205,7 @@ class procedure(plotFigures):
             fontsize=plt.rcParams["axes.labelsize"],
         )
         plt.text(
-            9.5,
+            9.9,
             len(list(cells.branchAtten[0])[initStep:]) + 2,
             "PAP",
             color="white",
@@ -2275,8 +2324,8 @@ class procedure(plotFigures):
         axs[splt_x, splt_y].plot(*data, label=label, **plt_args)
 
         if finalize and final_label:
-            plt.tight_layout(rect=[0.18, 0.12, 0.95, 0.90])
-            plt.subplots_adjust(left=0.2, right=0.8, wspace=0.2)
+            # plt.tight_layout(rect=[0.2, 0.0, 0.8, 0.9])
+            fig.subplots_adjust(left=0.2, right=0.75, wspace=0.15, hspace=0.1)
             left = axs[0, 0].get_position().x0
             right = axs[0, 1].get_position().x1
             bottom = axs[1, 0].get_position().y0
@@ -2302,7 +2351,7 @@ class procedure(plotFigures):
                 sorted_label,
                 title=legend_label,
                 loc="center left",
-                bbox_to_anchor=(0.81, 0.5),
+                bbox_to_anchor=(0.76, 0.5),
                 fancybox=True,
                 shadow=True,
                 ncol=1,
@@ -2311,7 +2360,7 @@ class procedure(plotFigures):
 
             fig.text(
                 (left + right) / 2,
-                bottom - 0.07,
+                bottom - 0.06,
                 x_label,
                 ha="center",
                 va="top",
@@ -2319,7 +2368,7 @@ class procedure(plotFigures):
             )
 
             fig.text(
-                left - 0.09,
+                left - 0.12,
                 (bottom + top) / 2,
                 y_label,
                 ha="center",
@@ -2348,7 +2397,7 @@ class procedure(plotFigures):
             )
 
             fig.text(
-                left - 0.16,
+                left - 0.19,
                 (axs[0, 0].get_position().y0 + axs[0, 0].get_position().y1) / 2,
                 row1,
                 ha="left",
@@ -2357,7 +2406,7 @@ class procedure(plotFigures):
                 fontsize=plt.rcParams["axes.labelsize"],
             )
             fig.text(
-                left - 0.16,
+                left - 0.19,
                 (axs[1, 0].get_position().y0 + axs[1, 0].get_position().y1) / 2,
                 row2,
                 ha="left",
@@ -2494,10 +2543,10 @@ class procedure(plotFigures):
                     kw_args = {}
                     if id == 2 and j == len(AllCells[i]) - 1:
                         kw_args["finalize"] = [
-                            f"PAP Length 0.3 {gl.unit_micron_raw}",
+                            f"PAP Length\n0.3 {gl.unit_micron_raw}",
                             f"5 {gl.unit_micron_raw}",
-                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
-                            f"Kir Channels\n{int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
+                            f"Kir Channels {int(cell.PAPKirCount_std*self.KirMax+cell.PAPKirCount)}",
+                            f"Kir Channels {int(cell.PAPKirCount_std*self.optKir+cell.PAPKirCount)}",
                         ]
                         kw_args["final_label"] = [gl.ion_o("K"), gl.volt]
                     initStep = self.get_initStep(cell, shift=0) - 200
@@ -2523,6 +2572,7 @@ class procedure(plotFigures):
                             figObj=figobj,
                             color="black",
                             linestyle="--",
+                            zorder=-1,
                             **kw_args,
                         )
 
@@ -2530,7 +2580,6 @@ class procedure(plotFigures):
             for ax in axs.flat:
                 ax.set_xlim(gl.lim_ko)
                 ax.set_ylim(gl.lim_Vmemb)
-            plt.tight_layout()
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -2977,8 +3026,6 @@ class procedure(plotFigures):
             comm.Barrier()
             if self.peakLen == None:
                 self.peakLen = 5
-            else:
-                mprint(self.peakLen)
             iterations = comm.bcast(
                 [(i, j) for j in [0.3, self.peakLen] for i in range(papCount)]
             )
@@ -3731,9 +3778,12 @@ class procedure(plotFigures):
         if self.GABAR:
             self.channelCompareMax *= 2
             self.channelCompareStep *= 2
-        if self.GAP and not self.GABAR:
+        elif self.GAP:
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
+            #elif self.NKA:
+            #    self.channelComapreMax = 10
+            #    self.channelCompareStep = 2
         if not (self.GABAR or self.NMDAR) and self.GluT:
             self.channelCompareMax = 2
             self.channelCompareStep = int(self.channelCompareMax / 2)
@@ -4300,6 +4350,7 @@ class procedure(plotFigures):
         if rank == 0:
             plt.cla()
             plt.clf()
+            plt.figure(figsize=gl.figsize_panel)
             imArray = np.zeros(
                 (
                     int(self.KoCompMax / self.KoCompStep + 1),
@@ -4351,9 +4402,9 @@ class procedure(plotFigures):
                 plt.xticks(np.arange(0, len(logx), 1), logx_label)
             else:
                 plt.xticks(
-                    np.arange(0, int(maxStep / intermStep) + (1 - skip), 1),
+                    np.arange(0, int(maxStep / intermStep) + (1 - skip), 2),
                     np.round(
-                        np.arange(skip, maxStep + intermStep / 2, intermStep),
+                        np.arange(skip, maxStep + intermStep / 2, intermStep * 2),
                         decimals=dec,
                     ).astype(printType),
                 )
@@ -4371,7 +4422,7 @@ class procedure(plotFigures):
                     np.arange(0, maxStep + intermStep / 2, intermStep), decimals=dec
                 ).astype(printType),
             )
-            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 20, 2), extend="max")
+            plt.colorbar(label=gl.d_volt_short, ticks=np.arange(0, 20, 2), extend="max",shrink=0.7)
             plt.clim(gl.clim_volt)
             if comparison == "PAPLen":
                 self.GluT = False  # just to force plot setLabel Colors
@@ -4383,7 +4434,6 @@ class procedure(plotFigures):
                 chanOverride={"Kir": (res[0].PAPKirCount, res[0].PAPKirCount_std)},
             )
 
-            plt.tight_layout()
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
@@ -4557,16 +4607,16 @@ class procedure(plotFigures):
                 self.GluT = False  # just to force plot setLabel Colors
                 chanOverride = {
                     "Kir": (
-                        res[0].PAPKirCount / res[0].PAPLen,
-                        res[0].PAPKirCount_std / res[0].PAPLen,
+                        int(res[0].PAPKirCount / res[0].PAPLen),
+                        ceil(res[0].PAPKirCount_std / res[0].PAPLen),
                     )
                 }
 
             else:
                 chanOverride = {
                     "Kir": (
-                        res[0].PAPKirCount,
-                        res[0].PAPKirCount_std,
+                        int(res[0].PAPKirCount),
+                        ceil(res[0].PAPKirCount_std),
                     )
                 }
             self.setLabelColors(
@@ -5520,7 +5570,7 @@ class procedure(plotFigures):
             emptyrow = 1
             cutoff = 9
             gs = fig.add_gridspec(
-                nrows=cutoff + emptyrow + 1, ncols=6, hspace=0.5, wspace=0.5
+                nrows=cutoff + emptyrow + 1, ncols=6, hspace=0.5, wspace=0.8
             )
             axes = []
             total_current = [0] * 3
@@ -5578,7 +5628,7 @@ class procedure(plotFigures):
 
                     for i in range(2):
                         ax_inset_select[i][0].set_ylabel(
-                            gl.clampI + " " + gl.unit_pA, labelpad=-10
+                            gl.clampI + " " + gl.unit_pA, labelpad=-13
                         )
                         ax_inset_select[i][1].set_ylabel(
                             gl.sigma_glt + " " + gl.unit_pA,
@@ -5731,8 +5781,8 @@ class procedure(plotFigures):
                                 y0 = ax_inset[0].get_ylim()[0]
                                 y1 = ax_inset[0].get_ylim()[1]
 
-                                origin = (-0.4, -0.25)
-                                len_x = 1.9
+                                origin = (-0.5, -0.25)
+                                len_x = 2.1
                                 len_y = 1.35
 
                                 con1 = ConnectionPatch(
@@ -5814,7 +5864,7 @@ class procedure(plotFigures):
                                 bottom + 0.01,
                                 f"Shell {shell_id}",
                                 color="grey",
-                                ha="right",
+                                ha="center",
                                 va="center",
                                 rotation=90,
                                 fontsize=plt.rcParams["axes.labelsize"],
@@ -5880,7 +5930,7 @@ class procedure(plotFigures):
             fig.text(
                 left - 0.11,
                 center,
-                gl.free("Normalized Electrode Current I/min(I$_{channel}$)"),
+                gl.free("Normalized Current\t$I/\min(I_{channel})$"),
                 fontsize=plt.rcParams["axes.labelsize"],
                 ha="center",
                 va="center",
@@ -6255,7 +6305,7 @@ class procedure(plotFigures):
                 aspect="equal",
             )
             plt.ylabel(gl.free("Number of stimuli"))
-            plt.xlabel(gl.free("Frequency (Hz)"))
+            plt.xlabel(gl.hz)
             plt.xticks(
                 range(0, int(spikeFreqMax / spikeFreqStep) + 1, 2),
                 np.arange(0, spikeFreqMax + 1, spikeFreqStep * 2),
@@ -6409,6 +6459,7 @@ if __name__ == "__main__":
                     if res.success:
                         kwargs["showFig"] = True
                         kwargs["skipsave"] = False
+                        kwargs["autosave"] = True
                         exp.fitExpDepolarization(res.x, **kwargs)
                 exp.foundfitExperiment = False
 

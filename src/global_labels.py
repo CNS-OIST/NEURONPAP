@@ -10,6 +10,10 @@ class gl:
     unit_pA = "(pA)"
     unit_micron_raw = "$\mu$m"
     unit_micron = f"({unit_micron_raw})"
+    unit_curr_density = "(mA/cm$^2$)"
+    unit_hz_raw = "Hz"
+    unit_hz = f"({unit_hz_raw})"
+    hz = "Frequency " + unit_hz
     # label
     ms = "Time " + unit_ms
     s = "Time" + unit_s
@@ -82,6 +86,10 @@ class gl:
     @staticmethod
     def chan_num(chan):
         return f"# of {chan} Channels"
+
+    @staticmethod
+    def density_num(chan):
+        return f"Current density of {chan} Channels {gl.unit_curr_density}"
 
     @staticmethod
     def free(label):

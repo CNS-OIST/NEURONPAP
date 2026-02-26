@@ -27,6 +27,7 @@ UNITS {
 	(mV) = (millivolt)
 	(uS) = (microsiemens)
 	(mM) = (milli/liter)
+	(uM) = (micro/liter)
 	(S)  = (siemens)
 	(pS) = (picosiemens)
 	(um) = (micron)
@@ -83,7 +84,10 @@ PARAMETER {
 	delta = 0.8 	(1)		: the electrical distance of the Mg2+ binding site from the outside of the membrane from Spruston95
 : The Parameter Controls Ohm haw in NMDAR
 	e = -0.7		(mV)	: in CA1-CA3 region = -0.7 from Spruston95
-}
+        gluEC = 4.3 (uM) : From Nahum-Levy et al. 2001 Biophysical Journal
+        hilln = 1.2 (1) :
+        synWeight = 0.56 : From Moradi
+        }
 
 CONSTANT {
 	T = 273.16	(degC)
@@ -140,7 +144,7 @@ INITIAL {
 }
 
 BREAKPOINT {
-	SOLVE state METHOD runge : derivimplicit : 
+	SOLVE state METHOD derivimplicit : 
 	: we found acceptable results with "runge" integration method
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
@@ -169,7 +173,7 @@ NET_RECEIVE(weight, D1, tsyn (ms)) {
 	D1 = 1 - (1-D1)*exp(-(t - tsyn)/tau_D1)
 	tsyn = t
 
-	wf = weight*factor*D1
+	wf = hillGluc(weight*1(mM))*synWeight*factor*D1
 	A = A + wf
 	B = B + wf
 	C = C + wf
@@ -194,3 +198,6 @@ PROCEDURE rates(v (mV)) {
 		tau2 = .9999*tau3
 	}
 }
+    FUNCTION hillGluc(gluConc (mM)){
+        hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
+    }
