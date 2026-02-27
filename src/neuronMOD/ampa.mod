@@ -49,9 +49,10 @@ ENDCOMMENT
 
 NEURON {
 	POINT_PROCESS AMPA_S
-	NONSPECIFIC_CURRENT i
+	NONSPECIFIC_CURRENT iAMPA
 	RANGE R, g, gmax, i
 	RANGE Cdur_a, Alpha_a, Beta_a, Erev_a, Rinf_a, Rtau_a
+  RANGE multiple
   THREADSAFE
 }
 UNITS {
@@ -59,22 +60,27 @@ UNITS {
 	(mV) = (millivolt)
 	(umho) = (micromho)
 	(mM) = (milli/liter)
+  (uM) = (micro/liter)
+	(pS) = (picosiemens)
 }
 
 PARAMETER {
+  multiple = 1 (1)
 
 	Cdur_a	= 1	(ms)		: transmitter duration (rising phase)
 	Alpha_a	= 1.1	(/ms)	: forward (binding) rate
 	Beta_a	= 0.19	(/ms)		: backward (unbinding) rate
 	Erev_a	= 0	(mV)		: reversal potential
 	gmax = 10 (pS) : single channel conductnace ofGluA2 lacking in Schwan Cell Chen (2017) JNeuro 
-  multiple = 1 (1)
+  gluEC = 296 (uM) : zhang w. biophys J. 2006
+  hilln = 1.09 (1)
+
 }
 
 
 ASSIGNED {
 	v		(mV)		: postsynaptic voltage
-	i		(nA)		: current = g*(v - Erev)
+	iAMPA		(nA)		: current = g*(v - Erev)
 	g 		(umho)		: conductance
 	Rinf_a				: steady state channels open
 	Rtau_a		(ms)		: time constant of channel binding
@@ -90,9 +96,9 @@ INITIAL {
 }
 
 BREAKPOINT {
-	SOLVE release METHOD cnexp
-	g = gmax*(Ron + Roff)*1(umho)
-	i = g*(v - Erev_a)
+	SOLVE release METHOD derivimplicit
+	g = (1e-06)*gmax*multiple*(Ron + Roff)
+	iAMPA = g*(v - Erev_a)
 }
 
 DERIVATIVE release {
@@ -107,6 +113,7 @@ DERIVATIVE release {
 : Note: automatic initialization of all reference args to 0 except first
 
 NET_RECEIVE(weight, on, nspike, r0, t0 (ms)) {
+  weight = hillGluc(weight*1(mM))
 	: flag is an implicit argument of NET_RECEIVE and  normally 0
         if (flag == 0) { : a spike, so turn on if not already in a Cdur_a pulse
 		nspike = nspike + 1
@@ -130,4 +137,6 @@ NET_RECEIVE(weight, on, nspike, r0, t0 (ms)) {
 		on = 0
 	}
 }
-
+FUNCTION hillGluc(gluConc (mM)){
+        hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
+    }

@@ -38,7 +38,7 @@ class gl:
     lim_d_volt = (0, 70)
     lim_ko = (0, 30)
     lim_ek = (-100, 20)
-    lim_curr = (-5000, 5000)
+    lim_curr = (-100, 100)
     lim_min_amp = (-50, 1)
     lim_min_amp_bs = (-100, 100)
     shell_num = "shell number"

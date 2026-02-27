@@ -52,7 +52,7 @@ total_surf = 0
         cm = 0.8
         insert pas
         e_pas = -85
-        g_pas = 1/145        
+        g_pas = 1/1450        
         insert kir2
         insert nakpump
         // insert ncx

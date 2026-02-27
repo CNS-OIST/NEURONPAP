@@ -63,7 +63,7 @@ UNITS {
 
 PARAMETER {
   hilln = 1.5  (1)
-  gabaEC = 7 (uM)  :Gnirich (1195) J Physiology
+  gabaEC = 7 (uM) :gingrich1995 J physiology 
 	tau1=.1 (ms) <1e-9,1e9>
 	tau2 = 10 (ms) <1e-9,1e9>
 	e=-70	(mV)
