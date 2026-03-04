@@ -5,11 +5,11 @@ Ra = 100
 cm = 0.8
 insert pas
 e_pas = -85
-g_pas = 1 / 11150
+g_pas = 1 / 1450
 celsius = 25
 insert k_acc
-ko = 5
-ki = 130
+ko = 3.5 
+ki = 120
 insert na_acc
 nao = 140
 nai = 15

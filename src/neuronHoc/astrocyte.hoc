@@ -25,6 +25,17 @@ gapcount = 30000 //NAGY (2007) CellComm Adhesion
 //gapcount = 0
 ki_sim_flag = 0
 
+proc set_ki_sim() {
+    if (ki_sim_flag == 0) {
+      ki_sim_flag = 1
+      }
+    forall {
+        insert kdifl
+        ki0_kdifl = 120 
+          gap_kdifl = 1
+      }
+  }
+
 func calc_fhspace(){local min_ecs,max_ecs,max_d,min_d
   min_ecs = 20
 max_ecs = 1000
@@ -80,7 +91,7 @@ total_surf = 0
       secref = new SectionRef()
       if (secref.nchild == 0 && gapcount > 0){
         if (ki_sim_flag == 1) {
-          gap_kdifl = 1
+          gap_kdifl = 0
           no_clamp_kdifl = 0
         }
         sGap = new Gap(0.7)

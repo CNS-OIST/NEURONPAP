@@ -1,4 +1,4 @@
-TITLE potassium outward leak channel TWIK-1
+TITLE potassium outward leak channel TREK-1
 
 COMMENT
 This is kinetics of Kir4.1 channels used in the Janic et al. 2022 paper.
@@ -7,7 +7,7 @@ MAYBE needs electrode current statement
 
 ENDCOMMENT
 NEURON {
-    SUFFIX twik
+    SUFFIX trek
     USEION k READ ki,ko WRITE ik
     RANGE  powk,vs,taukp,PBkp,kob,vzerokp,Skp,total_area
 }

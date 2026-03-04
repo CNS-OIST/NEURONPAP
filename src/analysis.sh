@@ -162,7 +162,7 @@ done
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 6BCD
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 1 --GluT 1 --GABAR 0 $seed
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed
-    mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 --NKA 1 $seed
+    mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 0 --NKA 1 $seed
   else
     echo "Skipped Phase plane analysees and bath experiments"
     echo "They take quite long so run them individually or with more processes"

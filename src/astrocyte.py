@@ -272,6 +272,10 @@ class PAPModel(ResultsPAPModel):
 
         return (R * T) / (F) * np.log(ko / kin)
 
+    def set_diff_ki(self, on):
+        if on:
+            h.set_ki_sim()
+
     def set_gapBath(self, on):
         if on:
             h.set_gapv(self.nernstK(10, 120) * 1000)

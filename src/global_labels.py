@@ -10,9 +10,12 @@ class gl:
     unit_pA = "(pA)"
     unit_micron_raw = "$\mu$m"
     unit_micron = f"({unit_micron_raw})"
-    unit_curr_density = "(mA/cm$^2$)"
+    unit_curr_density_raw = "mA/cm$^2$"
+    unit_curr_density = f"({unit_curr_density_raw})"
     unit_hz_raw = "Hz"
     unit_hz = f"({unit_hz_raw})"
+    unit_um_cubed_raw = f"{unit_micron_raw}$^3$"
+    unit_um_cubed = f"({unit_um_cubed_raw})$"
     hz = "Frequency " + unit_hz
     # label
     ms = "Time " + unit_ms
@@ -38,7 +41,7 @@ class gl:
     lim_d_volt = (0, 70)
     lim_ko = (0, 30)
     lim_ek = (-100, 20)
-    lim_curr = (-100, 100)
+    lim_curr = (-500, 500)
     lim_min_amp = (-50, 1)
     lim_min_amp_bs = (-100, 100)
     shell_num = "shell number"
@@ -58,6 +61,7 @@ class gl:
         "axes.labelsize": 10,
         "ytick.labelsize": 10,
         "xtick.labelsize": 10,
+        "text.latex.preamble": r"\usepackage{xcolor}",
     }
 
     @staticmethod

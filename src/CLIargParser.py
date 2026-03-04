@@ -43,12 +43,11 @@ def argParser(rangeInt=100):
         help="Used to run a single simulation",
     )
     parser.add_argument(
-        "-n",
-        "--no_read_data",
-        dest="nonReadData",
+        "--intraDiff",
+        dest="intra_diff",
         action="store_true",
         default=False,
-        help="Used to specifiy if not to read from intermediary Data",
+        help="Used to specifiy if run intracellular diffusion, works only for single run",
     )
 
     parser.add_argument(

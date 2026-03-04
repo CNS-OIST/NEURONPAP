@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
+import os
 
 
 class fitModelCurve:
@@ -142,13 +143,13 @@ class calibrateChannel:
         # }
         self.expIVName = {
             "Kir": "Data/KirIV.csv",
-            "TWIK": "Data/TWIKIV.csv",
+            "TWIK": "Data/twikIV.csv",
             "NMDAR": "Data/NMDARIV.csv",
             "GluT": "Data/GluTrans.csv",
         }
         self.name2NEURON = {
             "Kir": ("kir2", "mm"),
-            "TWIK": ("twik", "mm"),
+            "TWIK": ("kleak", "mm"),
             "NMDAR": ("setNMDAs", "pm"),
             "GluT": ("setGluTs", "pm"),
         }
@@ -184,7 +185,7 @@ class calibrateChannel:
         plt.scatter(*expSet, label="experiment")
         plt.plot(*mdlSet, label="model")
         plt.legend()
-        plt.savefig(f"icurve{channel}.pdf")
+        plt.savefig(os.path.join("../results/paperRes/", f"icurve{channel}.pdf"))
 
     def getModeliCurve(self, channel, run=False, mV=None):
         if run:
@@ -198,7 +199,7 @@ class calibrateChannel:
         return time, curr
 
     def getExpiCurve(self, channel):
-        fName = self.expIVName(channel)
+        fName = self.expIVName[channel]
         ext = fName.split(".")[-1]
         time = []
         curr = []
@@ -211,7 +212,11 @@ class calibrateChannel:
             f1.close()
         elif ext == "csv":
             expData = pd.read_csv(fName)
-            time = expData["time"].tolist()
+            if "time" in expData.columns:
+                time = expData["time"].tolist()
+            else:
+                print(f"no file {fName}")
+                return None, None
             curr = expData["curr"].tolist()
         else:
             print(f"no file {fName}")
@@ -227,13 +232,16 @@ class calibrateChannel:
         plt.legend()
         plt.xlabel("Voltage (mV)")
         plt.ylabel("Normalized Current")
-        plt.savefig(f"IVCurve{channel}.pdf")
+        plt.savefig(os.path.join("../results/paperRes/", f"IVCurve{channel}.pdf"))
 
     def getModelIVPoint(self, mV, channel):
         h.clampSwitch(0, mV)
         h.init()
         h.run()
-        return max(np.array(getattr(self, channel)), key=abs)
+        return max(
+            np.array(getattr(self, channel))[int(len(getattr(self, channel)) // 2) :],
+            key=abs,
+        )
 
     def getExpIVCurve(self, channel):
         fName = self.expIVName[channel]
@@ -258,11 +266,16 @@ class calibrateChannel:
         return np.array(volt), curr
 
     def IVCurve(self, channel, vStep=None):
-        expVolt, expCurr = self.getExpIVCurve(channel)
+        try:
+            expVolt, expCurr = self.getExpIVCurve(channel)
+        except FileNotFoundError:
+            print(f"no iv data file in Data; skipped {channel}")
+            return None
         mdlCurr = []
         for v in expVolt:
             self.initModel(channel)
             mdlCurr.append(self.getModelIVPoint(v, channel))
+            print(v)
             if v == vStep:
                 expSet = self.getExpiCurve(channel)
                 mdlSet = self.getModeliCurve(channel)
@@ -272,11 +285,13 @@ class calibrateChannel:
 
 
 if __name__ == "__main__":
-    gabaMdl = fitModelCurve("GABA")
-    gabaMdl.optimize()
+    # gabaMdl = fitModelCurve("GABA")
+    # gabaMdl.optimize()
 
-    # chans = calibrateChannel()
-    # for channel in chans.channelName:
-    #     chans.index = 0
-    #     resSet = chans.IVCurve(channel)
-    #     chans.plotIVCurve(channel,*resSet)
+    chans = calibrateChannel()
+    for channel in chans.channelName:
+        chans.index = 0
+        print(channel)
+        resSet = chans.IVCurve(channel, vStep=-80.05684057174929)
+        if resSet is not None:
+            chans.plotIVCurve(channel, *resSet)
