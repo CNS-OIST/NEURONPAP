@@ -29,6 +29,7 @@ import matplotlib.text as mtext
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Rectangle, ConnectionPatch
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset 
 import matplotlib.patheffects as pe
 from copy import copy
 
@@ -190,7 +191,6 @@ class plotFigures:
                 "Glu": True,
                 "dt": self.dt,
                 "stimdelay": self.stimdelay,
-                "naleak": self.leak,
                 "clleak": 0,
                 "kir2": self.optKir,
                 "multiple": self.optNMDAR,
@@ -315,9 +315,12 @@ class plotFigures:
                     else:
                         second = False
                         startStim = int(cell.initTstop)
-                        endStim = max(cell.time) + 10
-                    plt.subplots_adjust(wspace=2)
+                        if 'gabaBath' in self.tag:
+                            endStim = startStim + 1
+                        else:
+                            endStim = max(cell.time) + 10
                     fig, (ax, ax2) = plt.subplots(1, 2, figsize=gl.figsize_panel)
+                    fig.subplots_adjust(wspace=0.5)
                 else:
                     fig, ax = plt.subplots(figsize=gl.figsize_ikPlots)
 
@@ -476,6 +479,11 @@ class plotFigures:
 
                 if bath:
                     lowerBound, upperBound = gl.lim_ek
+                    if 'gabaBath' in self.tag:
+                        lowerBound,upperBound = (-100,-40)
+                        ax.set_ylim((lowerBound,upperBound))
+
+
                     startBar = (upperBound + lowerBound) / 2
                     lineWidth = 8
                     if self.locality == "local":
@@ -532,7 +540,6 @@ class plotFigures:
                         gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
                     )
 
-                plt.tight_layout()
                 if not bath:
                     plt.tight_layout()
                     plt.savefig(
@@ -542,7 +549,6 @@ class plotFigures:
                         )
                     )
                 else:
-                    plt.tight_layout()
                     plt.savefig(
                         os.path.join(
                             "../results/paperRes",
@@ -620,7 +626,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iNMDA)[initStep:],
-                        label=gl.current_ion("NMDA"),
+                        label=gl.current_ion("NMDAR"),
                         color=self.returnColor("NMDAR"),
                     )
                 if hasattr(cell, "iGABA") and self.GABAR:
@@ -634,7 +640,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluT)[initStep:],
-                        label=gl.current_ion("GluT"),
+                        label=gl.current_ion("GLT"),
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
@@ -687,7 +693,7 @@ class plotFigures:
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluTSoma)[initStep:],
-                        label=gl.current_ion("GluT"),
+                        label=gl.current_ion("GLT"),
                         color=self.returnColor("GluT"),
                     )
                 ax.set_xlabel(gl.ms)
@@ -768,7 +774,7 @@ class plotFigures:
                     )
 
                     x0, x1 = 145, 155
-                    y0, y1 = gl.lim_ek
+                    y0, y1 = gl.lim_ek_zoom
                     grey = "0.5"
                     light_grey = grey
 
@@ -822,7 +828,6 @@ class plotFigures:
                         zorder=3,
                         linestyle="--",
                         connectionstyle="angle,angleA=96,angleB=-1,rad=30",
-                        # connectionstyle="arc3,rad=0.3",
                     )
 
                     fig.add_artist(con1)
@@ -939,6 +944,7 @@ class plotFigures:
                 gs = fig.add_gridspec(nrows=1, ncols=3, wspace=0.5)
                 ax_volt = fig.add_subplot(gs[0, 0])
                 ax_curr = fig.add_subplot(gs[0, 1])
+                ax_curr_inset = ax_curr.inset_axes([0.55, 0.1, 0.33, 0.25])
                 ax_ko = fig.add_subplot(gs[0, 2])
                 ax_ko.plot(
                     list(cell.time)[initStep:],
@@ -993,24 +999,33 @@ class plotFigures:
                 ax_volt.yaxis.set_major_locator(MaxNLocator(nbins="auto", integer=True))
                 ax_volt.legend()
 
-                ax_curr.plot(
-                    list(cell.time)[initStep:],
-                    list(cell.iKPAP)[initStep:],
-                    label=gl.current_ion("K"),
-                    color=self.returnColor("iK"),
-                )
-                if hasattr(cell, "iNaPAP"):
-                    ax_curr.plot(
+
+                for ax in [ax_curr,ax_curr_inset]:
+                    ax.plot(
                         list(cell.time)[initStep:],
-                        list(cell.iNaPAP)[initStep:],
-                        label=gl.current_ion("Na"),
-                        color=self.returnColor("Na"),
+                        list(cell.iKPAP)[initStep:],
+                        label=gl.current_ion("K"),
+                        color=self.returnColor("iK"),
+                    )
+                    if hasattr(cell, "iNaPAP"):
+                        ax.plot(
+                            list(cell.time)[initStep:],
+                            list(cell.iNaPAP)[initStep:],
+                            label=gl.current_ion("Na"),
+                            color=self.returnColor("Na"),
+                        )
+                    if hasattr(cell, "iGluT") and self.GluT:
+                        ax.plot(
+                            list(cell.time)[initStep:],
+                            list(cell.iGluT)[initStep:],
+                            label=gl.current_ion("GLT"),
+                            color=self.returnColor("GluT"),
                     )
                 if hasattr(cell, "iNMDA") and self.NMDAR:
                     ax_curr.plot(
                         list(cell.time)[initStep:],
                         list(cell.iNMDA)[initStep:],
-                        label=gl.current_ion("NMDA"),
+                        label=gl.current_ion("NMDAR"),
                         color=self.returnColor("NMDAR"),
                     )
                 if hasattr(cell, "iGABA") and self.GABAR:
@@ -1020,13 +1035,10 @@ class plotFigures:
                         label=gl.current_ion("GABAR"),
                         color=self.returnColor("GABAR"),
                     )
-                if hasattr(cell, "iGluT") and self.GluT:
-                    ax_curr.plot(
-                        list(cell.time)[initStep:],
-                        list(cell.iGluT)[initStep:],
-                        label=gl.current_ion("GluT"),
-                        color=self.returnColor("GluT"),
-                    )
+
+                mark_inset(ax_curr, ax_curr_inset, loc1=1, loc2=2, fc="none", ec="lightgray",lw=0.5,linestyle='--',zorder=0)
+                ax_curr_inset.set_xlim(right=300)
+                ax_curr_inset.set_ylim(gl.lim_curr_inset)
                 ax_curr.set_xlabel(gl.ms)
                 ax_curr.set_ylabel(gl.curr)
                 ax_curr.set_ylim(gl.lim_curr)
@@ -1085,6 +1097,8 @@ class plotFigures:
                 mean, std = stdChannelDict["GABAR"]
             elif self.NKA and Kir:
                 mean, std = stdChannelDict["NKA"]
+            elif self.NMDAR and Kir:
+                mean,std = stdChannelDict['NMDAR']
             else:
                 mean, std = stdChannelDict["PAPLen"]
             if labelObj is not None:
@@ -1840,7 +1854,6 @@ class procedure(plotFigures):
                     func_name = inspect.stack()[1].function
 
                 intermediary_files = os.listdir(os.path.join("intermediaryData"))
-                # TODO: rough way to compare tags, think of smarter
                 # Mainly aims to keep additional information added during function
                 tmptag = self.tag
                 self.addChannelTag()
@@ -2037,17 +2050,13 @@ class procedure(plotFigures):
                 fig = plt.figure()
                 ax = plt.axes(projection="3d")
 
-                # Create the scatter plot
                 ax.scatter3D(dList, cList, v, c=v, cmap="viridis")
-
-                # Set labels and title
                 if i == 0:
                     name = "soma"
                 else:
                     name = "PAP"
                 ax.set_zlabel(gl.d_volt)
 
-                # Show the plot
                 j = ""
                 while os.path.isfile(f"./3Dplot{name}{j}.pdf"):
                     if j == "":
@@ -2062,7 +2071,6 @@ class procedure(plotFigures):
 
     def readIterationRi(self, all_file_names, dName="../results/paperRes"):
         pattern = "RiRes*"
-        # Construct the full path
         full_path = os.path.join(dName, pattern)
 
         # Use glob to find files matching the pattern
@@ -2076,7 +2084,6 @@ class procedure(plotFigures):
         extracted_set = set(extracted_file_names)
         all_set = set(all_file_names)
 
-        # Find the elements that are unique to each set
         unique_all = all_set - extracted_set
 
         return list(unique_all)
@@ -3050,14 +3057,14 @@ class procedure(plotFigures):
                 plt.plot(
                     list(cell.time)[initStep:],
                     list(cell.iNMDA)[initStep:],
-                    label=gl.current_ion("NMDA"),
+                    label=gl.current_ion("NMDAR"),
                     color=self.returnColor("NMDAR"),
                 )
                 if hasattr(cell, "iGluT"):
                     plt.plot(
                         list(cell.time)[initStep:],
                         list(cell.iGluT)[initStep:],
-                        label=gl.current_ion("GluT"),
+                        label=gl.current_ion("GLT"),
                         color=self.returnColor("GluT"),
                     )
                 plt.legend()
@@ -3549,7 +3556,6 @@ class procedure(plotFigures):
                 cells.setNMDA_TC(tau1, tau2)
             # cells.setSlowing(slow)
 
-            # 6.12418747    5.40398865    0.42320213 -100.
             if size > 2:
                 if rank == 2:
                     stim = 1
@@ -3787,7 +3793,6 @@ class procedure(plotFigures):
         # print(max(list(results.vPAP)))
 
     def gababathExperiment(self):
-        # add multispike ek clamp
         self.addChannelTag()
         self.tag += "_gabaBath"
         self.locality = "global"
@@ -3803,7 +3808,7 @@ class procedure(plotFigures):
                 "Glu": False,
                 "GABA": True,
                 "bNum": 1,
-                "kir2": 0,
+                "kir2": self.optKir,
                 "clleak": 0,
                 "kleak": self.leak,
                 "dt": self.dt,
@@ -3818,7 +3823,7 @@ class procedure(plotFigures):
             funcArgs[-1]["dt"] *= 0.2
         funcArgs[-1][
             "GABACount"
-        ] = 1  # not optGABA as GABABath distributes GABAs with different mechanism compared to default distribution
+        ] = self.optGABAR/3 # avg num of sections in a PAP  
 
         if not self.free_read_data():
             cells = PAPModel(**funcArgs[-1])
@@ -4440,6 +4445,12 @@ class procedure(plotFigures):
 
                 self.addChannelTag()
                 self.tag += f"_{comparison}"
+                if "seed" == comparison:
+                    iter_bath = [i for i in range(0,self.KoCompMax + 1,self.KoCompStep)]
+                    print(iter_bath)
+                    self.run_comp_bath(iter_bath)
+
+
                 self.runAmpLenComparison(
                     comparison, iterations, compMax, compStep, logx=logx
                 )
@@ -4464,9 +4475,87 @@ class procedure(plotFigures):
                     comparison, iterations, maxStep=compMax, intermStep=compStep
                 )
 
+
+    def run_comp_bath(self,iterations):
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "Glu": self.GluStim,
+                "GABA": False,
+                "ComplexMorph": True,
+                "kleak": self.leak,
+                "clleak": 0,
+                "dt": self.dt,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+                "kir2": self.optKir,
+            }
+        )
+        ccList = ["KoSize"]
+        # make sure that funcParms is in the correct order of whatever iterations spits out
+        # results are collected only on rank 0
+        AllCells = self.find_run_comp_bath()
+        if AllCells is None:
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                [["initialize", "setKBath_iter", "run"]],
+                [[{}, {}, {}]],
+            )
+            self.free_figure(results)
+
+
+    def find_run_comp_bath(self):
+        func_name = "run_comp_bath"
+        intermediary_files = os.listdir(os.path.join("intermediaryData"))
+        # Mainly aims to keep additional information added during function
+        tmptag = self.tag
+        self.addChannelTag()
+        if len(tmptag) > len(self.tag):
+            self.tag = tmptag
+
+        for f in intermediary_files:
+            if f == f"{func_name}{self.tag}.pickle":
+                if self.global_rw_data:
+                    print(f"found intermediary file {f}")
+                else:
+                    mprint(f"found intermediary file {f}")
+                sys.stdout.flush()
+                AllCells = [[]]
+                if self.global_rw_data or rank == 0:
+                    with open(
+                        os.path.join("intermediaryData", f), "rb"
+                    ) as handle:
+                        AllCells = pickle.load(handle)
+                        return AllCells
+    
+        return None
+
+    def read_run_comp_bath(self):
+        AllCells = self.find_run_comp_bath()
+        if AllCells is not None:
+            column_res = [] 
+            for cells in AllCells:
+                for cell in cells:
+                    if int(cell.KoSize/self.KoCompStep) >= len(column_res):
+                        while len(column_res) < int(cell.KoSize/self.KoCompStep) + 1:
+                            column_res.append(None)
+
+                    column_res[int(cell.KoSize/self.KoCompStep)] = max(cell.vSoma) - cell.RMP
+            return np.array(column_res)
+
+        else:
+            return None
+
+
+
+
     @read_data
     def runAmpLenComparison(
-        self, comparison, iterations, maxStep, intermStep, logx=None
+        self, comparison, iterations, maxStep, intermStep, logx=None, add_bath=True,
     ):
         funcArgs = []
         funcArgs.append(
@@ -4512,6 +4601,9 @@ class procedure(plotFigures):
 
         comm.Barrier()
         self.free_figure(results)
+        if add_bath and comparison == "seed":
+            res_column = self.read_run_comp_bath()
+            print(res_column)
         if rank == 0:
             plt.cla()
             plt.clf()
@@ -4535,6 +4627,11 @@ class procedure(plotFigures):
                     ] += (
                         max(res[0].vPAP) - res[0].RMP
                     )
+
+            if add_bath and comparison == "seed" and res_column is not None:
+                res_column = res_column[:,np.newaxis]
+                imArray = np.concatenate((imArray,res_column),axis=1)
+
 
             plt.imshow(
                 imArray,
@@ -4566,13 +4663,28 @@ class procedure(plotFigures):
                 ]
                 plt.xticks(np.arange(0, len(logx), 1), logx_label)
             else:
-                plt.xticks(
-                    np.arange(0, int(maxStep / intermStep) + (1 - skip), 2),
-                    np.round(
-                        np.arange(skip, maxStep + intermStep / 2, intermStep * 2),
-                        decimals=dec,
-                    ).astype(printType),
-                )
+                if add_bath and comparison == "seed" and res_column is not None:
+                    plt.xticks(
+                        np.append(np.arange(0, int(maxStep / intermStep) + (1 - skip) + 1, 2),15),
+                        np.append(
+                            np.round(
+                                np.arange(skip, maxStep + intermStep / 2, intermStep * 2),
+                                decimals=dec,
+                            ).astype(printType),
+                            "bath"
+                        )
+                    )
+                    ticks = plt.gca().get_xticklabels()
+                    ticks[-1].set_rotation(90)
+ 
+                else:
+                    plt.xticks(
+                        np.arange(0, int(maxStep / intermStep) + (1 - skip), 2),
+                        np.round(
+                            np.arange(skip, maxStep + intermStep / 2, intermStep * 2),
+                            decimals=dec,
+                        ).astype(printType),
+                    )
             # set ylabel
             skip = 1
             dec = 0

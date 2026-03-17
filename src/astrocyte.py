@@ -1495,6 +1495,9 @@ class PAPModel(ResultsPAPModel):
             for sec in s:
                 self.PAParea += sec.area()
 
+    def setKBath_iter(self, **kwargs):
+        self.setKBath(self.KoSize, **kwargs)
+
     def setKBath(
         self,
         Ko,
@@ -1512,10 +1515,13 @@ class PAPModel(ResultsPAPModel):
         if not isolate:
             self.set_gapBath(True)
         papk = self.getPAPK()
+        if hasattr(h, "cvode"):
+            h.cvode.active(False)
+            h.dt = self.dt
         if isolate:
-            h.setK(self.flattenPAP(), Ko - papk, Ko, 2)
+            h.setK(self.flattenPAP(), Ko, papk + Ko, 2)
         else:
-            h.setK(h.getWholetree(), Ko - papk, Ko, 2)
+            h.setK(h.getWholetree(), Ko, papk + Ko, 2)
 
         if clamp_ki:
             if hasattr(self, "Dk_kdifl"):
@@ -1543,6 +1549,8 @@ class PAPModel(ResultsPAPModel):
             h.setK(self.flattenPAP(), Ko - papk, Ko, 0)
         else:
             h.setK(h.getWholetree(), Ko - papk, Ko, 0)
+        if hasattr(h, "cvode"):
+            h.cvode.active(True)
 
     def GABABath(self, number, freq, video=False):
         self.set_cvode()
@@ -1556,6 +1564,7 @@ class PAPModel(ResultsPAPModel):
         numSecs = len(list(h.slPAP))
         self.GABACount *= numSecs
         self.setGap()
+        self.setGluTs()
         self.setGABAas()
         self.KoSize = 0
 
@@ -1563,6 +1572,7 @@ class PAPModel(ResultsPAPModel):
         h.finitialize(self.v_init)
         h.fcurrent()
         self.getkin()
+        h.set_gleakNa(self.v_init)
         h.fcurrent()
         h.continuerun(self.initTstop * ms)
 
