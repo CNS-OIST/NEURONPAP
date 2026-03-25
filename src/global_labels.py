@@ -5,6 +5,7 @@ class gl:
     unit_mV = "(mV)"
     unit_s = "(s)"
     unit_ms = "(ms)"
+    unit_liter = "(L)"
     mM_raw = "mM"
     unit_mM = f"({mM_raw})"
     unit_pA = "(pA)"
@@ -17,6 +18,7 @@ class gl:
     unit_um_cubed_raw = f"{unit_micron_raw}$^3$"
     unit_um_cubed = f"({unit_um_cubed_raw})$"
     hz = "Frequency " + unit_hz
+    ri = r"Input Resistance (M$\Omega$)"
     # label
     ms = "Time " + unit_ms
     s = "Time" + unit_s
@@ -33,8 +35,10 @@ class gl:
     pap_len = "PAP length " + unit_micron
     fluor = "$\Delta F/F_0$ (%)"
     volt_atten = f"{vm}/V$_0$"
+    lim_cvk_volt = (-90, -40)
+    lim_cvk_ko = (0, 10)
     abs_distance = f"Distance {unit_micron}"
-    max_ko = 22
+    max_ko = 80
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
     lim_VmembSoma = (-86, -84)
@@ -80,10 +84,14 @@ class gl:
 
     @staticmethod
     def ion_o(ion, short=False):
-        if short:
-            return f"{ion}" + "$_\mathrm{o}$"
+        if ion == "K":
+            valence = "$^+$"
         else:
-            return f"Extracellular [{ion}] " + gl.unit_mM
+            valence = ""
+        if short:
+            return f"[{ion}{valence}]" + "$_\mathrm{o}$"
+        else:
+            return f"Extracellular [{ion}{valence}] " + gl.unit_mM
 
     @staticmethod
     def delta_ion_o(ion, short=False):

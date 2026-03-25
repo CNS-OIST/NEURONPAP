@@ -20,7 +20,7 @@ class PAPModel(ResultsPAPModel):
     tstop = 260 * ms
     # parameters for three compartment model
     somaSize = 10  # Soma Size
-    bLen = 30  # Branch Size
+    pbLen = None  # Branch diam
     bWid = 3
     PAPWid = 0.02
     branches = []
@@ -53,7 +53,7 @@ class PAPModel(ResultsPAPModel):
         PAPWid=0.02,
         bWid=3,
         bNum=1,
-        bLen=30,
+        pbLen=2,
         voltageClamp=40,
         somaSize=10,
         currentClamp=2,
@@ -117,7 +117,7 @@ class PAPModel(ResultsPAPModel):
 
         # set morphology parameters
         self.somaSize = somaSize
-        self.bLen = bLen
+        self.pbLen = pbLen
         self.bWid = bWid
         self.bNum = bNum
         self.PAPWid = PAPWid
@@ -144,7 +144,7 @@ class PAPModel(ResultsPAPModel):
         # set morphology parameters
         if not self.ComplexMorph:
             h.soma.L = self.somaSize
-            h.branch.L = self.bLen
+            h.branch.L = self.pbLen
             h.branch.diam = self.bWid
             h.PAP.L = self.PAPWid
 
@@ -252,6 +252,22 @@ class PAPModel(ResultsPAPModel):
                 self.multiple * (math.pi * (1 - math.e ** (1 - PAPLen / 0.3)) + 1)
             )
             # Density decreases in gaussian manner with units of PAPLen
+
+    def kir_rect_off(self):
+        h.kir_rect_off(1)
+
+    def savePAPProp(self):
+        self.PAP_properties = []
+        for pap in self.flattenPAP():
+            self.PAP_properties.append({})
+            self.PAP_properties[-1]["L"] = pap.L
+            self.PAP_properties[-1]["diam"] = pap.diam
+            self.PAP_properties[-1]["nseg"] = pap.nseg
+            self.PAP_properties[-1]["area"] = 0
+            for seg in pap:
+                self.PAP_properties[-1]["area"] += seg.area()
+            self.PAP_properties[-1]["ecs"] = pap.fhspace_k_acc
+            self.PAP_properties[-1]["kir_count"] = pap.count_kir2
 
     def setPAPNearSoma(self, onSoma=True, diam=0.5, radius=2):
         if onSoma:
@@ -993,10 +1009,16 @@ class PAPModel(ResultsPAPModel):
             flattenPap += pap
         return h.SectionList(flattenPap)
 
+    def plot_morph_iter(self):
+        for name in ["v", "ko"]:
+            self.plotWholecellVariable(
+                name, f"{name}_{self.KoSize}_{rank}.pdf", zoom=False
+            )
+
     def plotWholecellVariable(self, var, frameName, zoom=False):
         if "v" in var:
             clim = gl.lim_Vmemb
-        elif v == "ko":
+        elif "ko" in var:
             clim = gl.lim_ko
         else:
             clim = None
@@ -1005,7 +1027,7 @@ class PAPModel(ResultsPAPModel):
         else:
             # ps = h.plot_varMorph(var, frameName)
             plot_3d_morphology(rangevar=var, clim=clim)
-            plt.savefig(frameName)
+        plt.savefig(frameName)
 
     def plot_topology(self, zoom=False):
         if rank == 0:
@@ -1064,7 +1086,7 @@ class PAPModel(ResultsPAPModel):
             for i in range(self.bNum - branchCount):
                 # Create the branch (not included in the original hoc file)
                 self.branches.append(h.Section(name=f"branch{i}"))
-                self.branches[-1].L = self.bLen
+                self.branches[-1].L = self.pbLen
                 self.branches[-1].diam = self.bWid
                 self.branches[-1].nseg = 10
                 self.astroMem(self.branches[-1])
@@ -1367,13 +1389,19 @@ class PAPModel(ResultsPAPModel):
         if changeBaseline is not None:
             h.changeBaseline(self.flattenPAP(), changeBaseline)
 
+    def setPAP2Soma(self):
+        self.PAP = h.soma
+        h.convertSoma2slPAP()
+        self.PAPs = [h.slPAP]
+        self.soma = h.soma
+
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
         if dur == 0 or KoSize == 0:
             return
         restKo = self.Ko
         if KoSize == None:
             KoSize = self.KoSize
-            # print(f'set Ko to {Ko}\n')
+            # print(f"set Ko to {KoSize}\n")
         if mode == "pulse":
             h.continuerun(delay * ms + h.t)
             # print("setting KoSize to pulse mode")
@@ -1494,6 +1522,9 @@ class PAPModel(ResultsPAPModel):
         for s in h.slPAP:
             for sec in s:
                 self.PAParea += sec.area()
+
+    def set_pb(self):
+        h.pb(self.pbLen)
 
     def setKBath_iter(self, **kwargs):
         self.setKBath(self.KoSize, **kwargs)
@@ -1659,6 +1690,25 @@ class PAPModel(ResultsPAPModel):
                 return sec
         else:
             return None
+
+    def calcPAPRi(self, direct=False, all=False):
+        if all:
+            measure_pap = self.flattenPAP()
+        else:
+            measure_pap = [self.PAP]
+        for pap_sec in measure_pap:
+            RiSec = self.getSecbyName(str(pap_sec))
+            RiSec.insert("inputRes")
+            if direct:
+                h.measure_input_resistance_direct(sec=RiSec)
+            else:
+                h.measure_input_resistance(sec=RiSec)
+            if not hasattr(self, "PAP_Ri"):
+                self.PAP_Ri = float(RiSec.Ri_inputRes)
+            else:
+                if type(self.PAP_Ri) == float:
+                    self.PAP_Ri = tuple((self.PAP_Ri,))
+                self.PAP_Ri += (float(RiSec.Ri_inputRes),)
 
     def measureRiAll(self, parallel=False):
         if parallel:

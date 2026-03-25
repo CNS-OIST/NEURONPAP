@@ -42,6 +42,7 @@ UNITS {
 }
 
 PARAMETER {
+  rect_off = 0  (1)
 	v 		(mV)
 	gkbar  = 50	(pS) 	: 50 pS single channel conductance Yang et al 2000 
 
@@ -70,6 +71,7 @@ NEURON {
 	USEION k READ ek,ko WRITE ik	
         RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
         RANGE ik_kir,gk
+        RANGE rect_off
         GLOBAL linf,taul
         
         THREADSAFE
@@ -124,7 +126,11 @@ BREAKPOINT {
 	: use state l to calulate gk
         : area will be multiplied per section resulting in single channel conductance per segment.
         : calculate gkbar from fitting single channel recording
-        ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+        if (rect_off == 0){ 
+          ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+        } else {
+          ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+          }
         ik = ik_kir
 }
 

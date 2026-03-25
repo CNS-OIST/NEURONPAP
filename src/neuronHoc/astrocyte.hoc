@@ -313,6 +313,22 @@ obfunc getLeaf() {localobj sec,leaf
     }
     return leaf
 }
+proc convertSoma2slPAP() {localobj sl
+    sl = new SectionList()
+    soma sl.append()
+    slPAP = sl
+}
+
+proc pb() {localobj sr,child
+soma sr = new SectionRef()
+for i=0,sr.nchild-1 {
+  sr.child[i] {
+    diam = $1
+    }
+  }
+
+}
+
 
 // inserting NMDARs
 objref sNMDA, NMDAs, nc, ncNMDAList,stim
@@ -775,6 +791,21 @@ proc measure_input_resistance() {localobj zz
     Ri_inputRes = zz.input(0.5)
 }
 
+proc measure_input_resistance_direct() {localobj stim
+    stim = new IClamp(0.5)
+    stim.del = 0
+    stim.dur=500
+    stim.amp=-0.1
+    v_init = -85
+    tstop = 500
+    finitialize(v_init)
+    run()
+    v_end = v(0.5)
+    Ri_inputRes = (v_end - v_init) / stim.amp
+    stim = nil
+}
+
+
 proc getAllRi() {localobj all_sections
     all_sections = new SectionList()
     all_sections.wholetree()
@@ -1007,5 +1038,13 @@ proc set_vgap(){
     for i=0,gaplist.count - 1{
       gaplist.o(i).VoltageGap = $1
 
+    }
+  }
+
+
+
+  proc kir_rect_off(){
+    forall{
+      rect_off_kir2 = $1
     }
   }

@@ -93,12 +93,13 @@ class analytical_ko:
     def phase_plot(self, *xrange):
         x = np.linspace(*xrange, 100)
         plt.figure(5)
-        plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.2f} um3")
+        plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.2f} um3", color="black")
         plt.figure(6)
         plt.plot(
             x / self.V * 1e3,
             self.dxdt(x) / self.V * 1e3,
             label=f"{self.V*1e15:.2f} um3",
+            color="black",
         )
 
     def dxdt(self, x):
@@ -212,6 +213,9 @@ def plot_All(VClamp):
     order = -3
     VCSList = np.logspace(-1, order, 10)
     VCSList *= 1e-15  # um3 to L
+    exp_V = 1.53e-18
+    VCSList = np.flip(np.sort(np.append(VCSList, exp_V)))
+
     time_to_0 = []
     for V in VCSList:
         t = np.linspace(0, endt, int(endt / dt))
@@ -222,7 +226,8 @@ def plot_All(VClamp):
         plt.plot(
             t,
             trace / analytical_trace.V * 1e3,
-            label=f"{analytical_trace.V*1e15:.3f} {gl.unit_um_cubed_raw}",
+            label=f"{analytical_trace.V*1e15:.3e} {gl.unit_um_cubed_raw}",
+            color="gray" if analytical_trace.V != exp_V else "black",
         )
         plt.figure(1)
         plt.plot(
@@ -243,6 +248,7 @@ def plot_All(VClamp):
         / analytical_trace.V
         * 1e3,
         color="red",
+        linestyle="--",
     )
     plt.xlabel(gl.ms)
     plt.ylabel(gl.ion_o("K"))
@@ -295,10 +301,12 @@ def plot_All(VClamp):
     plt.figure(7)
     x = np.linspace(10**order, 5 * 10**order, 100)
     x *= 1e-15
-    plt.plot(x, t_half(VClamp, x) * 1e3)
-    plt.scatter(1.53e-18, t_half(VClamp, 1.53e-18) * 1e3, label="model")
-    plt.xlabel("V_ECS (L)")
-    plt.ylabel("t_1/2 (ms)")
+    plt.plot(x, t_half(VClamp, x) * 1e3, color="gray")
+    plt.scatter(
+        exp_V, t_half(VClamp, exp_V) * 1e3, label="model", color="black", zorder=3
+    )
+    plt.xlabel(r"V$_{ECS}$ " + gl.unit_liter)
+    plt.ylabel(r"t$_{1/2}$ " + gl.unit_ms)
     plt.ylim((0, 25))
     plt.legend()
     plt.savefig(f"t_half_{VClamp}.pdf")
