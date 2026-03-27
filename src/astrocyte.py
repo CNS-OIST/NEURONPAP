@@ -14,6 +14,7 @@ from textSDIO import *
 from plot_shape import *
 from global_labels import gl
 import random
+from importlib import reload
 
 
 class PAPModel(ResultsPAPModel):
@@ -82,8 +83,6 @@ class PAPModel(ResultsPAPModel):
         getPeriphery=True,
         **kwargs,
     ):
-        # Load NEURON GUI and parameters
-        from neuron import h
 
         h.load_file("stdgui.hoc")
         # h.load_file("./neuronHoc/params.hoc")
@@ -253,12 +252,16 @@ class PAPModel(ResultsPAPModel):
             )
             # Density decreases in gaussian manner with units of PAPLen
 
+    def get_PAPName(self):
+        self.PAP_name = str(self.PAP)
+        return str(self.PAP)
+
     def kir_rect_off(self):
         h.kir_rect_off(1)
 
     def savePAPProp(self):
         self.PAP_properties = []
-        for pap in self.flattenPAP():
+        for i, pap in enumerate(self.flattenPAP()):
             self.PAP_properties.append({})
             self.PAP_properties[-1]["L"] = pap.L
             self.PAP_properties[-1]["diam"] = pap.diam
@@ -268,14 +271,21 @@ class PAPModel(ResultsPAPModel):
                 self.PAP_properties[-1]["area"] += seg.area()
             self.PAP_properties[-1]["ecs"] = pap.fhspace_k_acc
             self.PAP_properties[-1]["kir_count"] = pap.count_kir2
+            self.PAP_properties[-1]["adj_diam"] = h.adjacent_total_diam(sec=pap)
 
-    def setPAPNearSoma(self, onSoma=True, diam=0.5, radius=2):
+    def setPAPNearSoma(self, onSoma=False, onPB=True, diam=1, dist_radius=2):
         if onSoma:
-            self.PAP = self.soma
+            return self.setPAP2Soma()
+        elif onPB:
+            self.PAP = h.random_pb()
+            self.PAP = self.PAP.sec
+            h.convertPB2slPAP(sec=self.PAP)
+            self.PAPs = [h.slPAP]
         else:
-            h.PAP = h.get_midAstrocytePAP(diam, radius)
+            h.PAP = h.get_midAstrocytePAP(diam, dist_radius)
             self.PAP = h.PAP.sec
-        h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
+            h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
+            self.PAPs = [h.slPAP]
 
         # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
         #
@@ -738,6 +748,7 @@ class PAPModel(ResultsPAPModel):
             voltageClamp = False
         # print('initializing')
         # sys.stdout.flush()
+        self.set_ECS(1000, scale=True)
         if kblock:
             h.kbath_off()
         elif kuptake:

@@ -162,7 +162,7 @@ obfunc get_randomfinalSection() {local rint,countDist,nchildless,blacklist_count
         current_section.child[rint] current_section = new SectionRef()
         // check distance and reselect if closer than 50
         current_section.sec countDist = distance(0.5)
-        if (current_section.nchild == 0 && countDist < 50) {
+        if (current_section.nchild == 0 && countDist < 30) {
             current_section.sec {
                 blacklist.append()
             }
@@ -328,6 +328,21 @@ for i=0,sr.nchild-1 {
   }
 
 }
+
+obfunc random_pb() {local rloc localobj sr
+soma sr = new SectionRef()
+rloc = r.discunif(0,sr.nchild-1) 
+sr.child[rloc] sr = new SectionRef() 
+return sr
+}
+
+
+proc convertPB2slPAP() {localobj sl
+    sl = new SectionList()
+    sl.append()
+    slPAP = sl
+}
+
 
 
 // inserting NMDARs
@@ -858,7 +873,7 @@ proc setNak_pump(){
       }
     }
 }
-proc setECS(){local soma_area,total_area
+proc setECS(){local soma_area,total_area,scaled_fhspace
   if ($2 == 0) {
     forall fhspace_k_acc = $1
   } else {
@@ -867,7 +882,10 @@ proc setECS(){local soma_area,total_area
     forall {
       total_area = 0
       for (x) total_area = total_area + area(x)
-      fhspace_k_acc = $1 * sqrt(total_area) / sqrt(soma_area)
+        scaled_fhspace = $1 * sqrt(total_area) / sqrt(soma_area)
+        if (scaled_fhspace > 400) {
+          fhspace_k_acc = $1 * sqrt(total_area) / sqrt(soma_area)
+          }
       }
     }
 }
@@ -1048,3 +1066,12 @@ proc set_vgap(){
       rect_off_kir2 = $1
     }
   }
+  func adjacent_total_diam(){local total_diam localobj sref
+  total_diam = 0
+  sref = new SectionRef()
+  for i=0, sref.nchild - 1 {
+      sref.child[i] {total_diam = total_diam + diam}
+    }
+    return total_diam
+
+    }

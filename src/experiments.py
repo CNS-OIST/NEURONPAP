@@ -9,7 +9,7 @@ from neuron.units import mM, mV, ms
 import glob
 from matplotlib.ticker import MaxNLocator
 from plot_shape import *
-from scipy.stats import f_oneway, ttest_rel,pearsonr,ttest_1samp
+from scipy.stats import f_oneway, ttest_rel,pearsonr,ttest_1samp,linregress
 from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
 from scipy.optimize import shgo
@@ -34,6 +34,7 @@ from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
 from copy import copy,deepcopy
+from importlib import reload
 
 
 from global_labels import gl
@@ -89,6 +90,7 @@ class plotFigures:
         "K$^+$": k_color,
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
+        "Primary Branch":"lightgray",
         "fluor": "black",
         "Na": "gold",
         "Cl": "chocolate",
@@ -474,7 +476,6 @@ class plotFigures:
                         color=self.returnColor("Soma"),
                         linestyle="--",
                     )
-                    print(list(cell.vSoma)[-1])
 
                 # must set before calculating height for rectangle
                 if setekylim:
@@ -2071,6 +2072,9 @@ class procedure(plotFigures):
                 func_name = exp_func.__name__
                 if func_name == "free_read_data":
                     func_name = inspect.stack()[1].function
+                    if func_name == "find_missing_iter":
+                        func_name = inspect.stack()[2].function
+
 
                 intermediary_files = os.listdir(os.path.join("intermediaryData"))
                 # Mainly aims to keep additional information added during function
@@ -2143,7 +2147,7 @@ class procedure(plotFigures):
                 cell_iter = tuple(cell_iter)
 
                 if len(cell_iter) == len(functionParms):
-                    if cell_iter in iterations:
+                    if cell_iter in iterations and cell_iter in missing_iter:
                         missing_iter.remove(cell_iter)
 
         if len(missing_iter) > 0:
@@ -2161,9 +2165,8 @@ class procedure(plotFigures):
                     randomize=randomize,
             )
             results = comm.bcast(results, root=0)
-
-            
             AllCells += results
+            self.free_figure(AllCells)
             return AllCells
         else:
             return AllCells
@@ -3819,7 +3822,7 @@ class procedure(plotFigures):
 
 
             ax = fig.add_subplot(gs[1])
-            print(flux,kbath)
+            #print(flux,kbath)
             ax.plot(list(cells.time)[initStep:], np.divide(kbath, flux+kbath),color='black')
             ax.set_xlabel(gl.ms)
             max_t = max(list(cells.time))
@@ -4067,8 +4070,10 @@ class procedure(plotFigures):
                 self.gababathExperiment()
             else:
                 self.kbathExperiment(invivo, isolate)
+                if invivo and isolate:
+                    self.kbathExperiment(invivo,isolate,soma=True)
 
-    def kbathExperiment(self, invivo, isolate):
+    def kbathExperiment(self, invivo, isolate,soma=False):
         # add multispike ek clamp
         self.addChannelTag()
         if invivo:
@@ -4078,6 +4083,8 @@ class procedure(plotFigures):
         if isolate:
             self.locality = "local"
             self.tag += "_isolated"
+            if soma and invivo:
+                self.tag += '_soma'
         else:
             self.locality = "global"
             self.tag += "_global"
@@ -4111,6 +4118,8 @@ class procedure(plotFigures):
             cells = PAPModel(**funcArgs[-1])
             if invivo:
                 cells.initialize()
+                if soma:
+                    cells.setPAP2Soma()
                 cells.replayK("./Data/invivo_K.csv", isolate=isolate)
                 cells.ko_sim(False)
                 cells.run()
@@ -4758,25 +4767,95 @@ class procedure(plotFigures):
                     setKoylim=True,
                 )
 
-    def potassiumComparison(self):
+
+    def plot_seed_map(self,start,end,skip_seed=None):
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "ComplexMorph": True,
+                "bNum": 1,
+                "Glu": False,
+                "kir2": self.optKir,
+                "clleak": 0,
+                "kleak": self.leak,
+                "dt": self.dt,
+                "multiple": None,
+            }
+        )
+        ccList = ['seed']
+        if skip_seed is not None:
+            iterations = [ (i) for i in np.arange(start,end+1) if i not in skip_seed]
+            print(iterations)
+        else:
+            iterations = [ (i) for i in np.arange(start,end+1) ]
+
+
+        results = parallizeFor(
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ccList,
+            [["get_PAPName"]],
+            [[{}]],
+        )
+        tmp_skip_cell = []
+        if rank == 0:
+            for soma in [True, False]:
+                funcArgs[-1]['seed'] = self.seed
+                tmpCell = PAPModel(**funcArgs[-1])
+                tmpCell.setPAPNearSoma(onSoma=soma)
+                tmpCell.get_PAPName()
+                results += [[tmpCell.copyAttr()]] 
+
+            col_dict = {0: 'whitesmoke', 1: self.returnColor('Primary Branch'), 2: self.returnColor("Soma"), 3: self.returnColor('PAP')}
+            colors = [col_dict[key] for key in sorted(col_dict.keys())]
+
+            ref_names = []
+            for cells in results:
+                for cell in cells:
+                    if cell.PAP_name not in ref_names:
+                        ref_names.append(cell.PAP_name)
+                    else:
+                        tmp_skip_cell.append(cell.seed)
+            plot_3d_morphology(
+                rangevar='PAP',
+                color_names = [cell.PAP_name for cells in results for cell in cells],
+                colormap_name = colors,
+                add_colorbar=False,
+            )
+            plt.savefig(
+                os.path.join(
+                    '../morphResults/',
+                    'Plot_PAPs.pdf'
+                )
+            )
+        tmp_skip_cell = comm.bcast(tmp_skip_cell,root=0)
+        return tmp_skip_cell
+
+
+  
+
+    def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in ["KoSize", "seed", "PAPLen",  "durStim"]:
+        for comparison in ["seed","KoSize", "PAPLen"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
                 startb = 0
             elif comparison == "PAPLen":
-                compMax = 50 
+                # update when you want to extend
+                compMax = 90 
                 compStep = 0.3
                 startb = 0.3
-                comp_prev = 10
+                comp_prev = 0.3
             elif comparison == "durStim":
                 compMax = 9
                 compStep = 1
                 startb = 1
             elif comparison == "seed":
-                compMax = 15
+                compMax = 16
                 compStep = 1
                 startb = 1
 
@@ -4819,7 +4898,34 @@ class procedure(plotFigures):
                         self.tag += 'rect_off'
                     self.run_comp_bath(iter_bath)
                     self.run_comp_soma(iter_bath)
- 
+                    self.run_comp_pb(iter_bath)
+
+                if comparison == 'seed':
+                    all_skip_seed = []
+                    skip_seed = self.plot_seed_map(startb,compMax)
+                    tmp_compMax = compMax
+                    while len(skip_seed)> 0 and tmp_compMax - len(skip_seed) <= compMax:
+                        all_skip_seed += skip_seed
+                        tmp_compMax += len(skip_seed) * compStep
+                        skip_seed = self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed)
+
+                    self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed)
+
+                    # name for keyword argument when you cannot automatically sequentially inform the values
+                    logx = [
+                        j
+                        for j in range(startb,tmp_compMax,compStep)
+                        if j not in all_skip_seed
+                    ]
+
+
+                    iterations = [
+                        (i,j)
+                        for i in range(0,self.KoCompMax,self.KoCompStep)
+                        for j in logx 
+                    ]
+
+
 
 
                 self.runAmpLenComparison(
@@ -4842,7 +4948,7 @@ class procedure(plotFigures):
                 root=0,
             )
             # # Adjust the range for the last process
-            if comparison != "seed":
+            if comparison == "KoSize":
                 self.addChannelTag()
                 self.tag += f"_{comparison}"
                 self.runPotassiumComparison(
@@ -4923,7 +5029,12 @@ class procedure(plotFigures):
                 for cell in cells:
                     print(cell.PAP_Ri[0])
                     plt.scatter(cell.PAP_Ri[0],sum(cell.PAP_Ri[1:])/len(cell.PAP_Ri[1:]),color='black')
-            plt.savefig("comp_ri.pdf")
+            plt.savefig(
+                os.path.join(
+                    "../results/paperRes",
+                    "comp_ri.pdf"
+                )
+            )
 
 
 
@@ -5018,6 +5129,44 @@ class procedure(plotFigures):
             )
             self.free_figure(results)
 
+    def run_comp_pb(self,iterations):
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "Glu": self.GluStim,
+                "GABA": False,
+                "ComplexMorph": True,
+                "kleak": self.leak,
+                "clleak": 0,
+                "dt": self.dt,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+                "kir2": self.optKir,
+                "GluTrans": self.optGluT,
+                "seed":self.seed,
+            }
+        )
+        run_func = [["setPAPNearSoma","savePAPProp","calcPAPRi","initialize","setK","plot_morph_iter","run"]]
+        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50}, {}, {}]]
+        if hasattr(self,'rect_off') and self.rect_off:
+            run_func[0] = ['kir_rect_off'] + run_func[0]
+            run_func_args[0] = [{}] + run_func_args[0]  
+
+        ccList = ["KoSize"]
+        # make sure that funcParms is in the correct order of whatever iterations spits out
+        AllCells = self.find_run_comp("run_comp_pb")
+        if AllCells is None:
+            results = parallizeFor(
+                iterations,
+                [PAPModel],
+                funcArgs,
+                ccList,
+                run_func,
+                run_func_args
+            )
+            self.free_figure(results)
+
 
     def find_run_comp(self,func_name):
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
@@ -5052,7 +5201,7 @@ class procedure(plotFigures):
                             column_res.append(None)
 
                     if func is None:
-                        column_res[int(cell.KoSize/self.KoCompStep)] = max(cell.vSoma) - cell.RMP
+                        column_res[int(cell.KoSize/self.KoCompStep)] = max(cell.vPAP) - cell.RMP
                     else:
                         column_res[int(cell.KoSize/self.KoCompStep)] = func(cell)
 
@@ -5130,9 +5279,11 @@ class procedure(plotFigures):
         if add_bath and comparison in ["seed","PAPLen"]:
             res_column = self.read_run_comp("run_comp_bath")
             res_column_soma = self.read_run_comp("run_comp_soma")
+            res_column_pb = self.read_run_comp("run_comp_pb")
             def get_ri(cell):
                 return cell.PAP_Ri
             ri_soma = self.read_run_comp("run_comp_soma",func=get_ri)
+            ri_pb = self.read_run_comp("run_comp_pb",func=get_ri)
             def get_prop(cell):
                 return cell.PAP_properties
             property_soma = self.read_run_comp("run_comp_soma",func=get_prop)
@@ -5155,42 +5306,51 @@ class procedure(plotFigures):
                             else:
                                 val = cell.PAP_properties[-1][property]
                             if cell.KoSize == self.KoCompMax:
-                                plt.scatter(val,max(list(cell.vPAP))-cell.RMP,color='black')
+                                plt.scatter(val,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
                                 pap_corr['x'].append(val)
                                 pap_corr['y'].append(max(list(cell.vPAP))-cell.RMP)
 
                     if ri_soma is not None and property == 'PAP_Ri':
                         t_stat, p_value = ttest_1samp(pap_corr['x'], ri_soma[0])
                         print(p_value)
-                        plt.scatter(ri_soma[0],res_column_soma[-1],color="gray")
+                        plt.scatter(ri_soma[0],res_column_soma[-1],color=self.returnColor('Soma'))
                         pap_corr['x'].append(ri_soma[0])
                         pap_corr['y'].append(res_column_soma[-1])
 
                     elif property_soma is not None:
-                            plt.scatter(property_soma[-1][-1][property],res_column_soma[-1],color="gray")
+                            plt.scatter(property_soma[-1][-1][property],res_column_soma[-1],color=self.returnColor('Soma'))
+                    if ri_pb is not None and property == 'PAP_Ri':
+                        plt.scatter(ri_pb[0],res_column_pb[-1],color=self.returnColor("Primary Branch"))
+                        pap_corr['x'].append(ri_pb[0])
+                        pap_corr['y'].append(res_column_pb[-1])
+
+
 
 
                     plt.ylabel(gl.d_volt)
                     if property == 'PAP_Ri':
                         plt.xlabel(gl.ri)
                         correlation_coefficient, p_value = pearsonr(pap_corr['x'], pap_corr['y'])
+                        res = linregress(pap_corr['x'],pap_corr['y'])
                         x = np.linspace(min(pap_corr['x']),max(pap_corr['x']))
-                        plt.plot(x,correlation_coefficient*x+min(pap_corr['y']),linestyle='--',color='lightgray',zorder=-1)
+                        plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='lightgray',zorder=-1)
                         plt.title(f'Pearson Corr. p={p_value:.3e}')
                     else:
                         plt.xlabel(property)
 
 
                     custom_handles = [
-                        Line2D([0], [0], marker='o', color='black', label='PAP',
-                            markerfacecolor='black', linestyle='None',markersize=10),
-                        Line2D([0], [0], marker='o', color='gray', label='Soma',
-                            markerfacecolor='gray', linestyle='None',markersize=10)
+                        Line2D([0], [0], marker='o', color=self.returnColor('PAP'), label='PAP',
+                            markerfacecolor=self.returnColor('PAP'), linestyle='None',markersize=10),
+                        Line2D([0], [0], marker='o', color=self.returnColor('Soma'), label='Soma',
+                            markerfacecolor=self.returnColor('Soma'), linestyle='None',markersize=10),
+                        Line2D([0], [0], marker='o', color=self.returnColor('Primary Branch'), label='Primary Branch',
+                            markerfacecolor=self.returnColor('Primary Branch'), linestyle='None',markersize=10)
                     ]
 
                     if property == 'PAP_Ri':
                         custom_handles += [
-                            Line2D([0], [0], color='lightgray', label='fit',linestyle='--')
+                            Line2D([0], [0], color='lightgray', label=f'{res.slope:.2f}x+{res.intercept:.1f}',linestyle='--')
                         ]
 
                     plt.legend(handles=custom_handles, loc='best')
@@ -5242,6 +5402,9 @@ class procedure(plotFigures):
                 if res_column_soma is not None:
                     comp_res['soma'] = res_column_soma
 
+                if res_column_pb is not None:
+                    comp_res['pb'] = res_column_pb
+
                 if res_column is not None:
                     comp_res['bath'] = res_column
 
@@ -5279,24 +5442,27 @@ class procedure(plotFigures):
 
                 plt.plot(base + x,self.nernst(x+base,res[0].kin)-res[0].RMP,linestyle='--',color='black') 
   
-                print(xlabels)
                 for i,col in enumerate(imArray.T):
                     label = xlabels[i]
-                    if label not in ['soma','bath']:
-                        color='lightgray'
+                    if label not in ['soma','pb','bath']:
+                        color=self.returnColor('PAP')
                     else:
-                        if label == 'soma':
-                            color ='gray'
+                        if label in ['soma']:
+                            color =self.returnColor('Soma')
+                        elif label in ['pb']:
+                            color=self.returnColor('Primary Branch')
                         else:
-                            color='black'
-                    plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
+                            color=self.returnColor('global')
+                    if np.nan not in col:
+                        plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
 
-                plt.axhline(8,color='black',linestyle='--',lw=1)
+                #plt.axhline(8,color='black',linestyle='--',lw=1)
 
                 custom_handles = [
-                    Line2D([0], [0], color='lightgray', label='PAP'),
-                    Line2D([0], [0], color='gray', label='Soma'),
-                    Line2D([0], [0], color='black', label='Bath'),
+                    Line2D([0], [0], color=self.returnColor('PAP'), label='PAP'),
+                    Line2D([0], [0], color=self.returnColor('Soma'), label='Soma'),
+                    Line2D([0], [0], color=self.returnColor('Primary Branch'), label='Primary Branch'),
+                    Line2D([0], [0], color=self.returnColor('global'), label='Bath'),
                 ]
                 custom_handles += [
                     Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
@@ -5307,11 +5473,21 @@ class procedure(plotFigures):
 
 
                 plt.legend(handles=custom_handles)
-                plt.savefig(f'K_v_plot{self.tag}.pdf')
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f'K_v_plot{self.tag}.pdf'
+                    )
+                )
                 plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
                 plt.gca().get_xaxis().set_major_formatter(ScalarFormatter())
                 plt.xscale('log')
-                plt.savefig(f'log_K_v_plot{self.tag}.pdf')
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f'log_K_v_plot{self.tag}.pdf'
+                    )
+                )
 
                 plt.cla()
                 plt.clf()
@@ -5520,11 +5696,11 @@ class procedure(plotFigures):
                 #    comp_res['bath'] = res_column
 
                 for i,col in enumerate(imArray):
-                    color='lightgray'
+                    color=self.returnColor('PAP')
                     base=3.5
                     plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
                     custom_handles = [
-                        Line2D([0], [0], color='lightgray', label='PAP'),
+                        Line2D([0], [0], color=self.returnColor('PAP'), label='PAP'),
                     ]
                 plt.xlabel(gl.ion_o('K',short=True))
                 plt.ylabel(gl.d_volt_short)
@@ -5532,11 +5708,23 @@ class procedure(plotFigures):
 
 
                 plt.legend(handles=custom_handles)
-                plt.savefig(f'K_v_kir_plot{self.tag}.pdf')
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f'K_v_kir_plot{self.tag}.pdf'
+                    )
+                )
+
+
                 plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
                 plt.gca().get_xaxis().set_major_formatter(ScalarFormatter())
                 plt.xscale('log')
-                plt.savefig(f'log_K_v_kir_plot{self.tag}.pdf')
+                plt.savefig(
+                    os.path.join(
+                        "../results/paperRes",
+                        f'log_K_v_kir_plot{self.tag}.pdf'
+                    )
+                )
 
 
 
@@ -5716,7 +5904,12 @@ class procedure(plotFigures):
                             gl.free(f"Rm ($\Omega$ cm$^2$) = {int(1/cell.g_pas)}")
                         )
                         plt.tight_layout()
-                        plt.savefig("dual_patch.pdf")
+                        plt.savefig(
+                            os.path.join(
+                                "../morphResults",
+                                "dual_patch.pdf"
+                            )
+                        )
             plt.cla()
             plt.clf()
             fig, ax = plt.subplots(figsize=gl.figsize_panel)
@@ -5735,7 +5928,12 @@ class procedure(plotFigures):
             mark_inset(ax, inset, loc1=2, loc2=4, fc="none", ec="0.5")
 
             plt.tight_layout()
-            plt.savefig("dual_patch_sensitivity.pdf")
+            plt.savefig(
+                os.path.join(
+                    "../morpResults",
+                    "dual_patch_sensitivity.pdf"
+                )
+            )
 
     def optDepolarizationSearch(self, x, optmV=20.0):
         # add multispike ek clamp
@@ -7397,7 +7595,6 @@ class procedure(plotFigures):
             plt.ylim((0, -5))
         plt.legend()
         plt.tight_layout()
-        plt.savefig()
 
 
 if __name__ == "__main__":

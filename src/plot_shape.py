@@ -136,6 +136,7 @@ def plot_3d_morphology(
     show=False,
     zoom=None,
     clim=None,
+    color_names=None,
 ):
     """
     Plot NEURON morphology in 3D with diameter scaling and a RANGE variable as color.
@@ -175,7 +176,18 @@ def plot_3d_morphology(
             try:
                 rv = getattr(sec(0.5), rangevar)
             except:
-                rv = np.nan
+                if color_names is not None:
+                    if str(sec) in color_names:
+                        if "soma" in str(sec):
+                            rv = 2
+                        elif "dendrite" in str(sec):
+                            rv = 1
+                        else:
+                            rv = 3
+                    else:
+                        rv = 0
+                else:
+                    rv = np.nan
 
         dlist.append(np.array(ds))
         varlist.append(rv)
@@ -240,9 +252,20 @@ def plot_3d_morphology(
     # Plot each section with diameter scaling and color mapping
     for xs, ys, zs, ds, rv in zip(xlist, ylist, zlist, dlist, varlist):
         color = sm.to_rgba(rv)
+        if color_names is not None:
+            if rv > 0.5:
+                if rv > 2.5:
+                    if np.mean(ds) < 1:
+                        ds *= 10
+                zorder = 3
+            else:
+                zorder = 0
+        else:
+            zorder = None
+
         if add_null:
             color = color[:-1] + (1,)
-        ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2)
+        ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2, zorder=zorder)
 
     # Integer ticks
     # ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
