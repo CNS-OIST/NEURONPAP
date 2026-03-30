@@ -37,7 +37,7 @@ proc set_ki_sim() {
   }
 
 func calc_fhspace(){local min_ecs,max_ecs,max_d,min_d
-  min_ecs = 20
+  min_ecs = 400
 max_ecs = 1000
 min_d = 0.1
 max_d = 6.5 
@@ -105,6 +105,7 @@ total_surf = 0
 //print total_surf
 //forall total_area_twik = total_surf
 objref r
+r = nil
 
 proc koclamp() { 
     // print $1
@@ -116,7 +117,7 @@ proc koclamp() {
 }
 
 proc setSeed() {local seed
-    seed = $1 // 0,1,4 are sufficient
+    seed = $1 
     r = new Random(seed)
 }
 
@@ -877,15 +878,12 @@ proc setECS(){local soma_area,total_area,scaled_fhspace
   if ($2 == 0) {
     forall fhspace_k_acc = $1
   } else {
-    soma_area = 0
-    soma {for (x) soma_area = soma_area + area(x)}
+    soma_diam = 0
+    soma {soma_diam = soma_diam + diam}
     forall {
-      total_area = 0
-      for (x) total_area = total_area + area(x)
-        scaled_fhspace = $1 * sqrt(total_area) / sqrt(soma_area)
-        if (scaled_fhspace > 400) {
-          fhspace_k_acc = $1 * sqrt(total_area) / sqrt(soma_area)
-          }
+      total_diam = 0
+      total_diam = total_diam + diam
+        scaled_fhspace = $1 * total_diam/soma_diam 
       }
     }
 }
@@ -1066,11 +1064,15 @@ proc set_vgap(){
       rect_off_kir2 = $1
     }
   }
+
   func adjacent_total_diam(){local total_diam localobj sref
   total_diam = 0
   sref = new SectionRef()
   for i=0, sref.nchild - 1 {
       sref.child[i] {total_diam = total_diam + diam}
+      if (sref.has_parent()) {
+      sref.parent {total_diam = total_diam+diam}
+        }
     }
     return total_diam
 

@@ -16,7 +16,9 @@ class gl:
     unit_hz_raw = "Hz"
     unit_hz = f"({unit_hz_raw})"
     unit_um_cubed_raw = f"{unit_micron_raw}$^3$"
-    unit_um_cubed = f"({unit_um_cubed_raw})$"
+    unit_um_cubed = f"({unit_um_cubed_raw})"
+    unit_um_squared_raw = f"{unit_micron_raw}$^2$"
+    unit_um_squared = f"({unit_um_squared_raw})"
     hz = "Frequency " + unit_hz
     ri = r"Input Resistance (M$\Omega$)"
     # label

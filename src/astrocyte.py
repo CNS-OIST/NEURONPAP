@@ -272,6 +272,7 @@ class PAPModel(ResultsPAPModel):
             self.PAP_properties[-1]["ecs"] = pap.fhspace_k_acc
             self.PAP_properties[-1]["kir_count"] = pap.count_kir2
             self.PAP_properties[-1]["adj_diam"] = h.adjacent_total_diam(sec=pap)
+            self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
 
     def setPAPNearSoma(self, onSoma=False, onPB=True, diam=1, dist_radius=2):
         if onSoma:
@@ -748,7 +749,6 @@ class PAPModel(ResultsPAPModel):
             voltageClamp = False
         # print('initializing')
         # sys.stdout.flush()
-        self.set_ECS(1000, scale=True)
         if kblock:
             h.kbath_off()
         elif kuptake:
@@ -1183,7 +1183,9 @@ class PAPModel(ResultsPAPModel):
 
         if sGluT != None:
             if self.record_single_synapse:
-                if len(list(sGluT)) > 1:
+                if len(list(sGluT)) > 1 or (
+                    type(sGluT) is list and len(list(sGluT)) == 1
+                ):
                     sGluT = sGluT[-1]
                 self.iGluT = h.Vector()
                 self.iGluT.record(sGluT._ref_iGluT)
