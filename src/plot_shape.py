@@ -255,8 +255,7 @@ def plot_3d_morphology(
         if color_names is not None:
             if rv > 0.5:
                 if rv > 2.5:
-                    if np.mean(ds) < 1:
-                        ds *= 10
+                    ds = 5
                 zorder = 3
             else:
                 zorder = 0

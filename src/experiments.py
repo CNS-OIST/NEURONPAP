@@ -40,6 +40,8 @@ import statsmodels.stats.multitest as smm
 
 
 from global_labels import gl
+import faulthandler
+faulthandler.enable()
 
 plt.rcParams.update(gl.font)
 plt.ioff()
@@ -108,6 +110,26 @@ class plotFigures:
         return (rgba_color * alpha + np.array(bkg) * (1 - alpha)) / np.array(
             [255, 255, 255, 1]
         )
+
+    def get_papLen_color_from_value(self,value):
+        vmid = 6.5454
+        if vmid < self.peakLen:
+            vmin = self.PAPLen
+            vmax = self.peakLen
+            pos_mid = (vmid - vmin) / (vmax - vmin)
+            colors = [
+                (0.0, self.returnColor('PAP')),
+                (pos_mid, self.returnColor('Soma')),
+                (1.0, self.returnColor('global'))     
+            ]
+            cm = mcolors.LinearSegmentedColormap.from_list("custom_gb", colors)
+        else:
+            colors = [self.returnColor('PAP'), self.returnColor('Soma')]  # Green to Blue
+            cmap_name = "green_to_blue"
+            cm = mcolors.LinearSegmentedColormap.from_list(cmap_name, colors, N=256)
+        norm = mcolors.Normalize(vmin=self.PAPLen, vmax=self.peakLen)
+        rgba = cm(norm(value))
+        return mcolors.to_hex(rgba)
 
     def save_src_Data(plot_func):
         @wraps(plot_func)
@@ -2003,7 +2025,7 @@ class procedure(plotFigures):
     ek = None
     PAPLen = 0.3
     peakLen = None
-    pb_seed_max = 5
+    pb_seed_max = 7
 
     no_read_data = False
     global_rw_data = False  # default False only for bath exp
@@ -3742,12 +3764,12 @@ class procedure(plotFigures):
             ax.axhline(
                 val_means["confined"][0],
                 linestyle="--",
-                c=cm.winter(controlIndex / len(iterations)),
+                c=self.get_papLen_color_from_value(self.PAPLen),
             )
             ax.axhline(
                 val_means["spillover"][0],
                 linestyle="--",
-                c=cm.winter(maxIndex / len(iterations)),
+                c=self.get_papLen_color_from_value(self.peakLen),
             )
 
             with open(
@@ -4616,11 +4638,7 @@ class procedure(plotFigures):
 
             for cells in results:
                 for cell in cells:
-                    i = np.where(cell.PAPLen == iterations)[0][
-                        0
-                    ]  # get index of PAPLen position in iterations
-                    cindex = i / len(iterations)
-                    color = cm.winter(cindex)
+                    color = self.get_papLen_color_from_value(cell.PAPLen)
                     initStep = self.get_initStep(cell)
                     ax.plot(
                         np.array(list(cell.time)[initStep:]),  # ms to s
@@ -4710,17 +4728,16 @@ class procedure(plotFigures):
             ax.scatter(
                 iterations,
                 vList,
-                cmap="winter",
                 edgecolor="black",
                 linewidth=1,
-                c=[i / len(iterations) for i in range(len(iterations))],
+                c=[self.get_papLen_color_from_value(i) for i in iterations],
             )
             # plot control as diamond
             if controlIndex != None:
                 ax.scatter(
                     self.PAPLen,
                     controlV,
-                    color=cm.winter(controlIndex / len(iterations)),
+                    color=self.get_papLen_color_from_value(self.PAPLen),
                     marker="D",
                     edgecolor="black",
                     label="Control",
@@ -4743,15 +4760,15 @@ class procedure(plotFigures):
             #    label="Spillover",
             #    zorder=-1,
             # )
-            if self.GluStim and self.KStim:
-                if self.peakLen is not None:
-                    ax.axvline(
-                        self.PAPLen,
-                        ymax=vList[0] / maxY,
-                        linestyle="--",
-                        color=cm.winter(maxIndex / len(iterations)),
-                        zorder=-2,
-                    )
+            #if self.GluStim and self.KStim:
+                #if self.peakLen is not None:
+                #    ax.axvline(
+                #        self.PAPLen,
+                #        ymax=vList[0] / maxY,
+                #        linestyle="--",
+                #        color=cm.winter(maxIndex / len(iterations)),
+                #        zorder=-2,
+                #    )
             ax.legend()
             ax.set_ylim((y0, y1))
             ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -4815,6 +4832,8 @@ class procedure(plotFigures):
             pb_seeds = list(range(self.pb_seed_max))
         else:
             pb_seeds = [self.seed]
+        self.skipPB = [3,4,5]
+        # most likely imaging artifact, part of soma
         if rank == 0:
             for soma in [True, False]:
                 if soma:
@@ -4829,6 +4848,8 @@ class procedure(plotFigures):
                 else:
                     while len(pb_seeds) > 0:
                         funcArgs[-1]['seed'] = pb_seeds.pop()
+                        if funcArgs[-1]['seed'] in self.skipPB:
+                            continue
                         tmpCell = PAPModel(**funcArgs[-1])
                         tmpCell.setPAPNearSoma(onSoma=soma)
                         tmpCell.get_PAPName()
@@ -4837,11 +4858,10 @@ class procedure(plotFigures):
                         results += [[tmpCell.copyAttr()]] 
 
 
-            col_dict = {0: 'whitesmoke', 1: self.returnColor('Primary Branch'), 2: self.returnColor("Soma"), 3: self.returnColor('PAP')}
+            col_dict = {0: self.returnColor('global'), 1: self.returnColor('Primary Branch'), 2: self.returnColor("Soma"), 3: self.returnColor('PAP')}
             colors = [col_dict[key] for key in sorted(col_dict.keys())]
 
             ref_names = []
-            self.skipPB = []
             if save:
                 self.free_figure(results)
             for cells in results:
@@ -4883,10 +4903,12 @@ class procedure(plotFigures):
                 startb = 0
             elif comparison == "PAPLen":
                 # update when you want to extend
-                compMax = 60 
-                compStep = 0.3
-                startb = 0.3
-                comp_prev = 0.3
+                if self.peakLen is None:
+                    self.peakLen = 10
+                compMax = self.peakLen 
+                compStep = self.PAPLen 
+                startb = self.PAPLen 
+                comp_prev = self.PAPLen 
             elif comparison == "durStim":
                 compMax = 9
                 compStep = 1
@@ -4975,7 +4997,7 @@ class procedure(plotFigures):
             # Calculate the number of iterations for all parm sets
             iterations = comm.bcast(
                 get_iter(
-                    self.KirMax,
+                    self.optKir,
                     self.KirStep,
                     compMax,
                     compStep,
@@ -5146,8 +5168,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT
             }
         )
-        run_func = [["setPAP2Soma","savePAPProp","calcPAPRi","initialize","setK","plot_morph_iter","run"]]
-        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50}, {}, {}]]
+        run_func = [["setPAP2Soma","savePAPProp","calcPAPRi","initialize","setK","run"]]
+        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50},  {}]]
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
@@ -5183,8 +5205,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT,
             }
         )
-        run_func = [["setPAPNearSoma","savePAPProp","calcPAPRi","initialize","setK","plot_morph_iter","run"]]
-        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50}, {}, {}]]
+        run_func = [["setPAPNearSoma","savePAPProp","calcPAPRi","initialize","setK","run"]]
+        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50}, {} ]]
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
@@ -5335,11 +5357,10 @@ class procedure(plotFigures):
             def get_ri(cell):
                 return cell.PAP_Ri
             ri_soma = self.read_run_comp("run_comp_soma",func=get_ri)
-            pb_names = []
             for i in range(self.pb_seed_max):
                 if hasattr(self,'skipPB') and i in self.skipPB:
                     mprint(f'skip pb seed {i}')
-                    break
+                    continue
                 def getbySeed(cell):
                     if cell.seed == i:
                         return max(cell.vPAP) - cell.RMP
@@ -5395,6 +5416,9 @@ class procedure(plotFigures):
                 for property in pap_props:
                     plt.cla()
                     plt.clf()
+                    plt.figure(figsize=gl.figsize_panel)
+                    plt.subplots_adjust(bottom=0.15)
+
                     pap_corr = {'x':[],'y':[],'seed':[]}
                     for cells in results:
                         for cell in cells:
@@ -5464,20 +5488,22 @@ class procedure(plotFigures):
                         large_sec['x'].append(pap_corr['x'][-1])
                         large_sec['y'].append(pap_corr['y'][-1])
 
+                        skip = 0
                         for i in range(self.pb_seed_max):
                             if hasattr(self,'skipPB') and i in self.skipPB:
-                                break
+                                skip += 1
+                                continue
                             if ri_pb is not None and property == 'PAP_Ri':
-                                plt.scatter(ri_pb[0][i],res_column_pb[-1][i],color=self.returnColor("Primary Branch"))
-                                pap_corr['x'].append(ri_pb[0][i])
-                                pap_corr['y'].append(res_column_pb[-1][i])
+                                plt.scatter(ri_pb[0][i-skip],res_column_pb[-1][i-skip],color=self.returnColor("Primary Branch"))
+                                pap_corr['x'].append(ri_pb[0][i-skip])
+                                pap_corr['y'].append(res_column_pb[-1][i-skip])
                                 pap_corr['seed'].append(i)
                             elif property_pb is not None:
                                 for pb in property_pb:
                                     if pb.seed == i:
-                                        plt.scatter(pb.PAP_properties[-1][property],res_column_pb[-1][i],color=self.returnColor('Primary Branch'))
+                                        plt.scatter(pb.PAP_properties[-1][property],res_column_pb[-1][i-skip],color=self.returnColor('Primary Branch'))
                                         pap_corr['x'].append(pb.PAP_properties[-1][property])
-                                        pap_corr['y'].append(res_column_pb[-1][i])
+                                        pap_corr['y'].append(res_column_pb[-1][i-skip])
                                         pap_corr['seed'].append(i)
                             large_sec['x'].append(pap_corr['x'][-1])
                             large_sec['y'].append(pap_corr['y'][-1])
@@ -5498,6 +5524,7 @@ class procedure(plotFigures):
 
 
                     plt.ylabel(gl.d_volt)
+                    plt.ylim(gl.lim_d_volt)
                     if not (np.amax(pap_corr['x']) == np.amin(pap_corr['x']) and len(pap_corr['x']) > 1):
                         if property == search_closest:
                             tmp_min = np.inf
@@ -5526,12 +5553,19 @@ class procedure(plotFigures):
                             Line2D([0], [0], color=self.returnColor('global'), label='Soma-branch fit',linestyle='--')
                         ]
 
-                        plt.legend(handles=custom_handles, loc='best')
+                        if property != 'PAP_Ri':
+                            plt.legend(handles=custom_handles, loc='best')
 
                     if property == 'area':
-                        plt.xlabel(f'Area {gl.unit_um_squared}')
+                        if property in log_property:
+                            plt.xlabel(f'Log(Area) {gl.unit_um_squared}')
+                        else:
+                            plt.xlabel(f'Area {gl.unit_um_squared}')
                     elif property == 'ecs':
-                        plt.xlabel(f'ECS {gl.unit_micron}')
+                        if property in log_property:
+                            plt.xlabel(f'Log(l$_ECS$) {gl.unit_micron}')
+                        else:
+                            plt.xlabel(f'ECS {gl.unit_micron}')
                     elif property == 'PAP_Ri':
                         plt.xlabel(gl.ri)
                     else:
@@ -5560,6 +5594,7 @@ class procedure(plotFigures):
             plt.cla()
             plt.clf()
             plt.figure(figsize=gl.figsize_panel)
+            plt.subplots_adjust(bottom=0.15)
             imArray = np.zeros(
                 (
                     int(self.KoCompMax / self.KoCompStep + 1),
@@ -5640,9 +5675,8 @@ class procedure(plotFigures):
                             if hasattr(self,'skipPB') and i not in self.skipPB:
                                 xlabels = np.append(
                                     xlabels,
-                                    f'Branch {i}' 
+                                    f'branch {i}' 
                                 )
-
 
                     else:
                         xlabels = np.append(
@@ -5652,46 +5686,74 @@ class procedure(plotFigures):
 
                 base = 3.5
                 x = np.linspace(0,self.KoCompMax)
-
                 plt.plot(base + x,self.nernst(x+base,res[0].kin)-res[0].RMP,linestyle='--',color='black') 
   
-                for i,col in enumerate(imArray.T):
-                    label = xlabels[i]
-                    if label not in ['soma','pb','bath']:
-                        color=self.returnColor('PAP')
-                    else:
-                        if label in ['soma']:
-                            color =self.returnColor('Soma')
-                        elif label in ['pb']:
-                            color=self.returnColor('Primary Branch')
+                if comparison == 'seed':
+                    for i,col in enumerate(imArray.T):
+                        label = xlabels[i]
+                        if label not in ['soma','bath'] and 'branch' not in label:
+                            color=self.returnColor('PAP')
                         else:
-                            color=self.returnColor('global')
-                    if np.nan not in col:
-                        plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
+                            if label in ['soma']:
+                                color =self.returnColor('Soma')
+                            elif 'branch' in label:
+                                color=self.returnColor('Primary Branch')
+                            else:
+                                color=self.returnColor('global')
+                        if np.nan not in col:
+                            plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
 
-                #plt.axhline(8,color='black',linestyle='--',lw=1)
+                    custom_handles = [
+                        Line2D([0], [0], color=self.returnColor('PAP'), label='PAP'),
+                        Line2D([0], [0], color=self.returnColor('Soma'), label='Soma'),
+                        Line2D([0], [0], color=self.returnColor('Primary Branch'), label='Primary Branch'),
+                        Line2D([0], [0], color=self.returnColor('global'), label='Bath'),
+                    ]
+                    custom_handles += [
+                        Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
+                    ]
+                    plt.legend(handles=custom_handles)
 
-                custom_handles = [
-                    Line2D([0], [0], color=self.returnColor('PAP'), label='PAP'),
-                    Line2D([0], [0], color=self.returnColor('Soma'), label='Soma'),
-                    Line2D([0], [0], color=self.returnColor('Primary Branch'), label='Primary Branch'),
-                    Line2D([0], [0], color=self.returnColor('global'), label='Bath'),
-                ]
-                custom_handles += [
-                    Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
-                ]
+                
+                elif comparison == 'PAPLen':
+                    papLens = []
+                    for label in xlabels:
+                        try:
+                            float(label)
+                            papLens.append(float(label))
+                        except ValueError:
+                            continue
+                    for i,col in enumerate(imArray.T):
+                        label = xlabels[i]
+                        if label not in ['soma','bath'] and 'branch' not in label:
+                            color=self.get_papLen_color_from_value(papLens[i])
+                        else:
+                            if label in ['soma']:
+                                color =self.returnColor('Soma')
+                            elif 'branch' in label:
+                                color=self.returnColor('Primary Branch')
+                            else:
+                                color=self.returnColor('global')
+                        if np.nan not in col:
+                            plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
+
+
+
                 plt.xlabel(gl.ion_o('K',short=True))
-                plt.ylabel(gl.d_volt_short)
+                plt.ylabel(gl.d_volt)
+                plt.ylim(gl.lim_d_volt)
 
 
 
-                plt.legend(handles=custom_handles)
+                comp_lin = plt.axhline(20,color='black',linestyle='-.',lw=1)
                 plt.savefig(
                     os.path.join(
                         "../results/paperRes",
                         f'K_v_plot{self.tag}.pdf'
                     )
                 )
+                comp_lin.remove()
+                plt.draw()
                 plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
                 plt.gca().get_xaxis().set_major_formatter(ScalarFormatter())
                 plt.xscale('log')
@@ -6038,8 +6100,8 @@ class procedure(plotFigures):
                 )
             )
 
-            if comparison == "KoSize" or comparison == "PAPLen":
-                self.plotIKSeries(results, tagReset=True, setKoylim=True)
+            #if comparison == "KoSize" or comparison == "PAPLen":
+            #    self.plotIKSeries(results, tagReset=True, setKoylim=True)
 
     def SCeq(self, x, a, l, c):
         return a * np.exp(-x / l) + c
