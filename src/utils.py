@@ -13,6 +13,7 @@ import copy
 import random
 import sys
 from contextlib import contextmanager
+import tracemalloc
 
 
 comm = MPI.COMM_WORLD
@@ -175,6 +176,7 @@ def parallizeFor(
     if mode == "InitArgs":
         # print(f"Thread {rank} will perform sets {iterations[minimum:maximum]}")
         for index in range(minimum, maximum):
+            # tracemalloc.start()
             parmSet = iterations[index]
             # print(f"Thread {rank} is performing set {parmSet}")
             results.append([])
@@ -196,6 +198,12 @@ def parallizeFor(
 
             # update tqdm
             pbar.update(1)
+            # snapshot = tracemalloc.take_snapshot()
+            # top_stats = snapshot.statistics("lineno")
+            # print("[ Top 10 ]")
+            # for stat in top_stats[:10]:
+            #    print(stat)
+
     elif mode == "MethodArgs":
         for index in range(minimum, maximum):
             # print(index)
@@ -267,3 +275,110 @@ def remove_nan_values(lst, lst2):
         return lst, lst2
     else:
         eMessage("wrong list length from removing")
+
+
+def sizeof(obj):
+    seen = set()
+
+    def inner(o):
+        if id(o) in seen:
+            return 0
+        seen.add(id(o))
+        size = sys.getsizeof(o)
+        if isinstance(o, dict):
+            size += sum(inner(k) + inner(v) for k, v in o.items())
+        elif isinstance(o, (list, tuple, set)):
+            size += sum(inner(i) for i in o)
+        return size
+
+    return inner(obj)  # ← fix
+
+
+def print_pickle_objs():
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <pickle_file>")
+        sys.exit(1)
+
+    filename = sys.argv[1]
+
+    with open(filename, "rb") as f:
+        data = pickle.load(f)
+
+    if isinstance(data, dict):
+        sorted_items = sorted(data.items(), key=lambda x: sizeof(x[1]), reverse=True)
+        for k, v in sorted_items:
+            print(f"{k}: {sizeof(v)} bytes")
+
+    elif isinstance(data, (list, tuple)):
+        sorted_items = sorted(enumerate(data), key=lambda x: sizeof(x[1]), reverse=True)
+        for idx, item in sorted_items:
+            print(f"index {idx}: {sizeof(item)} bytes")
+
+    else:
+        # fallback: try to print attribute names if object has __dict__
+        if hasattr(data, "__dict__"):
+            items = vars(data).items()
+            sorted_items = sorted(items, key=lambda x: sizeof(x[1]), reverse=True)
+            for name, val in sorted_items:
+                print(f"{name}: {sizeof(val)} bytes")
+        else:
+            print(f"value: {sizeof(data)} bytes")
+        if len(sys.argv) < 2:
+            print("Usage: python script.py <pickle_file>")
+            sys.exit(1)
+
+        filename = sys.argv[1]
+
+        with open(filename, "rb") as f:
+            data = pickle.load(f)
+
+        if isinstance(data, dict):
+            sorted_items = sorted(
+                data.items(), key=lambda x: sizeof(x[1]), reverse=True
+            )
+            for k, v in sorted_items:
+                print(k, sizeof(v))
+
+        elif isinstance(data, (list, tuple)):
+            sorted_items = sorted(data, key=lambda x: sizeof(x), reverse=True)
+            for item in sorted_items:
+                print(sizeof(item))
+
+        else:
+            raise TypeError("Unsupported pickle structure")
+
+
+def load_interm_data(pickle_obj, root=0):
+    if rank == root:
+        data_bytes = pickle.dumps(pickle_obj, protocol=pickle.HIGHEST_PROTOCOL)
+        nbytes = len(data_bytes)
+    else:
+        nbytes = 0
+    nbytes = comm.bcast(nbytes, root=root)
+    win = MPI.Win.Allocate_shared(nbytes if rank == 0 else 0, 1, comm=comm)
+    buf, _ = win.Shared_query(0)
+    shared_buf = np.ndarray(buffer=buf, dtype=np.uint8, shape=(nbytes,))
+    if rank == root:
+        shared_buf[:] = np.frombuffer(data_bytes, dtype=np.uint8)
+    comm.Barrier()
+
+    return pickle.loads(shared_buf.tobytes()), win
+
+
+def release_pickle(shared_array, win):
+    import gc
+
+    if comm is not None:
+        comm.Barrier()
+
+    if shared_array is not None:
+        del shared_array
+    if win is not None:
+        win.Free()
+
+    # Force garbage collection
+    gc.collect()
+
+
+if __name__ == "__main__":
+    print_pickle_objs()

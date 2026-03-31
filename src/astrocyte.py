@@ -1,6 +1,9 @@
+import os
+
+os.environ["NEURON_MODULE_OPTIONS"] = "-nogui"
 from neuron import h, load_mechanisms
 from neuron.units import mM, mV, ms
-import sys, subprocess, os
+import sys
 from classResults import ResultsPAPModel
 from utils import *
 from geneManip import GENExpression
@@ -83,6 +86,9 @@ class PAPModel(ResultsPAPModel):
         getPeriphery=True,
         **kwargs,
     ):
+        from neuron import h
+
+        h.nrn_load_dll("nrniv.so")
 
         h.load_file("stdgui.hoc")
         # h.load_file("./neuronHoc/params.hoc")
@@ -136,8 +142,8 @@ class PAPModel(ResultsPAPModel):
         # using the HOC astrocyte.hoc library instead of
         # setting up within python
         # print("read hoc")
-
         h.load_file("stdgui.hoc")
+
         h('{xopen("./neuronHoc/astrocyte.hoc")}')
         # print("read hoc")
         # set morphology parameters
@@ -965,6 +971,8 @@ class PAPModel(ResultsPAPModel):
             self.cleanMorphology()
         # print('ran simulation')
         # sys.stdout.flush()
+        #
+        #
 
     def getRMP(self):
         # decapreated
@@ -1183,10 +1191,10 @@ class PAPModel(ResultsPAPModel):
 
         if sGluT != None:
             if self.record_single_synapse:
-                if len(list(sGluT)) > 1 or (
-                    type(sGluT) is list and len(list(sGluT)) == 1
-                ):
+                if type(sGluT) is list:
                     sGluT = sGluT[-1]
+                elif len(list(sGluT)) > 1:
+                    sGluT = list(sGluT)[-1]
                 self.iGluT = h.Vector()
                 self.iGluT.record(sGluT._ref_iGluT)
             else:

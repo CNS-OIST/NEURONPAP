@@ -51,7 +51,6 @@ comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 
-
 class LegendTitle(object):
     def __init__(self, text_props=None):
         self.text_props = text_props or {}
@@ -2123,7 +2122,7 @@ class procedure(plotFigures):
                                 AllCells = pickle.load(handle)
 
                         if not self.global_rw_data:
-                            AllCells = comm.bcast(AllCells, root=0)
+                            AllCells,win = load_interm_data(AllCells,root=0)
 
                         # temporarily override simulation and just output result
                         def parallizeFor_dummy(*args, AllCells=AllCells,**kwargs):
@@ -2137,6 +2136,8 @@ class procedure(plotFigures):
                             module_name=calling_module_name,
                         ):
                             result = exp_func(self, *args, **kwargs)
+                        if not self.global_rw_data:
+                            release_pickle(AllCells,win)
                         return result
 
             else:
@@ -2179,8 +2180,8 @@ class procedure(plotFigures):
         if len(missing_iter) > 0:
             mprint(f'Found missing iters {missing_iter}; rerun')
             self.override_src = True
-            from utils import parallizeFor as pf
-            results = pf(
+            import utils
+            results = utils.parallizeFor(
                     missing_iter,
                     functions,
                     functionArgs,
@@ -2190,10 +2191,15 @@ class procedure(plotFigures):
                     mode=mode,
                     randomize=randomize,
             )
-            results = comm.bcast(results, root=0)
-            AllCells += results
-            # this only saves result as backup and not actually accesible to other functions
-            self.free_figure(AllCells)
+            if rank == 0:
+                if AllCells is None:
+                    AllCells = results
+                else:
+                    AllCells += results
+                # this only saves result as backup and not actually accesible to other functions
+                self.free_figure(AllCells)
+            load_interm_data(AllCells,root=0)
+
             return AllCells
         else:
             return AllCells
@@ -4818,6 +4824,7 @@ class procedure(plotFigures):
             iterations = [ (i) for i in np.arange(start,end+1) ]
 
 
+        # remove overleapping morphology memory
         results = parallizeFor(
             iterations,
             [PAPModel],
@@ -4872,21 +4879,21 @@ class procedure(plotFigures):
                         tmp_skip_cell.append(cell.seed)
                     else:
                         self.skipPB.append(cell.seed)
-            plot_3d_morphology(
-                rangevar='PAP',
-                color_names = [cell.PAP_name for cells in results for cell in cells],
-                colormap_name = colors,
-                add_colorbar=False,
-            )
-            plt.savefig(
-                os.path.join(
-                    '../morphResults/',
-                    'Plot_PAPs.pdf'
+            if save:
+                plot_3d_morphology(
+                    rangevar='PAP',
+                    color_names = [cell.PAP_name for cells in results for cell in cells],
+                    colormap_name = colors,
+                    add_colorbar=False,
                 )
-            )
+                plt.savefig(
+                    os.path.join(
+                        '../morphResults/',
+                        'Plot_PAPs.pdf'
+                    )
+                )
         if save:
-            self.PAP_AllProperties = comm.bcast(results,root=0)
-        comm.barrier()
+            self.PAP_AllProperties,win = load_interm_data(results,root=0)
         tmp_skip_cell = comm.bcast(tmp_skip_cell,root=0)
         return tmp_skip_cell
 
@@ -4896,7 +4903,7 @@ class procedure(plotFigures):
     def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in ["seed","KoSize", "PAPLen"]: #,  "durStim"]:
+        for comparison in ["seed", "PAPLen", "KoSize"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -4922,7 +4929,7 @@ class procedure(plotFigures):
                 if comparison == "PAPLen":
                     # Think of a way to extend from previous
                     #AllCells = self.find_run_comp('runAmpLen')
-                    logx = np.logspace(log(comp_prev,compStep), log(compMax,compStep), base=compStep, num=5)
+                    logx = np.logspace(log(comp_prev,compStep), log(compMax,compStep), base=compStep, num=10)
                     iterations = comm.bcast(
                         [
                             (i, j)
@@ -5902,6 +5909,7 @@ class procedure(plotFigures):
         #            funcArgs[-1]["dt"] = self.dt / 2
         # make sure that funcParms is in the correct order of whatever iterations spits out
         # results are collected only on rank 0
+
 
         if self.KStim:
             results = parallizeFor(

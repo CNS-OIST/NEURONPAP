@@ -77,6 +77,19 @@ class ResultsPAPModel:
         #         newInstance.__dict__[attr] = list(newInstance.__dict__[attr])
         return newInstance
 
+    def cleanNEURONVariables(self):
+        all_hoc_names = dir(h)
+
+        for name in all_hoc_names:
+            try:
+                obj = getattr(h, name)
+
+                if "hoc.HocObject" in str(type(obj)) and not callable(obj):
+                    setattr(h, name, None)
+                    print(f"Nullified objref: {name}")
+            except (AttributeError, TypeError):
+                continue
+
     def getRMP(self):
         RMP = list(self.vSoma)[-1]
         return RMP
