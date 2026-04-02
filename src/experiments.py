@@ -39,9 +39,12 @@ import statsmodels.api as sm
 import statsmodels.stats.multitest as smm 
 
 
+
+
 from global_labels import gl
 import faulthandler
 faulthandler.enable()
+#from memory_profiler import profile
 
 plt.rcParams.update(gl.font)
 plt.ioff()
@@ -147,8 +150,11 @@ class plotFigures:
                 # default no overwrite
                 fPath = os.path.join("intermediaryData", fName)
                 if not os.path.isfile(fPath) or (hasattr(self,'override_src') and self.override_src):
-                    with open(fPath, "wb") as handle:
-                        pickle.dump(AllCells, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                    if isinstance(AllCells, LazySharedObject):
+                        AllCells.dump_to_file(fPath)
+                    else:
+                        with open(fPath, "wb") as handle:
+                            pickle.dump(AllCells, handle, protocol=pickle.HIGHEST_PROTOCOL)
                     print(f"Saved src data file {fName}")
             res = plot_func(self, *args, **kwargs)
             return res
@@ -157,8 +163,8 @@ class plotFigures:
 
     @save_src_Data
     def free_figure(self, AllCells):
+        del AllCells
         # just to force call decorator
-        pass
 
     def resetTag(self, cell):
         # reset figure tag based on result parms
@@ -1993,6 +1999,7 @@ class plotFigures:
 
 
 class procedure(plotFigures):
+    alpha = 0.05
     leak = 1.4  # ideal calculated from stable model
     optKir = 0  # std * optkir  + mean
     optNMDAR = 344
@@ -2191,15 +2198,20 @@ class procedure(plotFigures):
                     mode=mode,
                     randomize=randomize,
             )
-            if rank == 0:
-                if AllCells is None:
-                    AllCells = results
-                else:
-                    AllCells += results
-                # this only saves result as backup and not actually accesible to other functions
-                self.free_figure(AllCells)
-            load_interm_data(AllCells,root=0)
 
+            if AllCells is None:
+                AllCells = results
+            else:
+                if rank == 0:
+                    AllCells = AllCells.load()
+                    AllCells += results
+                    # this only saves result as backup and not actually accesible to other functions
+                    #self.free_figure(AllCells)
+                else:
+                    AllCells = None
+
+
+            comm.barrier()
             return AllCells
         else:
             return AllCells
@@ -4839,7 +4851,6 @@ class procedure(plotFigures):
             pb_seeds = list(range(self.pb_seed_max))
         else:
             pb_seeds = [self.seed]
-        self.skipPB = [3,4,5]
         # most likely imaging artifact, part of soma
         if rank == 0:
             for soma in [True, False]:
@@ -4892,8 +4903,7 @@ class procedure(plotFigures):
                         'Plot_PAPs.pdf'
                     )
                 )
-        if save:
-            self.PAP_AllProperties,win = load_interm_data(results,root=0)
+                plt.close('all')
         tmp_skip_cell = comm.bcast(tmp_skip_cell,root=0)
         return tmp_skip_cell
 
@@ -4903,7 +4913,7 @@ class procedure(plotFigures):
     def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in ["seed", "PAPLen", "KoSize"]: #,  "durStim"]:
+        for comparison in [ "seed",  "PAPLen", "KoSize"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -4938,6 +4948,7 @@ class procedure(plotFigures):
                         ],
                         root=0,
                     )
+                else:
                     iterations = comm.bcast(
                         get_iter(
                             self.KoCompMax,
@@ -4967,26 +4978,33 @@ class procedure(plotFigures):
 
                 if comparison == 'seed':
                     all_skip_seed = []
-                    skip_seed = self.plot_seed_map(startb,compMax)
-                    tmp_compMax = compMax
-                    while len(skip_seed)> 0 and tmp_compMax - len(skip_seed) <= (compMax-startb+1):
+                    self.PAP_AllProperties, self.pap_win = self.find_pap_props()
+                    self.skipPB = [3,4,5]
+                    if self.PAP_AllProperties is None:
+                        skip_seed = self.plot_seed_map(startb,compMax)
+                        tmp_compMax = compMax
+                        while len(skip_seed)> 0 and tmp_compMax - len(skip_seed) <= (compMax-startb+1):
+                            all_skip_seed += skip_seed
+                            tmp_compMax += len(skip_seed) * compStep
+                            skip_seed = self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed)
                         all_skip_seed += skip_seed
-                        tmp_compMax += len(skip_seed) * compStep
-                        skip_seed = self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed)
-                    all_skip_seed += skip_seed
-                    mprint(f'Redundant seed;{all_skip_seed}')
+                        mprint(f'Redundant seed;{all_skip_seed}')
 
-                    self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed,save=True)
+                        self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed,save=True)
+                        # name for keyword argument when you cannot automatically sequentially inform the values
+                        logx = [
+                            j
+                            for j in range(startb,tmp_compMax+1,compStep)
+                            if j not in all_skip_seed
+                        ]
 
-                    # name for keyword argument when you cannot automatically sequentially inform the values
-                    logx = [
-                        j
-                        for j in range(startb,tmp_compMax+1,compStep)
-                        if j not in all_skip_seed
-                    ]
+                    else:
+                        logx = [cell.seed for cells in self.PAP_AllProperties for cell in cells if 'Glia' in cell.PAP_name]
+                        logx = list(set(logx))
+
+
                     # change to np array for later
                     logx = np.array(logx)
-
 
                     iterations = [
                         (i,j)
@@ -5046,7 +5064,7 @@ class procedure(plotFigures):
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
 
-        AllCells = self.find_run_comp("run_comp_bath")
+        AllCells,win = self.find_run_comp("run_comp_bath")
         if AllCells is None:
             results = parallizeFor(
                 iterations,
@@ -5057,6 +5075,8 @@ class procedure(plotFigures):
                 run_func_args,
             )
             self.free_figure(results)
+            AllCells = results
+        release_pickle(AllCells,win)
 
     def run_comp_ri(self,iterations):
         funcArgs = []
@@ -5077,7 +5097,7 @@ class procedure(plotFigures):
         )
         ccList = ["seed"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
-        AllCells = self.find_run_comp("run_comp_ri")
+        AllCells,win = self.find_run_comp("run_comp_ri")
         if AllCells is None:
             results = parallizeFor(
                 iterations,
@@ -5089,6 +5109,8 @@ class procedure(plotFigures):
             )
             self.free_figure(results)
             AllCells = results
+        release_pickle(AllCells,win)
+
 
         if rank == 0:
             for cells in AllCells:
@@ -5129,7 +5151,7 @@ class procedure(plotFigures):
             iterations = [ (i,j) for i in iterations for j in np.arange(0.1,5.1,0.5)]
             ccList.append('pbLen')
 
-        AllCells = self.find_run_comp("test_soma_response")
+        AllCells,win = self.find_run_comp("test_soma_response")
         if AllCells is None:
             results = parallizeFor(
                 iterations,
@@ -5157,6 +5179,8 @@ class procedure(plotFigures):
                     'pblen_vPAP.pdf'
                 )
             )
+        release_pickle(AllCells,win)
+
 
     def run_comp_soma(self,iterations):
         funcArgs = []
@@ -5183,7 +5207,7 @@ class procedure(plotFigures):
 
         ccList = ["KoSize"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
-        AllCells = self.find_run_comp("run_comp_soma")
+        AllCells,win = self.find_run_comp("run_comp_soma")
         if AllCells is None:
             results = parallizeFor(
                 iterations,
@@ -5194,6 +5218,9 @@ class procedure(plotFigures):
                 run_func_args
             )
             self.free_figure(results)
+
+        release_pickle(AllCells,win)
+
 
     def run_comp_pb(self,iterations):
         funcArgs = []
@@ -5226,7 +5253,7 @@ class procedure(plotFigures):
             for i in iterations
             for j in range(self.pb_seed_max)
         ],root=0)
-        AllCells = self.find_run_comp("run_comp_pb")
+        AllCells,win = self.find_run_comp("run_comp_pb")
         tmp_AllCells =self.find_missing_iter(
             AllCells,
             iterations,
@@ -5248,6 +5275,29 @@ class procedure(plotFigures):
         #        run_func_args
         #    )
         #    self.free_figure(results)
+        release_pickle(AllCells,win)
+
+    def find_pap_props(self):
+        intermediary_files = os.listdir(os.path.join("intermediaryData"))
+        # Mainly aims to keep additional information added during function
+        tmptag = self.tag
+        self.addChannelTag()
+        if len(tmptag) > len(self.tag):
+            self.tag = tmptag
+
+        for f in intermediary_files:
+            if "plot_seed" in f:
+                print(f"found plot_seed file {f}")
+                sys.stdout.flush()
+                AllCells = [[]]
+                with open(
+                    os.path.join("intermediaryData", f), "rb"
+                ) as handle:
+                    AllCells = pickle.load(handle)
+                return load_interm_data(AllCells)
+    
+        return None,None
+
 
 
     def find_run_comp(self,func_name):
@@ -5267,12 +5317,12 @@ class procedure(plotFigures):
                     os.path.join("intermediaryData", f), "rb"
                 ) as handle:
                     AllCells = pickle.load(handle)
-                    return AllCells
+                return load_interm_data(AllCells)
     
-        return None
+        return None,None
 
     def read_run_comp(self,func_name,func=None):
-        AllCells = self.find_run_comp(func_name)
+        AllCells,win = self.find_run_comp(func_name)
         #self.plotIKSeries.__wrapped__(self,AllCells)
         if AllCells is not None:
             column_res = [] 
@@ -5289,9 +5339,11 @@ class procedure(plotFigures):
                             column_res[int(cell.KoSize/self.KoCompStep)] = func(cell) 
                 
 
+            release_pickle(AllCells,win)
             return np.array(column_res)
 
         else:
+            release_pickle(AllCells,win)
             return None
 
 
@@ -5299,7 +5351,7 @@ class procedure(plotFigures):
 
     @read_data
     def runAmpLenComparison(
-        self, comparison, iterations, maxStep, intermStep, logx=None, add_bath=True,
+        self, comparison, iterations, maxStep, intermStep, logx=None, add_bath=True,plot_total_p=True
     ):
         funcArgs = []
         funcArgs.append(
@@ -5378,13 +5430,28 @@ class procedure(plotFigures):
                         return cell.PAP_Ri 
                     else:
                         return None
+               
+                def column_in_array(col, arr):
+                    if arr.ndim == 1:
+                        return False
+                    col = np.asarray(col).reshape(-1)
+                    for j in range(arr.shape[1]):
+                        if np.array_equal(col, arr[:, j]):
+                            return True
+                    return False
+
                 if i == 0:
                     ri_pb = self.read_run_comp("run_comp_pb",func=getRibySeed)
                     res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed)
                 else:
-                    res_column_pb = np.column_stack((res_column_pb,self.read_run_comp("run_comp_pb",func=getbySeed)))
-                    ri_pb = np.column_stack((ri_pb,self.read_run_comp("run_comp_pb",func=getRibySeed)))
-            if hasattr(self,'PAP_AllProperties'):
+                    tmp_col = self.read_run_comp("run_comp_pb",func=getbySeed)
+                    if not column_in_array(tmp_col,res_column_pb):
+                        res_column_pb = np.column_stack((res_column_pb,tmp_col))
+                        ri_pb = np.column_stack((ri_pb,self.read_run_comp("run_comp_pb",func=getRibySeed)))
+
+            if self.PAP_AllProperties is None:
+                self.PAP_AllProperties, self.pap_win = self.find_pap_props()
+            if self.PAP_AllProperties is not None:
                 # only specific use case
                 def find_by_name(name):
                     save_name = []
@@ -5407,7 +5474,7 @@ class procedure(plotFigures):
             total_corr = {'x':[],'y':[],'p-value':[]} 
             search_closest = ['area']
             if add_bath and comparison in ["seed"]:
-                pap_props = ['PAP_Ri']
+                pap_props = ['PAP_Ri','mol']
                 if hasattr(self,'PAP_AllProperties'):
                     pap_props += list(self.PAP_AllProperties[0][0].PAP_properties[-1].keys()) 
                     ref_paps = self.PAP_AllProperties
@@ -5416,8 +5483,8 @@ class procedure(plotFigures):
                     ref_paps = results
                 else:
                     ref_paps = None
-                log_property = ['area','ecs']
-                skip_props = ['nseg','kir_count','adj_diam','L']
+                log_property = ['ecs']
+                skip_props = ['nseg','kir_count','adj_diam']
                 for p in skip_props:
                     pap_props.remove(p)
                 for property in pap_props:
@@ -5429,27 +5496,37 @@ class procedure(plotFigures):
                     pap_corr = {'x':[],'y':[],'seed':[]}
                     for cells in results:
                         for cell in cells:
-                            if property == 'PAP_Ri':
-                                val = cell.PAP_Ri
-                            else:
-                                def find_seed(seed):
-                                    for refs in ref_paps:
-                                        for ref in refs:
-                                            if ref.seed == seed:
-                                                return ref
-                                    return None 
+                            def find_seed(seed):
+                                for refs in ref_paps:
+                                    for ref in refs:
+                                        if ref.seed == seed:
+                                            return ref
+                                return None 
 
-                                prp_cell = find_seed(cell.seed)
-                                if prp_cell is not None:
-                                    if property in ['adj_diam','area','kir_count']:
-                                        val = 0
-                                        # total of all sections in pap
-                                        for p in prp_cell.PAP_properties:
-                                            val += p[property]
-                                    else:
-                                        val = prp_cell.PAP_properties[-1][property]
+                            prp_cell = find_seed(cell.seed)
+                            if prp_cell is not None:
+                                if property in ['adj_diam','area','kir_count']:
+                                    val = 0
+                                    # total of all sections in pap
+                                    for p in prp_cell.PAP_properties:
+                                        val += p[property]
+                                elif property == 'PAP_Ri':
+                                    if not hasattr(prp_cell,'PAP_Ri') or prp_cell.PAP_Ri == 0:
+                                        prp_cell.PAP_Ri = (min(prp_cell.vPAP) - prp_cell.v_init) / -0.01
+
+                                    val = prp_cell.PAP_Ri
+                                elif property == 'mol':
+                                    val = cylindrical_shell_volume(
+                                        cell.PAP_properties[-1]['diam'],
+                                        cell.PAP_properties[-1]['ecs'],
+                                        cell.PAP_properties[-1]['L']
+                                    )
+                                    val *= self.KoCompMax
+
                                 else:
-                                    val = np.nan
+                                    val = prp_cell.PAP_properties[-1][property]
+                            else:
+                                val = np.nan
                             if cell.KoSize == self.KoCompMax:
                                 plt.scatter(val,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
                                 pap_corr['x'].append(val)
@@ -5469,14 +5546,16 @@ class procedure(plotFigures):
                         if property in log_property:
                             correlation_coefficient, p_value = pearsonr(np.log(pap_corr['x']), pap_corr['y'])
                             res = linregress(np.log(pap_corr['x']),pap_corr['y'])
-                            plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color='lightgray',zorder=-1)
+                            if p_value < self.alpha:
+                                plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color='lightgray',zorder=-1)
 
                         else:
                             correlation_coefficient, p_value = pearsonr(pap_corr['x'], pap_corr['y'])
                             res = linregress(pap_corr['x'],pap_corr['y'])
-                            plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='lightgray',zorder=-1)
+                            if p_value < self.alpha:
+                                plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='lightgray',zorder=-1)
                         total_corr['p-value'].append(p_value)
-                        plt.title(f'Pearson Corr. PAP={p_value:.1e}')
+                        plt.title(f'PAP={p_value:.1e}')
 
                     if property not in []:
                         large_sec = {'x':[],'y':[]} 
@@ -5488,8 +5567,17 @@ class procedure(plotFigures):
                             pap_corr['y'].append(res_column_soma[-1])
                             pap_corr['seed'].append(None)
                         elif property_soma is not None:
-                            plt.scatter(property_soma[-1][property],res_column_soma[-1],color=self.returnColor('Soma'))
-                            pap_corr['x'].append(property_soma[-1][property])
+                            if property == 'mol':
+                                val = cylindrical_shell_volume(
+                                    property_soma[-1]['diam'],
+                                    property_soma[-1]['ecs'],
+                                    property_soma[-1]['L']
+                                )
+                                val *= self.KoCompMax
+                            else:
+                                val = property_soma[-1][property]
+                            plt.scatter(val,res_column_soma[-1],color=self.returnColor('Soma'))
+                            pap_corr['x'].append(val)
                             pap_corr['y'].append(res_column_soma[-1])
                             pap_corr['seed'].append(None)
                         large_sec['x'].append(pap_corr['x'][-1])
@@ -5508,8 +5596,18 @@ class procedure(plotFigures):
                             elif property_pb is not None:
                                 for pb in property_pb:
                                     if pb.seed == i:
-                                        plt.scatter(pb.PAP_properties[-1][property],res_column_pb[-1][i-skip],color=self.returnColor('Primary Branch'))
-                                        pap_corr['x'].append(pb.PAP_properties[-1][property])
+                                        if property == 'mol':
+                                            val = cylindrical_shell_volume(
+                                                pb.PAP_properties[-1]['diam'],
+                                                pb.PAP_properties[-1]['ecs'],
+                                                pb.PAP_properties[-1]['L']
+                                            )
+                                            val *= self.KoCompMax
+                                        else:
+                                            val = pb.PAP_properties[-1][property]
+ 
+                                        plt.scatter(val,res_column_pb[-1][i-skip],color=self.returnColor('Primary Branch'))
+                                        pap_corr['x'].append(val)
                                         pap_corr['y'].append(res_column_pb[-1][i-skip])
                                         pap_corr['seed'].append(i)
                             large_sec['x'].append(pap_corr['x'][-1])
@@ -5520,14 +5618,32 @@ class procedure(plotFigures):
                             if property in log_property:
                                 correlation_coefficient, p_value = pearsonr(np.log(large_sec['x']), large_sec['y'])
                                 res = linregress(np.log(large_sec['x']),large_sec['y'])
-                                plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
+                                if p_value < 0.05:
+                                    plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
 
                             else:
                                 correlation_coefficient, p_value = pearsonr(large_sec['x'], large_sec['y'])
                                 res = linregress(large_sec['x'],large_sec['y'])
-                                plt.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
+                                if p_value < 0.05:
+                                    plt.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
                             total_corr['p-value'].append(p_value)
                             plt.title(plt.gca().get_title() + f'Other={p_value:.1e}')
+
+                    if not (np.amax(pap_corr['x']) == np.amin(pap_corr['x']) and len(pap_corr['x']) > 1) and plot_total_p:
+                        x = np.linspace(min(pap_corr['x']),max(pap_corr['x']))
+                        if property in log_property:
+                            correlation_coefficient, p_value = pearsonr(np.log(pap_corr['x']), pap_corr['y'])
+                            res = linregress(np.log(pap_corr['x']),pap_corr['y'])
+                            if p_value < 0.05:
+                                plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color='lightgray',zorder=-1)
+
+                        else:
+                            correlation_coefficient, p_value = pearsonr(pap_corr['x'], pap_corr['y'])
+                            res = linregress(pap_corr['x'],pap_corr['y'])
+                            if p_value < 0.05:
+                                plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='black',zorder=-1)
+                        total_corr['p-value'].append(p_value)
+                        plt.title(plt.gca().get_title() + f'Total={p_value:.1e}')
 
 
                     plt.ylabel(gl.d_volt)
@@ -5582,19 +5698,19 @@ class procedure(plotFigures):
                     plt.savefig(os.path.join("../results/paperRes",f"{property}_peakV_{comparison}.pdf"))
 
 
-            print("Stat Results:")
-            print(pap_props)
-            print("OLS Results:")
-            x_ols = np.column_stack(total_corr['x'])
-            x_ols = sm.add_constant(x_ols) 
-            model = sm.OLS(y_ols, x_ols).fit()
-            print(model.params)
-            print("Adjusted p-value Results:")
-            reject, p_adjusted, alphacSidak, alphacBonf = smm.multipletests(total_corr['p-value'],method='fdr_bh')
-            print(f"Original p-values: {total_corr['p-value']}")
-            print(f"Adjusted p-values: {p_adjusted}")
-            print(f"Rejection results (at alpha=0.05): {reject}")
-            print(f"Adjusted alpha level: {alphacBonf}")
+                print("Stat Results:")
+                print(pap_props)
+                print("OLS Results:")
+                x_ols = np.column_stack(total_corr['x'])
+                x_ols = sm.add_constant(x_ols) 
+                model = sm.OLS(y_ols, x_ols).fit()
+                print(model.params)
+                print("Adjusted p-value Results:")
+                reject, p_adjusted, alphacSidak, alphacBonf = smm.multipletests(total_corr['p-value'],method='fdr_bh')
+                print(f"Original p-values: {total_corr['p-value']}")
+                print(f"Adjusted p-values: {p_adjusted}")
+                print(f"Rejection results (at alpha=0.05): {reject}")
+                print(f"Adjusted alpha level: {alphacBonf}")
 
 
 
@@ -5871,10 +5987,15 @@ class procedure(plotFigures):
                     f"FullPotassiumAmp{self.tag}_{comparison}.pdf",
                 )
             )
+        plt.close('all')
+        if hasattr(self,'pap_win'):
+            release_pickle(self.PAP_AllProperties,self.pap_win)
+
             #if comparison == "PAPLen":
             #    self.plotIKSeries(results, tagReset=True, setKoylim=True)
             #elif comparison == "seed":
             #    self.mergePlotsIK(results, "KoSize", "seed", selected=1)
+        
 
     @read_data
     def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):

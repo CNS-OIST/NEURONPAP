@@ -1712,7 +1712,7 @@ class PAPModel(ResultsPAPModel):
         else:
             return None
 
-    def calcPAPRi(self, direct=False, all=False):
+    def calcPAPRi(self, direct=True, all=False):
         if all:
             measure_pap = self.flattenPAP()
         else:
@@ -1721,7 +1721,13 @@ class PAPModel(ResultsPAPModel):
             RiSec = self.getSecbyName(str(pap_sec))
             RiSec.insert("inputRes")
             if direct:
-                h.measure_input_resistance_direct(sec=RiSec)
+                self.setTstop(155)
+                h.measure_input_resistance_direct(
+                    self.initTstop, self.initTstop + 5, sec=RiSec
+                )
+                self.initialize()
+                self.run(noclear=True)
+                RiSec.Ri_inputRes = (min(self.vPAP) - self.v_init) / -0.01
             else:
                 h.measure_input_resistance(sec=RiSec)
             if not hasattr(self, "PAP_Ri"):
@@ -1730,6 +1736,8 @@ class PAPModel(ResultsPAPModel):
                 if type(self.PAP_Ri) == float:
                     self.PAP_Ri = tuple((self.PAP_Ri,))
                 self.PAP_Ri += (float(RiSec.Ri_inputRes),)
+            if direct:
+                self.cleanMorphology()
 
     def measureRiAll(self, parallel=False):
         if parallel:

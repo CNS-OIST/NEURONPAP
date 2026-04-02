@@ -348,9 +348,151 @@ def print_pickle_objs():
             raise TypeError("Unsupported pickle structure")
 
 
+class LazySharedObject:
+    def __init__(self, shared_array, win):
+        self._shared_array = shared_array
+        self._cache = {}
+        self._win = win
+
+    def _load(self):
+        d = object.__getattribute__(self, "__dict__")
+
+        # if cached bytes exist → use them
+        if "_local_bytes" in d:
+            return pickle.loads(d["_local_bytes"])
+
+        # otherwise read from shared memory
+        shared_array = object.__getattribute__(self, "_shared_array")
+
+        data_bytes = bytes(memoryview(shared_array))
+
+        # cache locally
+        d["_local_bytes"] = data_bytes
+
+        return pickle.loads(data_bytes)
+
+    def _write_back(self, obj):
+        data_bytes = pickle.dumps(obj)
+        new_size = len(data_bytes)
+
+        if new_size > self._shared_array.nbytes:
+            self._resize(new_size)
+
+        self._shared_array[:new_size] = np.frombuffer(data_bytes, dtype=np.uint8)
+
+        self._shared_array[new_size:] = 0
+
+    def _resize(self, required_size):
+        if rank != 0:
+            return
+        new_nbytes = int(required_size * 1.5)
+
+        self._win.Free()
+
+        itemsize = 1
+        self._win = MPI.Win.Allocate_shared(new_nbytes, itemsize, comm=comm)
+
+        buf, _ = self._win.Shared_query(0)
+        self._shared_array = np.ndarray(buffer=buf, dtype=np.uint8, shape=(new_nbytes,))
+
+    def __iter__(self):
+        obj = pickle.loads(memoryview(self._shared_array))
+        try:
+            for item in obj:
+                yield item
+        finally:
+            # automatically runs when loop finishes or breaks
+            del obj
+
+    def __getitem__(self, key):
+        obj = pickle.loads(memoryview(self._shared_array))
+        try:
+            return obj[key]
+        finally:
+            del obj
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+
+        d = object.__getattribute__(self, "__dict__")
+        cache = d.setdefault("_cache", {})
+
+        if name in cache:
+            return cache[name]
+
+        # Get _load WITHOUT triggering __getattr__
+        load = object.__getattribute__(self, "_load")
+        obj = load()
+
+        try:
+            if hasattr(obj, name):
+                value = getattr(obj, name)
+            elif isinstance(obj, dict) and name in obj:
+                value = obj[name]
+            else:
+                raise AttributeError(name)
+        finally:
+            del obj
+
+        cache[name] = value
+        return value
+
+    def __iadd__(self, other):
+        obj = self._load()
+
+        try:
+            obj += other  # works for list
+            self._write_back(obj)
+        finally:
+            del obj
+        return self
+
+    def append(self, value):
+        obj = self._load()
+        try:
+            obj.append(value)
+            self._write_back(obj)
+        finally:
+            del obj
+
+    def extend(self, values):
+        obj = self._load()
+        try:
+            obj.extend(values)
+            self._write_back(obj)
+        finally:
+            del obj
+
+    def __len__(self):
+        obj = self._load()
+        try:
+            return len(obj)
+        finally:
+            del obj
+
+    def dump(self, file):
+        obj = self._load()
+        try:
+            pickle.dump(obj, file)
+        finally:
+            del obj
+
+    def dump_to_file(self, filename):
+        with open(filename, "wb") as f:
+            self.dump(f)
+
+    def load(self):
+        return self._load()
+
+
 def load_interm_data(pickle_obj, root=0):
+    if isinstance(pickle_obj, LazySharedObject):
+        wMessage("Expcted raw pickled object no lazy")
+        return
     if rank == root:
         data_bytes = pickle.dumps(pickle_obj, protocol=pickle.HIGHEST_PROTOCOL)
+        del pickle_obj
         nbytes = len(data_bytes)
     else:
         nbytes = 0
@@ -362,7 +504,7 @@ def load_interm_data(pickle_obj, root=0):
         shared_buf[:] = np.frombuffer(data_bytes, dtype=np.uint8)
     comm.Barrier()
 
-    return pickle.loads(shared_buf.tobytes()), win
+    return LazySharedObject(shared_buf, win), win
 
 
 def release_pickle(shared_array, win):
@@ -372,12 +514,26 @@ def release_pickle(shared_array, win):
         comm.Barrier()
 
     if shared_array is not None:
+        try:
+            del shared_array._shared_array
+        except AttributeError:
+            pass
         del shared_array
+
+    if comm is not None:
+        comm.Barrier()
+
     if win is not None:
         win.Free()
 
     # Force garbage collection
     gc.collect()
+
+
+def cylindrical_shell_volume(diameter, shell_depth, length):
+    R = diameter / 2
+    r = R + shell_depth
+    return np.pi * length * (r**2 - R**2)
 
 
 if __name__ == "__main__":

@@ -803,22 +803,16 @@ proc plotPAP_varMorph() {local size localobj rando, sref,slPAP,ps
 proc measure_input_resistance() {localobj zz
     zz = new Impedance()
     zz.loc(0.5)  // sets origin for impedance calculations to middle of section
-    zz.compute(0)  // DC input R
-    Ri_inputRes = zz.input(0.5)
+    zz.compute(0,1)  // DC input R
+    Ri_inputRes = zz.input(0.01)
 }
 
-proc measure_input_resistance_direct() {localobj stim
-    stim = new IClamp(0.5)
-    stim.del = 0
-    stim.dur=500
-    stim.amp=-0.1
-    v_init = -85
-    tstop = 500
-    finitialize(v_init)
-    run()
-    v_end = v(0.5)
-    Ri_inputRes = (v_end - v_init) / stim.amp
-    stim = nil
+objref stim_ri
+proc measure_input_resistance_direct() {
+    stim_ri = new IClamp(0.5)
+    stim_ri.del = $1 
+    stim_ri.dur=$2
+    stim_ri.amp=-0.01
 }
 
 
