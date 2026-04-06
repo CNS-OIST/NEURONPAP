@@ -267,18 +267,22 @@ class PAPModel(ResultsPAPModel):
 
     def savePAPProp(self):
         self.PAP_properties = []
+        h.finitialize()
         for i, pap in enumerate(self.flattenPAP()):
             self.PAP_properties.append({})
             self.PAP_properties[-1]["L"] = pap.L
             self.PAP_properties[-1]["diam"] = pap.diam
             self.PAP_properties[-1]["nseg"] = pap.nseg
             self.PAP_properties[-1]["area"] = 0
+            self.PAP_properties[-1]["kir_count"] = 0
             for seg in pap:
                 self.PAP_properties[-1]["area"] += seg.area()
+                self.PAP_properties[-1]["kir_count"] += pap.count_kir2
             self.PAP_properties[-1]["ecs"] = pap.fhspace_k_acc
-            self.PAP_properties[-1]["kir_count"] = pap.count_kir2
             self.PAP_properties[-1]["adj_diam"] = h.adjacent_total_diam(sec=pap)
             self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
+            self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
+            self.PAP_properties[-1]["diff_tau"] = pap.tauk_0_k_acc
 
     def setPAPNearSoma(self, onSoma=False, onPB=True, diam=1, dist_radius=2):
         if onSoma:
@@ -1712,7 +1716,7 @@ class PAPModel(ResultsPAPModel):
         else:
             return None
 
-    def calcPAPRi(self, direct=True, all=False):
+    def calcPAPRi(self, direct=True, all=False, cleanMorph=False):
         if all:
             measure_pap = self.flattenPAP()
         else:
@@ -1721,22 +1725,25 @@ class PAPModel(ResultsPAPModel):
             RiSec = self.getSecbyName(str(pap_sec))
             RiSec.insert("inputRes")
             if direct:
-                self.setTstop(155)
+                dur = 10
+                self.setTstop(self.initTstop + dur)
                 h.measure_input_resistance_direct(
-                    self.initTstop, self.initTstop + 5, sec=RiSec
+                    self.initTstop, self.initTstop + dur, sec=RiSec
                 )
                 self.initialize()
                 self.run(noclear=True)
                 RiSec.Ri_inputRes = (min(self.vPAP) - self.v_init) / -0.01
             else:
+                # self.initialize()
                 h.measure_input_resistance(sec=RiSec)
+                print(self.PAP_name, RiSec.Ri_inputRes)
             if not hasattr(self, "PAP_Ri"):
                 self.PAP_Ri = float(RiSec.Ri_inputRes)
             else:
                 if type(self.PAP_Ri) == float:
                     self.PAP_Ri = tuple((self.PAP_Ri,))
                 self.PAP_Ri += (float(RiSec.Ri_inputRes),)
-            if direct:
+            if direct and cleanMorph:
                 self.cleanMorphology()
 
     def measureRiAll(self, parallel=False):

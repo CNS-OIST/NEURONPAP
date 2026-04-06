@@ -536,5 +536,15 @@ def cylindrical_shell_volume(diameter, shell_depth, length):
     return np.pi * length * (r**2 - R**2)
 
 
+def column_in_array(col, arr):
+    if arr.ndim == 1:
+        return False
+    col = np.asarray(col).reshape(-1)
+    for k in range(arr.shape[1]):
+        if np.array_equal(col, arr[:, k]):
+            return True
+    return False
+
+
 if __name__ == "__main__":
     print_pickle_objs()

@@ -96,14 +96,14 @@ class plotFigures:
         "K$^+$": k_color,
         "Soma": "deepskyblue",
         "PAP": "forestgreen",
-        "Primary Branch":"lightgray",
+        "Primary Branch":"lightblue",
         "fluor": "black",
         "Na": "gold",
         "Cl": "chocolate",
         "Ca": "olive",
         "model": "darkgray",
-        "local": "white",
-        "global": "darkgray",
+        "local": "darkgray",
+        "global": "crimson",
     }
 
     @staticmethod
@@ -4843,7 +4843,7 @@ class procedure(plotFigures):
             funcArgs,
             ccList,
             [["get_PAPName","savePAPProp","calcPAPRi"]],
-            [[{},{},{}]],
+            [[{},{},{'cleanMorph':True,'direct':save}]],
             randomize=False,
         )
         tmp_skip_cell = []
@@ -4851,37 +4851,36 @@ class procedure(plotFigures):
             pb_seeds = list(range(self.pb_seed_max))
         else:
             pb_seeds = [self.seed]
-        # most likely imaging artifact, part of soma
         if rank == 0:
-            for soma in [True, False]:
-                if soma:
-                    funcArgs[-1]['seed'] = self.seed
-                    tmpCell = PAPModel(**funcArgs[-1])
-                    tmpCell.setPAPNearSoma(onSoma=soma)
-                    tmpCell.get_PAPName()
-                    tmpCell.savePAPProp()
-                    tmpCell.calcPAPRi()
-                    results += [[tmpCell.copyAttr()]] 
-
-                else:
-                    while len(pb_seeds) > 0:
-                        funcArgs[-1]['seed'] = pb_seeds.pop()
-                        if funcArgs[-1]['seed'] in self.skipPB:
-                            continue
+            if save:
+                for soma in [True, False]:
+                    if soma:
+                        funcArgs[-1]['seed'] = self.seed
                         tmpCell = PAPModel(**funcArgs[-1])
                         tmpCell.setPAPNearSoma(onSoma=soma)
                         tmpCell.get_PAPName()
                         tmpCell.savePAPProp()
-                        tmpCell.calcPAPRi()
+                        tmpCell.calcPAPRi(direct=save)
                         results += [[tmpCell.copyAttr()]] 
+
+                    else:
+                        while len(pb_seeds) > 0:
+                            funcArgs[-1]['seed'] = pb_seeds.pop()
+                            if funcArgs[-1]['seed'] in self.skipPB:
+                                continue
+                            tmpCell = PAPModel(**funcArgs[-1])
+                            tmpCell.setPAPNearSoma(onSoma=soma)
+                            tmpCell.get_PAPName()
+                            tmpCell.savePAPProp()
+                            tmpCell.calcPAPRi(direct=save)
+                            results += [[tmpCell.copyAttr()]] 
+                self.free_figure(results)
 
 
             col_dict = {0: self.returnColor('global'), 1: self.returnColor('Primary Branch'), 2: self.returnColor("Soma"), 3: self.returnColor('PAP')}
             colors = [col_dict[key] for key in sorted(col_dict.keys())]
 
             ref_names = []
-            if save:
-                self.free_figure(results)
             for cells in results:
                 for cell in cells:
                     if cell.PAP_name not in ref_names:
@@ -4890,12 +4889,14 @@ class procedure(plotFigures):
                         tmp_skip_cell.append(cell.seed)
                     else:
                         self.skipPB.append(cell.seed)
+
             if save:
                 plot_3d_morphology(
                     rangevar='PAP',
                     color_names = [cell.PAP_name for cells in results for cell in cells],
                     colormap_name = colors,
                     add_colorbar=False,
+                    clim=(0,3)
                 )
                 plt.savefig(
                     os.path.join(
@@ -4963,6 +4964,7 @@ class procedure(plotFigures):
 
                 self.addChannelTag()
                 self.tag += f"_{comparison}"
+                self.skipPB = [3,4,5]
                 if comparison in ['seed','PAPLen']:
                     iter_bath = [i for i in range(0,self.KoCompMax + 1,self.KoCompStep)]
                    #self.test_soma_response(iter_bath)
@@ -4978,28 +4980,27 @@ class procedure(plotFigures):
 
                 if comparison == 'seed':
                     all_skip_seed = []
-                    self.PAP_AllProperties, self.pap_win = self.find_pap_props()
-                    self.skipPB = [3,4,5]
-                    if self.PAP_AllProperties is None:
+                    PAP_AllProperties, self.pap_win = self.find_pap_props()
+                    if PAP_AllProperties is None:
                         skip_seed = self.plot_seed_map(startb,compMax)
                         tmp_compMax = compMax
-                        while len(skip_seed)> 0 and tmp_compMax - len(skip_seed) <= (compMax-startb+1):
-                            all_skip_seed += skip_seed
+                        all_skip_seed += skip_seed
+                        while tmp_compMax - len(all_skip_seed) < (compMax-startb):
                             tmp_compMax += len(skip_seed) * compStep
                             skip_seed = self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed)
-                        all_skip_seed += skip_seed
+                            all_skip_seed += skip_seed
+                            mprint(f'Found total uniques seeds;{tmp_compMax - len(all_skip_seed)}')
                         mprint(f'Redundant seed;{all_skip_seed}')
-
-                        self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed,save=True)
-                        # name for keyword argument when you cannot automatically sequentially inform the values
                         logx = [
                             j
                             for j in range(startb,tmp_compMax+1,compStep)
                             if j not in all_skip_seed
                         ]
 
+                        self.plot_seed_map(startb,tmp_compMax,skip_seed=all_skip_seed,save=True)
+                        # name for keyword argument when you cannot automatically sequentially inform the values
                     else:
-                        logx = [cell.seed for cells in self.PAP_AllProperties for cell in cells if 'Glia' in cell.PAP_name]
+                        logx = [cell.seed for cells in PAP_AllProperties for cell in cells if 'Glia' in cell.PAP_name]
                         logx = list(set(logx))
 
 
@@ -5011,6 +5012,9 @@ class procedure(plotFigures):
                         for i in range(0,self.KoCompMax+1,self.KoCompStep)
                         for j in logx 
                     ]
+
+                    if hasattr(self,'pap_win'):
+                        release_pickle(PAP_AllProperties,self.pap_win)
 
                 self.runAmpLenComparison(
                     comparison, iterations, compMax, compStep, logx=logx
@@ -5199,8 +5203,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT
             }
         )
-        run_func = [["setPAP2Soma","savePAPProp","calcPAPRi","initialize","setK","run"]]
-        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50},  {}]]
+        run_func = [["setPAP2Soma","initialize","setK","run"]]
+        run_func_args = [[{},  {"force_print_progress":True}, {"dur":50},  {}]]
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
@@ -5239,8 +5243,8 @@ class procedure(plotFigures):
                 "GluTrans": self.optGluT,
             }
         )
-        run_func = [["setPAPNearSoma","savePAPProp","calcPAPRi","initialize","setK","run"]]
-        run_func_args = [[{}, {},{}, {"force_print_progress":True}, {"dur":50}, {} ]]
+        run_func = [["setPAPNearSoma","get_PAPName","initialize","setK","run"]]
+        run_func_args = [[{}, {},{"force_print_progress":True}, {"dur":50}, {} ]]
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
@@ -5252,6 +5256,7 @@ class procedure(plotFigures):
             (i,j)
             for i in iterations
             for j in range(self.pb_seed_max)
+            if j not in self.skipPB
         ],root=0)
         AllCells,win = self.find_run_comp("run_comp_pb")
         tmp_AllCells =self.find_missing_iter(
@@ -5390,8 +5395,8 @@ class procedure(plotFigures):
 
         run_func_args = [[{}, {"number": self.stimCount, "freq": self.freq}, {}]]
         if comparison == "seed" or comparison == 'PAPLen':
-            run_func = [["savePAPProp","calcPAPRi","initialize", "multiSpike", "run"]]
-            run_func_args[0] = [{},{}] + run_func_args[0]
+            run_func = [["savePAPProp","initialize", "multiSpike", "run"]]
+            run_func_args[0] = [{}] + run_func_args[0]
         else:
             run_func = [["initialize", "multiSpike", "run"]]
 
@@ -5413,59 +5418,39 @@ class procedure(plotFigures):
         if add_bath and comparison in ["seed","PAPLen"]:
             res_column = self.read_run_comp("run_comp_bath")
             res_column_soma = self.read_run_comp("run_comp_soma")
-            def get_ri(cell):
-                return cell.PAP_Ri
-            ri_soma = self.read_run_comp("run_comp_soma",func=get_ri)
-            for i in range(self.pb_seed_max):
-                if hasattr(self,'skipPB') and i in self.skipPB:
-                    mprint(f'skip pb seed {i}')
-                    continue
+
+            PAP_AllProperties, self.pap_win = self.find_pap_props()
+            # only specific use case
+            def find_by_name(name):
+                save_name = []
+                for refs in PAP_AllProperties:
+                    for ref in refs:
+                        if name in ref.PAP_name:
+                            save_name.append(ref)
+
+                if len(save_name) > 0:
+                    return save_name
+                else:
+                    return None 
+            property_soma = find_by_name('soma')[0].PAP_properties
+            property_pb  = find_by_name('dendrite')
+            ri_soma = [find_by_name('soma')[0].PAP_Ri] 
+            ri_pb = [[ri.PAP_Ri for ri in property_pb]]
+            ri_pb_seed = [ri.seed for ri in property_pb]
+            
+            for i,j in enumerate(ri_pb_seed):
                 def getbySeed(cell):
-                    if cell.seed == i:
+                    if cell.seed == j:
                         return max(cell.vPAP) - cell.RMP
                     else:
                         return None
-                def getRibySeed(cell):
-                    if cell.seed == i:
-                        return cell.PAP_Ri 
-                    else:
-                        return None
-               
-                def column_in_array(col, arr):
-                    if arr.ndim == 1:
-                        return False
-                    col = np.asarray(col).reshape(-1)
-                    for j in range(arr.shape[1]):
-                        if np.array_equal(col, arr[:, j]):
-                            return True
-                    return False
-
+              
                 if i == 0:
-                    ri_pb = self.read_run_comp("run_comp_pb",func=getRibySeed)
                     res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed)
                 else:
                     tmp_col = self.read_run_comp("run_comp_pb",func=getbySeed)
                     if not column_in_array(tmp_col,res_column_pb):
                         res_column_pb = np.column_stack((res_column_pb,tmp_col))
-                        ri_pb = np.column_stack((ri_pb,self.read_run_comp("run_comp_pb",func=getRibySeed)))
-
-            if self.PAP_AllProperties is None:
-                self.PAP_AllProperties, self.pap_win = self.find_pap_props()
-            if self.PAP_AllProperties is not None:
-                # only specific use case
-                def find_by_name(name):
-                    save_name = []
-                    for refs in self.PAP_AllProperties:
-                        for ref in refs:
-                            if name in ref.PAP_name:
-                                save_name.append(ref)
-
-                    if len(save_name) > 1:
-                        return save_name
-                    else:
-                        return save_name[0]
-                property_soma = find_by_name('soma').PAP_properties
-                property_pb  = find_by_name('dendrite')
 
         if rank == 0:
             plt.cla()
@@ -5473,25 +5458,34 @@ class procedure(plotFigures):
             plt.figure(figsize=gl.figsize_panel)
             total_corr = {'x':[],'y':[],'p-value':[]} 
             search_closest = ['area']
+            inset_props = ['mol','area','ecs','kir_count','Ra','r_ratio']
+            log_property = []
+            skip_props = ['nseg','diff_tau','ecs','area','Ra','diam','adj_diam','distance','mol','kir_count','L']
             if add_bath and comparison in ["seed"]:
-                pap_props = ['PAP_Ri','mol']
-                if hasattr(self,'PAP_AllProperties'):
-                    pap_props += list(self.PAP_AllProperties[0][0].PAP_properties[-1].keys()) 
-                    ref_paps = self.PAP_AllProperties
+                pap_props = ['PAP_Ri','mol','Ra','r_ratio','Rk']
+                if PAP_AllProperties is not None:
+                    pap_props += list(PAP_AllProperties[0][0].PAP_properties[-1].keys()) 
+                    ref_paps = [find_by_name('Glia')]
                 elif hasattr(results[0][0],'PAP_properties'):
                     pap_props += list(results[0][0].PAP_properties[-1].keys()) 
                     ref_paps = results
                 else:
                     ref_paps = None
-                log_property = ['ecs']
-                skip_props = ['nseg','kir_count','adj_diam']
                 for p in skip_props:
                     pap_props.remove(p)
                 for property in pap_props:
                     plt.cla()
                     plt.clf()
-                    plt.figure(figsize=gl.figsize_panel)
-                    plt.subplots_adjust(bottom=0.15)
+                    if property in inset_props:
+                        fig = plt.figure(figsize=gl.figsize_panel)
+                        gs = fig.add_gridspec(nrows=2,ncols=1,hspace=0.2)
+                        ax = fig.add_subplot(gs[0])
+                        ax_inset = fig.add_subplot(gs[1])
+
+                    else:
+                        plt.figure(figsize=gl.figsize_panel)
+                        plt.subplots_adjust(bottom=0.15)
+                        ax = plt.gca()
 
                     pap_corr = {'x':[],'y':[],'seed':[]}
                     for cells in results:
@@ -5511,24 +5505,34 @@ class procedure(plotFigures):
                                     for p in prp_cell.PAP_properties:
                                         val += p[property]
                                 elif property == 'PAP_Ri':
-                                    if not hasattr(prp_cell,'PAP_Ri') or prp_cell.PAP_Ri == 0:
-                                        prp_cell.PAP_Ri = (min(prp_cell.vPAP) - prp_cell.v_init) / -0.01
-
                                     val = prp_cell.PAP_Ri
                                 elif property == 'mol':
                                     val = cylindrical_shell_volume(
-                                        cell.PAP_properties[-1]['diam'],
-                                        cell.PAP_properties[-1]['ecs'],
-                                        cell.PAP_properties[-1]['L']
+                                        prp_cell.PAP_properties[-1]['diam'],
+                                        prp_cell.PAP_properties[-1]['ecs'],
+                                        prp_cell.PAP_properties[-1]['L']
                                     )
                                     val *= self.KoCompMax
 
+                                elif property =='Ra' and hasattr(prp_cell,'PAP_Ri'):
+                                    val = prp_cell.PAP_Ri - 1/(22 * prp_cell.PAP_properties[-1]['kir_count'])*1e6 
+                                elif (property =='r_ratio' or property == 'Rk') and hasattr(prp_cell,'PAP_Ri'):
+                                    val = (22 * prp_cell.PAP_properties[-1]['kir_count'])/1e6 
                                 else:
                                     val = prp_cell.PAP_properties[-1][property]
                             else:
-                                val = np.nan
+                                continue
                             if cell.KoSize == self.KoCompMax:
-                                plt.scatter(val,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
+                                if property == 'r_ratio' or property == 'Rk':
+                                    val *= 1/(1+np.exp(98.892+max(list(cell.vPAP)))/10.89) 
+                                    val += (prp_cell.PAP_properties[-1]['area']*1e-8*1.4*1e6) 
+                                    if property == 'r_ratio':
+                                        val *= prp_cell.PAP_Ri
+                                    else:
+                                        val = 1/val
+                                ax.scatter(val,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
+                                if property in inset_props:
+                                    ax_inset.scatter(val,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
                                 pap_corr['x'].append(val)
                                 pap_corr['y'].append(max(list(cell.vPAP))-cell.RMP)
                                 pap_corr['seed'].append(cell.seed)
@@ -5547,22 +5551,30 @@ class procedure(plotFigures):
                             correlation_coefficient, p_value = pearsonr(np.log(pap_corr['x']), pap_corr['y'])
                             res = linregress(np.log(pap_corr['x']),pap_corr['y'])
                             if p_value < self.alpha:
-                                plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color='lightgray',zorder=-1)
+                                ax.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor('PAP'),zorder=-1)
+                                if property in inset_props:
+                                    ax_inset.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor("PAP"),zorder=-1)
 
                         else:
                             correlation_coefficient, p_value = pearsonr(pap_corr['x'], pap_corr['y'])
                             res = linregress(pap_corr['x'],pap_corr['y'])
                             if p_value < self.alpha:
-                                plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='lightgray',zorder=-1)
-                        total_corr['p-value'].append(p_value)
-                        plt.title(f'PAP={p_value:.1e}')
+                                ax.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor('PAP'),zorder=-1)
+                                if property in inset_props:
+                                    ax_inset.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor("PAP"),zorder=-1)
+
+                        #total_corr['p-value'].append(p_value)
+                        if p_value < self.alpha:
+                            ax.set_title(f'PAP={p_value:.1e}')
+                        else:
+                            ax.set_title('')
 
                     if property not in []:
                         large_sec = {'x':[],'y':[]} 
                         if ri_soma is not None and property == 'PAP_Ri':
                             t_stat, p_value = ttest_1samp(pap_corr['x'], ri_soma[0])
                             print(p_value)
-                            plt.scatter(ri_soma[0],res_column_soma[-1],color=self.returnColor('Soma'))
+                            ax.scatter(ri_soma[0],res_column_soma[-1],color=self.returnColor('Soma'))
                             pap_corr['x'].append(ri_soma[0])
                             pap_corr['y'].append(res_column_soma[-1])
                             pap_corr['seed'].append(None)
@@ -5574,28 +5586,34 @@ class procedure(plotFigures):
                                     property_soma[-1]['L']
                                 )
                                 val *= self.KoCompMax
+                            elif property =='Ra' and ri_soma is not None:
+                                val = ri_soma[0] - 1/(22 * property_soma[-1]['kir_count'])*1e6 
+                            elif (property =='r_ratio' or property == 'Rk') and ri_soma is not None:
+                                val = ((22 * property_soma[-1]['kir_count'])/1e6)
+                                val *= 1/(1+np.exp(98.892+res_column_soma[-1]-85)/10.89) 
+                                val += (property_soma[-1]['area']*1e-8 * 1.4 *1e6)
+                                if property == 'r_ratio':
+                                    val *= ri_soma[0]
+                                else:
+                                    val = 1/ val
                             else:
                                 val = property_soma[-1][property]
-                            plt.scatter(val,res_column_soma[-1],color=self.returnColor('Soma'))
+                            ax.scatter(val,res_column_soma[-1],color=self.returnColor('Soma'))
                             pap_corr['x'].append(val)
                             pap_corr['y'].append(res_column_soma[-1])
                             pap_corr['seed'].append(None)
                         large_sec['x'].append(pap_corr['x'][-1])
                         large_sec['y'].append(pap_corr['y'][-1])
 
-                        skip = 0
-                        for i in range(self.pb_seed_max):
-                            if hasattr(self,'skipPB') and i in self.skipPB:
-                                skip += 1
-                                continue
+                        for i,j in enumerate(ri_pb_seed):
                             if ri_pb is not None and property == 'PAP_Ri':
-                                plt.scatter(ri_pb[0][i-skip],res_column_pb[-1][i-skip],color=self.returnColor("Primary Branch"))
-                                pap_corr['x'].append(ri_pb[0][i-skip])
-                                pap_corr['y'].append(res_column_pb[-1][i-skip])
+                                ax.scatter(ri_pb[0][i],res_column_pb[-1][i],color=self.returnColor("Primary Branch"))
+                                pap_corr['x'].append(ri_pb[0][i])
+                                pap_corr['y'].append(res_column_pb[-1][i])
                                 pap_corr['seed'].append(i)
                             elif property_pb is not None:
                                 for pb in property_pb:
-                                    if pb.seed == i:
+                                    if pb.seed == j:
                                         if property == 'mol':
                                             val = cylindrical_shell_volume(
                                                 pb.PAP_properties[-1]['diam'],
@@ -5603,12 +5621,22 @@ class procedure(plotFigures):
                                                 pb.PAP_properties[-1]['L']
                                             )
                                             val *= self.KoCompMax
+                                        elif property =='Ra' and ri_pb is not None:
+                                            val = ri_pb[0][i] - 1/(22 * pb.PAP_properties[-1]['kir_count'])*1e6 
+                                        elif (property =='r_ratio' or property == 'Rk') and ri_pb is not None:
+                                            val =  (22 * pb.PAP_properties[-1]['kir_count'])/1e6
+                                            val *= 1/(1+np.exp(98.892+res_column_pb[-1][i]-85)/10.89) 
+                                            val += (pb.PAP_properties[-1]['area']*1e-8 * 1.4 *1e6)
+                                            if property == 'r_ratio':
+                                                val *= ri_pb[0][i]
+                                            else:
+                                                val = 1/ val
                                         else:
                                             val = pb.PAP_properties[-1][property]
  
-                                        plt.scatter(val,res_column_pb[-1][i-skip],color=self.returnColor('Primary Branch'))
+                                        ax.scatter(val,res_column_pb[-1][i],color=self.returnColor('Primary Branch'))
                                         pap_corr['x'].append(val)
-                                        pap_corr['y'].append(res_column_pb[-1][i-skip])
+                                        pap_corr['y'].append(res_column_pb[-1][i])
                                         pap_corr['seed'].append(i)
                             large_sec['x'].append(pap_corr['x'][-1])
                             large_sec['y'].append(pap_corr['y'][-1])
@@ -5619,15 +5647,16 @@ class procedure(plotFigures):
                                 correlation_coefficient, p_value = pearsonr(np.log(large_sec['x']), large_sec['y'])
                                 res = linregress(np.log(large_sec['x']),large_sec['y'])
                                 if p_value < 0.05:
-                                    plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
+                                    ax.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor("Soma"),zorder=-1)
 
                             else:
                                 correlation_coefficient, p_value = pearsonr(large_sec['x'], large_sec['y'])
                                 res = linregress(large_sec['x'],large_sec['y'])
                                 if p_value < 0.05:
-                                    plt.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor("global"),zorder=-1)
+                                    ax.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor("Soma"),zorder=-1)
                             total_corr['p-value'].append(p_value)
-                            plt.title(plt.gca().get_title() + f'Other={p_value:.1e}')
+                            if p_value < self.alpha:
+                                ax.set_title(ax.get_title() + f'Other={p_value:.1e}')
 
                     if not (np.amax(pap_corr['x']) == np.amin(pap_corr['x']) and len(pap_corr['x']) > 1) and plot_total_p:
                         x = np.linspace(min(pap_corr['x']),max(pap_corr['x']))
@@ -5635,19 +5664,24 @@ class procedure(plotFigures):
                             correlation_coefficient, p_value = pearsonr(np.log(pap_corr['x']), pap_corr['y'])
                             res = linregress(np.log(pap_corr['x']),pap_corr['y'])
                             if p_value < 0.05:
-                                plt.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color='lightgray',zorder=-1)
+                                ax.plot(x,res.slope*np.log(x) + res.intercept,linestyle='--',color=self.returnColor('local'),zorder=-1)
 
                         else:
                             correlation_coefficient, p_value = pearsonr(pap_corr['x'], pap_corr['y'])
                             res = linregress(pap_corr['x'],pap_corr['y'])
                             if p_value < 0.05:
-                                plt.plot(x,res.slope*x + res.intercept,linestyle='--',color='black',zorder=-1)
+                                ax.plot(x,res.slope*x + res.intercept,linestyle='--',color=self.returnColor('local'),zorder=-1)
                         total_corr['p-value'].append(p_value)
-                        plt.title(plt.gca().get_title() + f'Total={p_value:.1e}')
+                        if p_value < self.alpha:
+                            ax.set_title(ax.get_title() + f'Total={p_value:.1e}')
 
 
-                    plt.ylabel(gl.d_volt)
-                    plt.ylim(gl.lim_d_volt)
+                    ax.set_ylabel(gl.d_volt)
+                    ax.set_ylim(gl.lim_d_volt)
+                    if property in inset_props:
+                        ax.set_ylabel(gl.d_volt_short)
+                        ax_inset.set_ylabel(gl.d_volt_short)
+                        ax_inset.set_ylim(gl.lim_d_volt)
                     if not (np.amax(pap_corr['x']) == np.amin(pap_corr['x']) and len(pap_corr['x']) > 1):
                         if property == search_closest:
                             tmp_min = np.inf
@@ -5660,7 +5694,7 @@ class procedure(plotFigures):
                                     tmp_min = abs(y-lin_y)
                                     mprint(f'Found closer seed {seed}')
                         if property in log_property:
-                            plt.xscale('log')
+                            ax.set_xscale('log')
                             fit_label = f'{res.slope:.1f}ln(x)+{res.intercept:.1f}'
                         else:
                             fit_label = f'{res.slope:.1f}x+{res.intercept:.1f}'
@@ -5672,27 +5706,32 @@ class procedure(plotFigures):
                                 markerfacecolor=self.returnColor('Soma'), linestyle='None',markersize=10),
                             Line2D([0], [0], marker='o', color=self.returnColor('Primary Branch'), label='Primary Branch',
                                 markerfacecolor=self.returnColor('Primary Branch'), linestyle='None',markersize=10),
-                            Line2D([0], [0], color='lightgray', label='PAP fit',linestyle='--'),
-                            Line2D([0], [0], color=self.returnColor('global'), label='Soma-branch fit',linestyle='--')
+                            Line2D([0], [0], color=self.returnColor('PAP'), label='PAP fit',linestyle='--'),
+                            Line2D([0], [0], color=self.returnColor('Soma'), label='Soma-branch fit',linestyle='--'),
+                            Line2D([0], [0], color=self.returnColor('local'), label='Total fit',linestyle='--'),
                         ]
 
-                        if property != 'PAP_Ri':
-                            plt.legend(handles=custom_handles, loc='best')
+                        if property not in inset_props:
+                            ax.legend(handles=custom_handles, loc='best')
+
+                    if property in inset_props:
+                        ax = ax_inset
 
                     if property == 'area':
+                            
                         if property in log_property:
-                            plt.xlabel(f'Log(Area) {gl.unit_um_squared}')
+                            ax.set_xlabel(f'Log(Area) {gl.unit_um_squared}')
                         else:
-                            plt.xlabel(f'Area {gl.unit_um_squared}')
+                            ax.set_xlabel(f'Area {gl.unit_um_squared}')
                     elif property == 'ecs':
                         if property in log_property:
-                            plt.xlabel(f'Log(l$_ECS$) {gl.unit_micron}')
+                            ax.set_xlabel(f"Log(l$_{ECS}$) {gl.unit_micron}")
                         else:
-                            plt.xlabel(f'ECS {gl.unit_micron}')
+                            ax.set_xlabel(f'ECS {gl.unit_micron}')
                     elif property == 'PAP_Ri':
-                        plt.xlabel(gl.ri)
+                        ax.set_xlabel(gl.ri)
                     else:
-                        plt.xlabel(property)
+                        ax.set_xlabel(property)
 
 
                     plt.savefig(os.path.join("../results/paperRes",f"{property}_peakV_{comparison}.pdf"))
@@ -5831,8 +5870,6 @@ class procedure(plotFigures):
                         Line2D([0], [0], color=self.returnColor('Soma'), label='Soma'),
                         Line2D([0], [0], color=self.returnColor('Primary Branch'), label='Primary Branch'),
                         Line2D([0], [0], color=self.returnColor('global'), label='Bath'),
-                    ]
-                    custom_handles += [
                         Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
                     ]
                     plt.legend(handles=custom_handles)
@@ -5989,7 +6026,7 @@ class procedure(plotFigures):
             )
         plt.close('all')
         if hasattr(self,'pap_win'):
-            release_pickle(self.PAP_AllProperties,self.pap_win)
+            release_pickle(PAP_AllProperties,self.pap_win)
 
             #if comparison == "PAPLen":
             #    self.plotIKSeries(results, tagReset=True, setKoylim=True)
