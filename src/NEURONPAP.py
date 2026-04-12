@@ -108,7 +108,10 @@ def callExperimentMode(**kwargs):
     if "kcomp" in kwargs.keys() and kwargs["kcomp"]:
         # Plot for various channel counts
         exp.GluStim = kwargs["glustim"]
+        if "intra_diff" in kwargs.keys() and kwargs["intra_diff"]:
+            exp.kdifl = True
         exp.potassiumComparison()
+        exp.compareIKSizes2KoSizes()
 
     if "video" in kwargs.keys() and kwargs["video"]:
         # Make video

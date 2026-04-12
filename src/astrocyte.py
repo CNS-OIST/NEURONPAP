@@ -18,6 +18,7 @@ from plot_shape import *
 from global_labels import gl
 import random
 from importlib import reload
+from scipy.optimize import minimize
 
 
 class PAPModel(ResultsPAPModel):
@@ -69,7 +70,6 @@ class PAPModel(ResultsPAPModel):
         GABA=False,
         GABACount=None,
         gapCount=None,
-        Ko=3,
         KoSize=0.5,
         stimdelay=0,
         durStim=0.5,
@@ -265,6 +265,76 @@ class PAPModel(ResultsPAPModel):
     def kir_rect_off(self):
         h.kir_rect_off(1)
 
+    def setIKSize2KoSize(self, *val, analytical=True):
+        if not hasattr(self, "IKSize"):
+            wMessage("IKSize not defined")
+        elif hasattr(self, "PAP_properties") and analytical:
+            self.PAP_properties[-1]["kir_count"] = 0
+            vhalfl = self.PAP.vhalfl_kir2
+            kl = self.PAP.kl_kir2
+            v = self.RMP
+            linf = 1 / (1 + exp((v - vhalfl) / kl))
+            A = 0.09534626
+            I = (
+                50 * A * sqrt(self.KoSize) * prp_cell.PAP_properties[-1]["kir_count"]
+            ) * (v - np.log(self.KoSize / 120))
+        else:
+            self.KoSize = val[0]
+
+    def fitIKSize(self, goalSize=-0.05):
+        self.goal_IK = goalSize
+        curr_index = len(list(self.iKPAP))
+        self.stable_current = list(self.iKPAP)[-1]
+        if self.stable_current < 0 or self.stable_current - goalSize < 0:
+            print(f"stable current too small {self.stable_current}")
+        self.Ko = list(self.KoPAP)[-1]
+
+        res = minimize(self.getKoSize4IKSize, (1), method="Nelder-Mead")
+        print(res.x)
+        self.KoSize = res.x[0]
+        currTime = h.t
+        curr_index = len(list(self.vPAP))
+        h.continuerun(currTime + 10)
+        self.setKPoint(dur=10)
+        self.fit_maxResponse = max(list(self.vPAP)[curr_index:])
+        self.fit_minResponse = min(list(self.vPAP)[curr_index:])
+
+    def getKoSize4IKSize(self, x):
+        # make segment specific
+        Ko = x[0] + self.Ko - self.getPAPK()
+        # print(x[0], self.getPAPK(), Ko)
+        curr_index = len(list(self.iKPAP))
+        # print(list(self.iKPAP)[curr_index - 1] * self.PAP(0.5).area() / 1e8)
+        if self.PAP.L > 1:
+            dur = 10
+        else:
+            dur = 5
+
+        self.setKPoint(KoSize=Ko, dur=dur)
+        # mA/cm2 -> mA
+        current = (
+            max(
+                np.array(list(self.iKPAP)[curr_index:]) - self.stable_current,
+                key=abs,
+            )
+            * self.PAP(0.5).area()
+            / 1e8
+        )
+        # mA -> nA
+        current *= 1e6
+        if x[0] > 0:
+            print(x[0], self.getPAPK(), Ko, current)
+        self.setKPoint(KoSize=self.Ko - self.getPAPK(), dur=1)
+        h.continuerun(h.t + 9)
+        # print(current)
+        # print((self.goal_IK - current) ** 2)
+        if self.PAP.L > 1:
+            factor = 1e6
+        else:
+            factor = 1e2
+
+        return ((self.goal_IK - current) * factor) ** 2
+
     def savePAPProp(self):
         self.PAP_properties = []
         h.finitialize()
@@ -278,6 +348,7 @@ class PAPModel(ResultsPAPModel):
             for seg in pap:
                 self.PAP_properties[-1]["area"] += seg.area()
                 self.PAP_properties[-1]["kir_count"] += pap.count_kir2
+            self.PAP_properties[-1]["local_kir_count"] = pap(0.5).count_kir2
             self.PAP_properties[-1]["ecs"] = pap.fhspace_k_acc
             self.PAP_properties[-1]["adj_diam"] = h.adjacent_total_diam(sec=pap)
             self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
@@ -309,9 +380,17 @@ class PAPModel(ResultsPAPModel):
 
         return (R * T) / (F) * np.log(ko / kin)
 
+    def set_kdfl_iter(self):
+        self.set_diff_ki(True)
+
     def set_diff_ki(self, on):
         if on:
-            h.set_ki_sim()
+            if str(self.PAP) == "soma":
+                h.set_ki_sim(h.all_pb())
+            else:
+                if "Glia" in str(self.PAP):
+                    h.set_ki_sim(h.all_child(self.PAP, 2, sec=self.PAP))
+                h.set_ki_sim(h.getPath(self.PAP, sec=self.PAP))
 
     def set_gapBath(self, on):
         if on:
@@ -418,6 +497,7 @@ class PAPModel(ResultsPAPModel):
         dur=0.5,
         amp=None,
         delay=0,
+        point=True,
     ):
         self.SpikeFreq = freq
         self.SpikeNum = number
@@ -458,7 +538,11 @@ class PAPModel(ResultsPAPModel):
         else:
             currTime = int(h.t / self.dt) * self.dt
             for i in range(number):
-                self.setK(KoSize=KoSize, dur=dur, delay=delay if i == 0 else 0)
+                if point:
+                    setting_kfunc = self.setKPoint
+                else:
+                    setting_kfunc = self.setK
+                setting_kfunc(KoSize=KoSize, dur=dur, delay=delay if i == 0 else 0)
                 if video:
                     self.makeVideo(
                         self.varMorph,
@@ -906,7 +990,7 @@ class PAPModel(ResultsPAPModel):
         self.RMP = list(self.vPAP)[
             -1
         ]  # consider last timepoint in initialization as RMP
-        # print(f"RMP:{self.RMP}")
+        print(f"RMP:{self.RMP}")
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
         # self.ko_sim(False)
@@ -1453,6 +1537,39 @@ class PAPModel(ResultsPAPModel):
 
         self.KoSize = KoSize
 
+    def setKPoint(self, KoSize=None, mode="step", dur=0.5, delay=0):
+        if dur == 0 or KoSize == 0:
+            return
+        restKo = self.Ko
+        if KoSize == None:
+            KoSize = self.KoSize
+            # print(f"set Ko to {KoSize}\n")
+        if mode == "pulse":
+            h.continuerun(delay * ms + h.t)
+            # print("setting KoSize to pulse mode")
+            papk = self.getPAPK()
+            h.setK_point(self.flattenPAP(), KoSize, papk + KoSize, 1)
+            self.KoPAP[-1] = papk + KoSize
+            h.fcurrent()
+            h.continuerun(self.dt + h.t)
+            h.setK(self.flattenPAP(), 0, restKo, 0)
+        if mode == "step":
+            # stop at one timestep before for cvode
+            h.continuerun(delay * ms + h.t)
+            if hasattr(h, "cvode"):
+                h.cvode.active(False)
+                h.dt = self.dt
+            papk = self.getPAPK()
+            h.setK_point(self.flattenPAP(), KoSize, KoSize + papk, 2)
+            h.fcurrent()
+            h.continuerun(dur * ms + h.t)
+            # papk = self.getPAPK()
+            h.setK(self.flattenPAP(), 0, restKo, 0)
+            if hasattr(h, "cvode"):
+                h.cvode.active(True)
+
+        self.KoSize = KoSize
+
     def set_ECS(self, angs, scale=True):
         if scale:
             h.setECS(angs, 1)
@@ -1725,14 +1842,16 @@ class PAPModel(ResultsPAPModel):
             RiSec = self.getSecbyName(str(pap_sec))
             RiSec.insert("inputRes")
             if direct:
-                dur = 10
+                dur = 50
                 self.setTstop(self.initTstop + dur)
                 h.measure_input_resistance_direct(
                     self.initTstop, self.initTstop + dur, sec=RiSec
                 )
                 self.initialize()
+                # get current vector length, get minimum for time after
+                init_len = len(list(self.vPAP))
                 self.run(noclear=True)
-                RiSec.Ri_inputRes = (min(self.vPAP) - self.v_init) / -0.01
+                RiSec.Ri_inputRes = (min(list(self.vPAP)[init_len:]) - self.RMP) / -0.01
             else:
                 # self.initialize()
                 h.measure_input_resistance(sec=RiSec)
