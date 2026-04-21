@@ -84,6 +84,7 @@ class PAPModel(ResultsPAPModel):
         shell=0,
         shift_PAP=0.7,
         getPeriphery=True,
+        sec_range=None,
         **kwargs,
     ):
         from neuron import h
@@ -93,6 +94,7 @@ class PAPModel(ResultsPAPModel):
         h.load_file("stdgui.hoc")
         # h.load_file("./neuronHoc/params.hoc")
         # print('loaded files')
+        # cells.plot
         # sys.stdout.flush()
 
         # set simulation parameters
@@ -257,6 +259,8 @@ class PAPModel(ResultsPAPModel):
                 self.multiple * (math.pi * (1 - math.e ** (1 - PAPLen / 0.3)) + 1)
             )
             # Density decreases in gaussian manner with units of PAPLen
+        if sec_range is not None:
+            self.sec_range = sec_range
 
     def get_PAPName(self):
         self.PAP_name = str(self.PAP)
@@ -335,7 +339,7 @@ class PAPModel(ResultsPAPModel):
 
         return ((self.goal_IK - current) * factor) ** 2
 
-    def savePAPProp(self):
+    def savePAPProp(self, name=False):
         self.PAP_properties = []
         h.finitialize()
         for i, pap in enumerate(self.flattenPAP()):
@@ -354,6 +358,8 @@ class PAPModel(ResultsPAPModel):
             self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
             self.PAP_properties[-1]["distance"] = h.distance(pap(0.5))
             self.PAP_properties[-1]["diff_tau"] = pap.tauk_0_k_acc
+            if name:
+                self.PAP_properties[-1]["name"] = str(pap)
 
     def setPAPNearSoma(self, onSoma=False, onPB=True, diam=1, dist_radius=2):
         if onSoma:
@@ -1537,7 +1543,13 @@ class PAPModel(ResultsPAPModel):
 
         self.KoSize = KoSize
 
-    def setKPoint(self, KoSize=None, mode="step", dur=0.5, delay=0):
+    def setKPoint(self, KoSize=None, mode="step", dur=0.5, delay=0, sec_range=None):
+        if (
+            sec_range is None
+            and hasattr(self, "sec_range")
+            and self.sec_range is not None
+        ):
+            sec_range = self.sec_range
         if dur == 0 or KoSize == 0:
             return
         restKo = self.Ko
@@ -1548,7 +1560,11 @@ class PAPModel(ResultsPAPModel):
             h.continuerun(delay * ms + h.t)
             # print("setting KoSize to pulse mode")
             papk = self.getPAPK()
-            h.setK_point(self.flattenPAP(), KoSize, papk + KoSize, 1)
+            if sec_range is None:
+                h.setK_point(self.flattenPAP(), KoSize, papk + KoSize, 1)
+            else:
+                h.setK_range(self.flattenPAP(), KoSize, papk + KoSize, 1, sec_range)
+
             self.KoPAP[-1] = papk + KoSize
             h.fcurrent()
             h.continuerun(self.dt + h.t)
@@ -1560,7 +1576,10 @@ class PAPModel(ResultsPAPModel):
                 h.cvode.active(False)
                 h.dt = self.dt
             papk = self.getPAPK()
-            h.setK_point(self.flattenPAP(), KoSize, KoSize + papk, 2)
+            if sec_range is None:
+                h.setK_point(self.flattenPAP(), KoSize, KoSize + papk, 2)
+            else:
+                h.setK_range(self.flattenPAP(), KoSize, KoSize + papk, 2, sec_range)
             h.fcurrent()
             h.continuerun(dur * ms + h.t)
             # papk = self.getPAPK()

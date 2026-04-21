@@ -105,7 +105,7 @@ seed=1
 mpiexec -n 11 python NEURONPAP.py --somaClamp $seed # Fig 1b
 mpiexec -n 5 python experiments.py                  # Fig 1 EFH
 python experiments.py                               # Fig 1 I
-mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --freqComp --stimCount 10 --NMDAR 1 --GluT 1 --GABAR 0 $seed
+#mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --freqComp --stimCount 10 --NMDAR 1 --GluT 1 --GABAR 0 $seed
 mpiexec -n 3 python experiments.py # fig 3EF 5D
 for i in $( # for ten random PAPs
   seq 1 $total

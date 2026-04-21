@@ -397,19 +397,17 @@ class LazySharedObject:
 
     def __iter__(self):
         obj = pickle.loads(memoryview(self._shared_array))
-        try:
-            for item in obj:
-                yield item
-        finally:
-            # automatically runs when loop finishes or breaks
-            del obj
+        for item in obj:
+            yield item
+        # finally:
+        #    # automatically runs when loop finishes or breaks
+        #    del obj
 
     def __getitem__(self, key):
         obj = pickle.loads(memoryview(self._shared_array))
-        try:
-            return obj[key]
-        finally:
-            del obj
+        return obj[key]
+        # finally:
+        #    del obj
 
     def __getattr__(self, name):
         if name.startswith("_"):
@@ -425,15 +423,14 @@ class LazySharedObject:
         load = object.__getattribute__(self, "_load")
         obj = load()
 
-        try:
-            if hasattr(obj, name):
-                value = getattr(obj, name)
-            elif isinstance(obj, dict) and name in obj:
-                value = obj[name]
-            else:
-                raise AttributeError(name)
-        finally:
-            del obj
+        if hasattr(obj, name):
+            value = getattr(obj, name)
+        elif isinstance(obj, dict) and name in obj:
+            value = obj[name]
+        else:
+            raise AttributeError(name)
+            # finally:
+            #    del obj
 
         cache[name] = value
         return value
@@ -441,42 +438,37 @@ class LazySharedObject:
     def __iadd__(self, other):
         obj = self._load()
 
-        try:
-            obj += other  # works for list
-            self._write_back(obj)
-        finally:
-            del obj
+        obj += other  # works for list
+        self._write_back(obj)
+        # finally:
+        #    del obj
         return self
 
     def append(self, value):
         obj = self._load()
-        try:
-            obj.append(value)
-            self._write_back(obj)
-        finally:
-            del obj
+        obj.append(value)
+        self._write_back(obj)
+        # finally:
+        #    del obj
 
     def extend(self, values):
         obj = self._load()
-        try:
-            obj.extend(values)
-            self._write_back(obj)
-        finally:
-            del obj
+        # try:
+        obj.extend(values)
+        self._write_back(obj)
+        #    del obj
 
     def __len__(self):
         obj = self._load()
-        try:
-            return len(obj)
-        finally:
-            del obj
+        return len(obj)
+        # finally:
+        #    del obj
 
     def dump(self, file):
         obj = self._load()
-        try:
-            pickle.dump(obj, file)
-        finally:
-            del obj
+        pickle.dump(obj, file)
+        # finally:
+        #    del obj
 
     def dump_to_file(self, filename):
         with open(filename, "wb") as f:
@@ -484,6 +476,32 @@ class LazySharedObject:
 
     def load(self):
         return self._load()
+
+    def release(self):
+        win = self._win
+        shared_array = self
+        if size == 1 and win is None:
+            return
+        import gc
+
+        if comm is not None:
+            comm.Barrier()
+
+        if shared_array is not None:
+            try:
+                del shared_array._shared_array
+            except AttributeError:
+                pass
+            del shared_array
+
+        if comm is not None:
+            comm.Barrier()
+
+        if win is not None:
+            win.Free()
+
+        # Force garbage collection
+        gc.collect()
 
 
 def load_interm_data(pickle_obj, root=0):
@@ -504,30 +522,7 @@ def load_interm_data(pickle_obj, root=0):
         shared_buf[:] = np.frombuffer(data_bytes, dtype=np.uint8)
     comm.Barrier()
 
-    return LazySharedObject(shared_buf, win), win
-
-
-def release_pickle(shared_array, win):
-    import gc
-
-    if comm is not None:
-        comm.Barrier()
-
-    if shared_array is not None:
-        try:
-            del shared_array._shared_array
-        except AttributeError:
-            pass
-        del shared_array
-
-    if comm is not None:
-        comm.Barrier()
-
-    if win is not None:
-        win.Free()
-
-    # Force garbage collection
-    gc.collect()
+    return LazySharedObject(shared_buf, win)
 
 
 def cylindrical_shell_volume(diameter, shell_depth, length):

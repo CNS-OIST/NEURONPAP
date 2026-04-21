@@ -323,6 +323,29 @@ proc convertSoma2slPAP() {localobj sl
     slPAP = sl
 }
 
+proc setK_range() {localobj sref
+forsec $o1{
+for (x) if (x >0 && x < $5) {
+        sref = new SectionRef()
+        if ($4 > 0){
+            //instantaneous switch of bath if flag 1
+            flag_k_acc(x) = $4
+            //relative change of bath
+            ko0_k_acc(x) = $2 + getPAPK(sref)
+            //relative change of ko
+            ko(x) = $2 + getPAPK(sref)
+        } else {
+            //relative change of ko
+            //ko = $2 + getPAPK(sref)
+            flag_k_acc(x) = 0
+            //change of ko
+            ko0_k_acc(x) = $3
+        }
+ }
+  }
+}
+
+
 proc pb() {localobj sr,child
 soma sr = new SectionRef()
 for i=0,sr.nchild-1 {

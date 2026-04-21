@@ -40,21 +40,51 @@ def plot_distance_shells(ax, origin, step_num=5, alpha=0.05, color="k", resoluti
         ax.plot_surface(x, y, z, color=color, alpha=alpha, linewidth=0, shade=False)
 
 
-def get_all_coords():
+def split_into_n_equal_parts(lst, n=5):
+    k, m = divmod(len(lst), n)
+    parts = [lst[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)]
+    for i in range(len(parts) - 1):
+        if parts[i + 1]:
+            parts[i].append(parts[i + 1][0])
+
+    return parts
+
+
+def get_all_coords(rangesec_name=None, rangesec_step=None):
     xlist = []
     ylist = []
     zlist = []
 
-    # Extract morphology + RANGEVAR
     for sec in h.allsec():
         n3d = int(h.n3d(sec=sec))
-        xs = [h.x3d(i, sec=sec) for i in range(n3d)]
-        ys = [h.y3d(i, sec=sec) for i in range(n3d)]
-        zs = [h.z3d(i, sec=sec) for i in range(n3d)]
+        if (
+            rangesec_name is not None
+            and str(sec) == rangesec_name
+            and rangesec_step is not None
+        ):
+            xs = [h.x3d(i, sec=sec) for i in np.arange(0, n3d, rangesec_step * n3d)]
+            ys = [h.y3d(i, sec=sec) for i in np.arange(0, n3d, rangesec_step * n3d)]
+            zs = [h.z3d(i, sec=sec) for i in np.arange(0, n3d, rangesec_step * n3d)]
 
-        xlist.append(np.array(xs))
-        ylist.append(np.array(ys))
-        zlist.append(np.array(zs))
+            # adjust endpoint
+            xs[-1] = h.x3d(n3d - 1, sec=sec)
+            ys[-1] = h.y3d(n3d - 1, sec=sec)
+            zs[-1] = h.z3d(n3d - 1, sec=sec)
+
+            num_secs = int(1 / rangesec_step)
+
+            for l, coord in [(xlist, xs), (ylist, ys), (zlist, zs)]:
+                for tmp in split_into_n_equal_parts(coord, num_secs):
+                    l.append(np.array(tmp))
+
+        else:
+            xs = [h.x3d(i, sec=sec) for i in range(n3d)]
+            ys = [h.y3d(i, sec=sec) for i in range(n3d)]
+            zs = [h.z3d(i, sec=sec) for i in range(n3d)]
+
+            xlist.append(np.array(xs))
+            ylist.append(np.array(ys))
+            zlist.append(np.array(zs))
 
     return xlist, ylist, zlist
 
@@ -137,12 +167,19 @@ def plot_3d_morphology(
     zoom=None,
     clim=None,
     color_names=None,
+    rangesec=None,
+    norm=None,
 ):
     """
     Plot NEURON morphology in 3D with diameter scaling and a RANGE variable as color.
     """
     if rank != 0:
         return
+    if rangesec is not None:
+        rangesec_name, rangesec_step = rangesec
+    else:
+        rangesec_name = None
+        rangesec_step = None
 
     # Get colormap
     if type(colormap_name) is list:
@@ -167,37 +204,68 @@ def plot_3d_morphology(
     # Extract morphology + RANGEVAR
     for sec in h.allsec():
         n3d = int(h.n3d(sec=sec))
+        if n3d == 0:
+            continue
         ds = [h.diam3d(i, sec=sec) for i in range(n3d)]
 
         # color uses section rangevar (segment midpoint)
+        if rangesec_name is not None and str(sec) == rangesec_name:
+            ds = [h.diam3d(i, sec=sec) for i in np.arange(0, n3d, rangesec_step * n3d)]
+
         if type(rangevar) == types.FunctionType:
             rv = rangevar(sec(0.5))
         else:
             try:
                 rv = getattr(sec(0.5), rangevar)
-            except:
+            except AttributeError:
                 if color_names is not None:
-                    if str(sec) in color_names:
+                    if type(color_names) is list and str(sec) in color_names:
                         if "soma" in str(sec):
                             rv = 2
                         elif "dendrite" in str(sec):
                             rv = 1
                         else:
                             rv = 3
+                    elif type(color_names) is dict:
+                        if rangesec_name == str(sec):
+                            totalL = sec.L
+                            rv = [
+                                totalL * ratio
+                                for ratio in np.arange(
+                                    rangesec_step, 1 + rangesec_step / 2, rangesec_step
+                                )
+                            ]
+                        elif str(sec) in color_names.keys():
+                            rv = color_names[str(sec)]
+                        else:
+                            rv = np.nan
                     else:
                         rv = 0
                 else:
                     rv = np.nan
 
-        dlist.append(np.array(ds))
-        varlist.append(rv)
+        if type(rv) is list:
+            varlist += rv
+            print(varlist)
+        else:
+            varlist.append(rv)
+
+        if rangesec_name is not None and rangesec_name == str(sec):
+            num_secs = int(1 / rangesec_step)
+
+            for d in split_into_n_equal_parts(ds, num_secs):
+                dlist.append(np.array(d))
+
+        else:
+            dlist.append(np.array(ds))
 
     if type(colormap_name) is list:
-        if clim is None:
-            min_clim, max_clim = min(varlist), max(varlist)
-        else:
-            min_clim, max_clim = clim
-        norm = mcolors.Normalize(vmin=min_clim, vmax=max_clim)
+        if norm is None:
+            if clim is None:
+                min_clim, max_clim = min(varlist), max(varlist)
+            else:
+                min_clim, max_clim = clim
+            norm = mcolors.Normalize(vmin=min_clim, vmax=max_clim)
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     else:
         sm = plt.cm.ScalarMappable(cmap=cmap)
@@ -228,7 +296,9 @@ def plot_3d_morphology(
         mid_z = z / count
         max_range = size
     else:
-        xlist, ylist, zlist = get_all_coords()
+        xlist, ylist, zlist = get_all_coords(
+            rangesec_name=rangesec_name, rangesec_step=rangesec_step
+        )
         all_x = np.concatenate(xlist)
         all_y = np.concatenate(ylist)
         all_z = np.concatenate(zlist)
@@ -251,20 +321,38 @@ def plot_3d_morphology(
 
     # Plot each section with diameter scaling and color mapping
     for xs, ys, zs, ds, rv in zip(xlist, ylist, zlist, dlist, varlist):
-        color = sm.to_rgba(rv)
-        if color_names is not None:
+        if norm is not None:
+            color = cmap(norm(rv))
+        else:
+            color = sm.to_rgba(rv)
+        if color_names is not None and type(color_names) is not dict:
             if rv > 0.5:
                 if rv > 2.5:
                     ds = 5
                 zorder = 3
             else:
                 zorder = 0
+
+        elif type(color_names) is dict:
+            if not np.isnan(rv):
+                zorder = 3
+            else:
+                zorder = None
         else:
             zorder = None
 
-        if add_null:
-            color = color[:-1] + (1,)
-        ax.plot(xs, ys, zs, color=color, linewidth=np.mean(ds) / 2, zorder=zorder)
+        if add_null and np.isnan(rv):
+            color = (0.8, 0.8, 0.8, 1.0)
+
+        ax.plot(
+            xs,
+            ys,
+            zs,
+            axlim_clip=True,
+            color=color,
+            linewidth=np.mean(ds) / 2,
+            zorder=zorder,
+        )
 
     # Integer ticks
     # ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
@@ -368,7 +456,6 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
         precomputed = []
         section_dict = convert_list_section_to_python(list_section)
         for key, sec_list in section_dict.items():
-            print(key)
             dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
             precomputed.append((dist, var))
     for dist, var in precomputed:
@@ -423,6 +510,159 @@ def convert_list_section_to_python(list_section):
                 tmp_section[f"to_leaf{i}"].append(sr.sec)
 
     return tmp_section
+
+
+class NeuronMorphologyVisualizer:
+    def __init__(self, saveDir="."):
+        self.sections = {}
+        self.children = {}
+        self.saveDir = saveDir
+        os.makedirs(self.saveDir, exist_ok=True)
+
+    def load_morphology(self, filepath):
+        if filepath.endswith(".hoc"):
+            h.load_file(filepath)
+        else:
+            raise ValueError("Only .hoc files supported")
+
+        self._extract_topology()
+
+    def _extract_topology(self):
+        self.sections = {}
+        self.children = {}
+
+        for sec in h.allsec():
+            name = sec.name()
+            L = sec.L
+            diam = np.mean([seg.diam for seg in sec])
+
+            sr = h.SectionRef(sec=sec)
+            parent = sr.parent.name() if sr.has_parent() else None
+
+            self.sections[name] = {"L": L, "diam": diam, "parent": parent}
+
+            if parent:
+                self.children.setdefault(parent, []).append(name)
+
+    def _cylinder(self, start, direction, length, radius, n=30):
+        direction = direction / np.linalg.norm(direction)
+
+        not_v = np.array([1, 0, 0]) if abs(direction[0]) < 0.9 else np.array([0, 1, 0])
+        n1 = np.cross(direction, not_v)
+        n1 /= np.linalg.norm(n1)
+        n2 = np.cross(direction, n1)
+
+        t = np.linspace(0, length, 2)
+        theta = np.linspace(0, 2 * np.pi, n)
+        t, theta = np.meshgrid(t, theta)
+
+        X = (
+            start[0]
+            + direction[0] * t
+            + radius * np.cos(theta) * n1[0]
+            + radius * np.sin(theta) * n2[0]
+        )
+        Y = (
+            start[1]
+            + direction[1] * t
+            + radius * np.cos(theta) * n1[1]
+            + radius * np.sin(theta) * n2[1]
+        )
+        Z = (
+            start[2]
+            + direction[2] * t
+            + radius * np.cos(theta) * n1[2]
+            + radius * np.sin(theta) * n2[2]
+        )
+
+        end = start + direction * length
+
+        r = np.linspace(0, radius, n)
+        theta2 = np.linspace(0, 2 * np.pi, n)
+        r, theta2 = np.meshgrid(r, theta2)
+
+        Xb = start[0] + r * np.cos(theta2) * n1[0] + r * np.sin(theta2) * n2[0]
+        Yb = start[1] + r * np.cos(theta2) * n1[1] + r * np.sin(theta2) * n2[1]
+        Zb = start[2] + r * np.cos(theta2) * n1[2] + r * np.sin(theta2) * n2[2]
+
+        Xt = end[0] + r * np.cos(theta2) * n1[0] + r * np.sin(theta2) * n2[0]
+        Yt = end[1] + r * np.cos(theta2) * n1[1] + r * np.sin(theta2) * n2[1]
+        Zt = end[2] + r * np.cos(theta2) * n1[2] + r * np.sin(theta2) * n2[2]
+
+        return (X, Y, Z), (Xb, Yb, Zb), (Xt, Yt, Zt), end
+
+    def plot_local(self, section_name, tilt_angle=np.pi / 6):
+        if section_name not in self.sections:
+            raise ValueError(f"{section_name} not found")
+
+        plt.cla()
+        plt.clf()
+        plt.close("all")
+
+        L0 = self.sections[section_name]["L"]
+        d0 = self.sections[section_name]["diam"]
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+
+        main_color = "black"
+        other_color = "lightgrey"
+
+        def draw_cyl(start, direction, L, r, color):
+            (X, Y, Z), (Xb, Yb, Zb), (Xt, Yt, Zt), end = self._cylinder(
+                start, direction, L, r
+            )
+            ax.plot_surface(X, Y, Z, color=color)
+            ax.plot_surface(Xb, Yb, Zb, color=color)
+            ax.plot_surface(Xt, Yt, Zt, color=color)
+            return end
+
+        # main section always vertical
+        start0 = np.array([0.0, 0.0, 0.0])
+        end0 = draw_cyl(start0, np.array([0, 0, 1]), 1.0, 0.5, main_color)
+
+        # parent (vertical)
+        parent = self.sections[section_name]["parent"]
+        if parent:
+            Lp = self.sections[parent]["L"] / L0
+            dp = self.sections[parent]["diam"] / d0
+            draw_cyl(start0, np.array([0, 0, -1]), Lp, dp / 2, other_color)
+
+        childs = self.children.get(section_name, [])
+        n_child = len(childs)
+
+        for i, c in enumerate(childs):
+            Lc = self.sections[c]["L"] / L0
+            dc = self.sections[c]["diam"] / d0
+
+            if "soma" in section_name.lower():
+                # angled only for soma
+                phi = 2 * np.pi * i / max(1, n_child)
+                direction = np.array(
+                    [
+                        np.cos(phi) * np.sin(tilt_angle),
+                        np.sin(phi) * np.sin(tilt_angle),
+                        np.cos(tilt_angle),
+                    ]
+                )
+                start_c = end0
+            else:
+                # vertical stacking (no angle)
+                offset = np.array(
+                    [(i - (n_child - 1) / 2) * 0.2, (i - (n_child - 1) / 2) * 0.1, 0.0]
+                )
+                direction = np.array([0, 0, 1])
+                start_c = end0 + offset
+
+            draw_cyl(start_c, direction, Lc, dc / 2, other_color)
+
+        ax.set_box_aspect([1, 1, 1])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+
+        save_path = os.path.join(self.saveDir, f"localMorph_{section_name}.pdf")
+        plt.savefig(save_path)
 
 
 if __name__ == "__main__":

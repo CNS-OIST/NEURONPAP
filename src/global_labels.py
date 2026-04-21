@@ -41,6 +41,7 @@ class gl:
     lim_cvk_ko = (0, 10)
     abs_distance = f"Distance {unit_micron}"
     max_ko = 80
+    lim_log_ko = (3, max_ko)
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
     lim_VmembSoma = (-86, -84)
