@@ -5154,7 +5154,7 @@ class procedure(plotFigures):
             ax.set_xlim(left=0.2,right=xmax)
 
             ax.set_xlabel(gl.pap_affect)
-            ax.set_ylabel(gl.free("Peak Voltage Change (mV)"))
+            ax.set_ylabel(gl.d_volt_short)
 
             left = ax_cable.get_position().x0
             bottom = ax_cable.get_position().y0
@@ -6168,7 +6168,7 @@ class procedure(plotFigures):
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
-        plt.subplots_adjust(left=0.2)
+        plt.subplots_adjust(left=0.2,bottom=0.2)
 
         i = 0
         lens = [l for l in np.arange(0,1.01,0.1) if l not in [0,1]]
