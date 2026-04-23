@@ -20,6 +20,7 @@ class ResultsPAPModel:
         "GENEobj",
         "equiDistSec",
         "shell_synapse_glut",
+        "record_multiPAPs",
     ]
     memcurrents = [
         "iKPAP",

@@ -209,6 +209,8 @@ def callExperimentMode(**kwargs):
         print(res)
 
     if "physiological" in kwargs.keys() and kwargs["physiological"]:
+        if "intra_diff" in kwargs.keys() and kwargs["intra_diff"]:
+            exp.kdifl = True
         exp.physiological_stim()
 
     if "shift_pap" in kwargs.keys() and kwargs["shift_pap"]:

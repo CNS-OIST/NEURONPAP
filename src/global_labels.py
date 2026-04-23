@@ -44,7 +44,7 @@ class gl:
     lim_log_ko = (3, max_ko)
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
-    lim_VmembSoma = (-86, -84)
+    lim_VmembSoma = (-90, -80)
     lim_d_volt = (0, 80)
     lim_ko = (0, 30)
     lim_ek = (-100, 20)

@@ -85,6 +85,7 @@ class PAPModel(ResultsPAPModel):
         shift_PAP=0.7,
         getPeriphery=True,
         sec_range=None,
+        recordAllPAP=False,
         **kwargs,
     ):
         from neuron import h
@@ -112,9 +113,6 @@ class PAPModel(ResultsPAPModel):
         # Set gap count
         self.shift_PAP = shift_PAP
         self.gapcount = gapCount
-
-        # set NMDA
-        self.multiple = multiple
 
         # set clamp parms
         self.mode = mode
@@ -187,11 +185,29 @@ class PAPModel(ResultsPAPModel):
                 # get chunk of section as PAP
                 h.PAP = h.get_randomSection(h.soma, 0.3)
                 self.PAP = h.PAP.sec
-            h.slPAP = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
+            tmp_sec = h.get_parent_sections(self.PAP, self.PAPLen, sec=self.PAP)
             if i == 0:
-                self.PAPs = [h.slPAP]
+                self.PAPs = [tmp_sec]
+                if PAPCount > 1 and recordAllPAP:
+                    self.recordAllPAP = recordAllPAP
+                    self.record_multiPAPs = []
             else:
-                self.PAPs.append(h.slPAP)
+                self.PAPs.append(tmp_sec)
+
+            if PAPCount > 1 and hasattr(self, "record_multiPAPs"):
+                for i, sec in enumerate(self.PAPs[-1]):
+                    if i != 0:
+                        break
+                    else:
+                        self.record_multiPAPs.append(sec(0.5))
+
+        h.slPAP = self.flattenPAP()
+
+        if PAPCount > 1:
+            if multiple is not None:
+                multiple *= PAPCount
+            if GABACount is not None:
+                GABACount *= PAPCount
 
         self.soma = h.soma
         if not self.ComplexMorph:
@@ -216,6 +232,8 @@ class PAPModel(ResultsPAPModel):
         # NMDA setup
         self.Glu = Glu
         self.stimdelay = stimdelay
+        # set NMDA
+        self.multiple = multiple
 
         # GABA setup
         self.GABA = GABA
@@ -993,9 +1011,14 @@ class PAPModel(ResultsPAPModel):
                         sys.exit(-1)
                     h.fadvance()
         # print(list(self.KoSizePAP)[-1])
-        self.RMP = list(self.vPAP)[
-            -1
-        ]  # consider last timepoint in initialization as RMP
+        if type(self.vPAP) is not list:
+            self.RMP = list(self.vPAP)[
+                -1
+            ]  # consider last timepoint in initialization as RMP
+        else:
+            self.RMP = []
+            for vpap in self.vPAP:
+                self.RMP.append(list(vpap)[-1])
         print(f"RMP:{self.RMP}")
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
@@ -1258,8 +1281,9 @@ class PAPModel(ResultsPAPModel):
         # Save Stuff
         if sNMDA != None:
             if self.record_single_synapse:
-                if len(list(sNMDA)) > 1:
-                    sNMDA = sNMDA[-1]
+                if len(list(sNMDA)) > 1 or type(sNMDA) is list:
+                    sNMDA = list(sNMDA)[-1]
+
                 self.iNMDA = h.Vector()
                 # self.iNMDA.record(sNMDA._ref_iNMDA)
                 self.iNMDA.record(sNMDA._ref_iNMDA_N2C)
@@ -1272,8 +1296,8 @@ class PAPModel(ResultsPAPModel):
 
         if sGABA != None:
             if self.record_single_synapse:
-                if len(list(sGABA)) > 1:
-                    sGABA = sGABA[-1]
+                if len(list(sGABA)) > 1 or type(sGABA) is list:
+                    sGABA = list(sGABA)[-1]
                 self.iGABA = h.Vector()
                 self.iGABA.record(sGABA._ref_iGaba)
             else:
@@ -1330,7 +1354,11 @@ class PAPModel(ResultsPAPModel):
             self.iNCXPAP.record(self.PAP(0.5)._ref_incx_ncx)
 
         self.vPAP = h.Vector()
-        self.vPAP.record(self.PAP(0.5)._ref_v)
+        if hasattr(self, "record_multiPAPs"):
+            self.set_list_record("vPAP", "_ref_v", self.record_multiPAPs)
+
+        else:
+            self.vPAP.record(self.PAP(0.5)._ref_v)
 
         self.fluorVPAP = h.Vector()
         self.fluorVPAP.record(self.PAP(0.5)._ref_dF_GEVI)

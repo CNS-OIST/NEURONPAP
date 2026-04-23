@@ -9,7 +9,7 @@ from neuron.units import mM, mV, ms
 import glob
 from matplotlib.ticker import MaxNLocator
 from plot_shape import *
-from scipy.stats import f_oneway, ttest_rel,pearsonr,ttest_1samp,linregress
+from scipy.stats import f,t,f_oneway, ttest_rel,pearsonr,ttest_1samp,linregress
 from scipy.optimize import minimize
 from scipy.optimize import differential_evolution
 from scipy.optimize import shgo
@@ -42,6 +42,7 @@ import statsmodels.stats.multitest as smm
 
 from matplotlib.patches import Arc
 from matplotlib.patches import Wedge
+from itertools import combinations
 
 
 
@@ -116,6 +117,108 @@ class plotFigures:
         return (rgba_color * alpha + np.array(bkg) * (1 - alpha)) / np.array(
             [255, 255, 255, 1]
         )
+
+    @staticmethod
+    def p_to_stars(p):
+        if p < 1e-4:
+            return '****'
+        elif p < 1e-3:
+            return '***'
+        elif p < 1e-2:
+            return '**'
+        elif p < 0.05:
+            return '*'
+        else:
+            return 'ns'
+
+
+    @staticmethod
+    def adjust_pvals(pvals, method='holm'):
+        pvals = np.array(pvals)
+        m = len(pvals)
+
+        if method == 'bonferroni':
+            return np.minimum(pvals * m, 1.0)
+
+        elif method == 'holm':
+            order = np.argsort(pvals)
+            adjusted = np.empty(m)
+            for count, idx in enumerate(order):
+                adjusted[idx] = min((m - count) * pvals[idx], 1.0)
+            # enforce monotonicity
+            for i in range(m - 1):
+                adjusted[order[i+1]] = max(adjusted[order[i+1]], adjusted[order[i]])
+            return adjusted
+
+        else:
+            raise ValueError("method must be 'holm' or 'bonferroni'")
+
+
+
+    @staticmethod
+    def add_sig_from_category_pdict(ax, heights, pval_dict,
+                                alpha=0.05,
+                                y_offset=0.05, line_height=0.02,
+                                text_offset=0.01, lw=1.5, fontsize=11):
+        """
+        - Anchors all brackets above the GLOBAL highest bar
+        - Stacks brackets with no overlap across all categories
+        """
+
+        heights = np.asarray(heights)
+
+        global_top = np.max(heights)
+
+        all_p = [v for values in pval_dict.values() for v in values]
+        adj_p = plotFigures.adjust_pvals(all_p)
+        all_comparisons = {m:[] for m in pval_dict.keys()} 
+        for m,p_vals in pval_dict.items():
+            for (i,j),p in zip(list(combinations(range(len(heights)),2)),adj_p):
+                if p < alpha:
+                    all_comparisons[m].append((i,j,p))
+
+        levels = []
+        def get_level(i, j):
+            level = 0
+            while True:
+                conflict = False
+                for (li, lj, llevel) in levels:
+                    if (max(i, li) <= min(j, lj)) and (llevel == level):
+                        conflict = True
+                        break
+                if not conflict:
+                    return level
+                level += 1
+
+        # draw
+        for m,list_ids in enumerate(all_comparisons.values()):
+            if list_ids == []:
+                continue
+            else:
+                i,j,p = list_ids
+            level = get_level(i, j)
+            levels.append((i, j, level))
+
+            y = global_top + y_offset + level * (line_height + y_offset)
+
+            x1, x2 = i + (m-3/2)*0.2,j + (m-3/2)*0.2  
+
+            ax.plot([x1, x1, x2, x2],
+                    [y, y + line_height, y + line_height, y],
+                    lw=lw, c='black')
+
+            stars = plotFigures.p_to_stars(p)
+            if stars:
+                ax.text((x1 + x2) / 2,
+                        y + line_height + text_offset,
+                        stars,
+                        ha='center', va='bottom',
+                        fontsize=fontsize)
+
+        # adjust ylim
+        if levels:
+            max_level = max(l for _, _, l in levels)
+            ax.set_ylim(top=global_top + y_offset + (max_level + 2) * (line_height + y_offset))
 
     def get_papLen_color_from_value(self,value):
         vmid = 6.5454
@@ -1829,7 +1932,7 @@ class plotFigures:
             )
 
     @save_src_Data
-    def plot_physiological(self, AllCells, stim, papcounts, models):
+    def plot_physiological(self, AllCells, stim, papcounts, models,syn_count=25):
         if rank != 0:
             return
             # for cell in AllCells:
@@ -1848,16 +1951,23 @@ class plotFigures:
                 ax = []
                 ax_r = []
                 inset = (375, 385)
-                inset_y = (-86, -83)
+                inset_y = (-90, -85)
                 ax.append(fig.add_subplot(gs[0:2, 0]))
                 ax.append(fig.add_subplot(gs[2:4, 0], sharex=ax[0]))
                 ax.append(fig.add_subplot(gs[4:6, 0], sharex=ax[0]))
-                ax_r.append(fig.add_subplot(gs[4, 1]))
-                ax_r.append(fig.add_subplot(gs[5, 1], sharex=ax_r[0]))
+                if location == 'vPAP':
+                    ax_r.append(fig.add_subplot(gs[4, 1]))
+                    ax_r.append(fig.add_subplot(gs[5, 1], sharex=ax_r[0]))
                 ax_summary = fig.add_subplot(gs[:3, 1])
                 summary_res = {}
+                all_res = {}
+                if location == 'vPAP' and p > 1:
+                    all_pvalues = {} 
+                    heights = []
+                    anova_p = {}
                 for j, s in enumerate(stim):
                     summary_res[s] = []
+                    all_res[s] = []
                     if j != len(stim) - 1:
                         ax[j].tick_params(labelbottom=False)
                     for m in models:
@@ -1868,40 +1978,84 @@ class plotFigures:
 
                         initStep = self.get_initStep(cell)
                         calc_max = self.get_initStep(cell, shift=-100)
-                        summary_res[s].append(
-                            max(list(getattr(cell, location))[calc_max:]) - cell.RMP
-                        )
-                        ax[j].plot(
-                            list(cell.time)[initStep:],
-                            list(getattr(cell, location))[initStep:],
-                            label=m,
-                            color=self.returnColor(m),
-                        )
-                        index += 1
-                        if s == "theta":
-                            if "K$^+$" in m:
-                                ax_r[0].plot(
-                                    list(cell.time)[initStep:],
-                                    list(getattr(cell, location))[initStep:],
-                                    label=m,
-                                    color=self.returnColor(m),
-                                )
-                                ax_r[0].set_xlim(*inset)
-                                ax_r[0].set_ylim(*inset_y)
-                                ax_r[0].tick_params(labelbottom=False)
-                            elif "GluT" in m:
-                                ax_r[1].plot(
-                                    list(cell.time)[initStep:],
-                                    list(getattr(cell, location))[initStep:],
-                                    label="GLT-1",
-                                    color=self.returnColor(m),
-                                )
-                                ax_r[1].set_xlim(*inset)
-                                ax_r[1].set_ylim(*inset_y)
-                                ax_r[1].set_xlabel(gl.ms)
+                        if location == 'vPAP' and p > 1 and hasattr(cell,'recordAllPAP'):
+                            items = []
+                            for i,vPAP_record in enumerate(getattr(cell, location)): 
+                                if max(list(vPAP_record)[calc_max:]) - cell.RMP[i] < 80:
+                                    items.append(max(list(vPAP_record)[calc_max:]) - cell.RMP[i])
+                                if i == 0:
+                                    ax[j].plot(
+                                        list(cell.time)[initStep:],
+                                        list(vPAP_record)[initStep:],
+                                        label=m,
+                                        color=self.returnColor(m),
+                                    )
+                                    index += 1
+                                    if s == "theta" and location == 'vPAP':
+                                        if "K$^+$" in m:
+                                            ax_r[0].plot(
+                                                list(cell.time)[initStep:],
+                                                list(vPAP_record)[initStep:],
+                                                label=m,
+                                                color=self.returnColor(m),
+                                            )
+                                            ax_r[0].set_xlim(*inset)
+                                            ax_r[0].set_ylim(*inset_y)
+                                            ax_r[0].tick_params(labelbottom=False)
+                                        elif "GLT-1" in m:
+                                            ax_r[1].plot(
+                                                list(cell.time)[initStep:],
+                                                list(vPAP_record)[initStep:],
+                                                label="GLT-1",
+                                                color=self.returnColor(m),
+                                            )
+                                            ax_r[1].set_xlim(*inset)
+                                            ax_r[1].set_ylim(*inset_y)
+                                            ax_r[1].set_xlabel(gl.ms)
+
+
+                            mean = np.mean(items)
+                            std = np.std(items)
+                            summary_res[s].append((mean,std))
+                            all_res[s].append(items)
+
+                        else:
+                            if type(cell.RMP) == list:
+                                cell.RMP = cell.RMP[0]
+                            summary_res[s].append(
+                                max(list(getattr(cell, location))[calc_max:]) - cell.RMP
+                            )
+                            ax[j].plot(
+                                list(cell.time)[initStep:],
+                                list(getattr(cell, location))[initStep:],
+                                label=m,
+                                color=self.returnColor(m),
+                            )
+                            index += 1
+                            if s == "theta" and location =='vPAP':
+                                if "K$^+$" in m:
+                                    ax_r[0].plot(
+                                        list(cell.time)[initStep:],
+                                        list(getattr(cell, location))[initStep:],
+                                        label=m,
+                                        color=self.returnColor(m),
+                                    )
+                                    ax_r[0].set_xlim(*inset)
+                                    ax_r[0].set_ylim(*inset_y)
+                                    ax_r[0].tick_params(labelbottom=False)
+                                elif "GLT-1" in m:
+                                    ax_r[1].plot(
+                                        list(cell.time)[initStep:],
+                                        list(getattr(cell, location))[initStep:],
+                                        label="GLT-1",
+                                        color=self.returnColor(m),
+                                    )
+                                    ax_r[1].set_xlim(*inset)
+                                    ax_r[1].set_ylim(*inset_y)
+                                    ax_r[1].set_xlabel(gl.ms)
 
                     if location == "vPAP":
-                        ax[j].set_ylim(gl.lim_Vmemb)
+                        ax[j].set_ylim(gl.lim_ek_zoom)
                     else:
                         ax[j].set_ylim(gl.lim_VmembSoma)
                     ax[j].set_xlim(right=500)
@@ -1916,6 +2070,8 @@ class plotFigures:
                     groups.append(label)
 
                 values = np.array(list(summary_res.values()))
+                
+
 
                 n_groups = len(groups)
                 n_bars = values.shape[1]
@@ -1923,31 +2079,135 @@ class plotFigures:
 
                 x = np.arange(n_groups)
                 width = 0.2
+                if location == 'vPAP' and p > 1 and hasattr(cell,'recordAllPAP'):
+                    for i in range(n_bars):
+                        mean,std = zip(*values[:,i])
+                        heights.append(np.max(mean + std))
+                        xcoords = x + (i - (n_bars - 1) / 2) * width
+                        ax_summary.bar(
+                            xcoords,
+                            mean,
+                            yerr=std,
+                            width=width,
+                            color=bar_colors[i],
+                            edgecolor="black",
+                        )
+                        
+                        def ttest_from_summary(mean1, std1, n1, mean2, std2, n2):
+                            # Welch’s t-test
+                            se = np.sqrt(std1**2 / n1 + std2**2 / n2)
+                            t_stat = (mean1 - mean2) / se
 
-                for i in range(n_bars):
-                    ax_summary.bar(
-                        x + (i - (n_bars - 1) / 2) * width,
-                        values[:, i],
-                        width=width,
-                        color=bar_colors[i],
-                        edgecolor="black",
-                    )
+                            # degrees of freedom (Welch–Satterthwaite)
+                            df = (std1**2 / n1 + std2**2 / n2)**2 / (
+                                (std1**2 / n1)**2 / (n1 - 1) +
+                                (std2**2 / n2)**2 / (n2 - 1)
+                            )
+
+                            # two-tailed p-value
+                            p = 2 * (1 - t.cdf(abs(t_stat), df))
+
+                            return p
+
+                        all_pvalues[models[i]] = [ttest_from_summary(*values[:,i][j],syn_count,*values[:,i][k],syn_count) for j,k in list(combinations(range(len(mean)),2))]
+                    
+                        def anova_from_summary(means, stds, ns):
+                            means = np.array(means, dtype=float)
+                            stds  = np.array(stds,  dtype=float)
+                            ns    = np.array(ns,    dtype=float)
+
+                            k = len(means)
+                            N = np.sum(ns)
+
+                            # grand mean
+                            grand_mean = np.sum(ns * means) / N
+
+                            # between-group sum of squares
+                            ss_between = np.sum(ns * (means - grand_mean)**2)
+
+                            # within-group sum of squares
+                            ss_within = np.sum((ns - 1) * stds**2)
+
+                            # degrees of freedom
+                            df_between = k - 1
+                            df_within  = N - k
+
+                            # mean squares
+                            ms_between = ss_between / df_between
+                            ms_within  = ss_within / df_within
+
+                            # F statistic
+                            F = ms_between / ms_within
+
+                            # p-value
+                            p = 1 - f.cdf(F, df_between, df_within)
+
+                            return p
+
+                        anova_p[models[i]]=  anova_from_summary(mean,std,[syn_count]*len(mean))
+                        
+
+
+
+                else:
+                    for i in range(n_bars):
+                        ax_summary.bar(
+                            x + (i - (n_bars - 1) / 2) * width,
+                            values[:, i],
+                            width=width,
+                            color=bar_colors[i],
+                            edgecolor="black",
+                        )
 
                 ax_summary.set_xticks(x)
                 ax_summary.set_xticklabels(groups)
                 ax_summary.set_ylabel(gl.d_volt)
                 ax_summary.set_ylim(gl.lim_d_volt)
                 handle, label = ax[-1].get_legend_handles_labels()
-                ax_summary.legend(
-                    handle,
-                    label,
-                )
+
+                if location == 'vPAP' and p > 1:
+                    for i,(l,anova) in enumerate(zip(label,anova_p.values())):
+                        label[i] = f': {self.p_to_stars(anova)}'
+
+
+                    ax_summary.legend(
+                        loc='upper center',
+                        handles=handle,
+                        bbox_to_anchor=(0.5, -0.11),
+                        title='ANOVA',
+                        columnspacing=0.8,
+                        handletextpad=0.4,
+                        borderaxespad=0.2,
+                        labelspacing=0.3,
+                        ncol=len(handle),
+                        labels=label,
+                    )
+
+                    self.add_sig_from_category_pdict(ax_summary,heights,all_pvalues)
+
+                for i in range(len(ax_r)):
+                    ax_r[i].yaxis.set_major_locator(MaxNLocator(integer=True,nbins=3))
                 ax[-1].set_xlabel(gl.ms)
                 # plt.title(f"stim:{s} PAP counts = {p}")
                 bottom = ax[-1].get_position().y0
                 top = ax[0].get_position().y1
 
                 left = ax[0].get_position().x0
+                right = ax_summary.get_position().x1
+                dx = (right-left)/(len(models)-1)
+                label_pos = ['left','center','center','right']
+                for i,m in enumerate(models):
+                    fig.text(
+                        dx*i+left,
+                        top + 0.015,
+                        m,
+                        color=self.returnColor(m),
+                        fontsize=plt.rcParams["axes.labelsize"],
+                        ha=label_pos[i],
+                        va="bottom",
+                        fontweight="bold",
+                    )
+
                 fig.text(
                     left - 0.07,
                     (bottom + top) / 2,
@@ -1982,43 +2242,45 @@ class plotFigures:
                     va="top",
                     fontsize=plt.rcParams["axes.labelsize"],
                 )
-                x0, x1 = inset
-                y0, y1 = inset_y
-                grey = "0.5"
-                rect = Rectangle(
-                    (x0, y0),
-                    x1 - x0,
-                    y1 - y0,
-                    fill=False,
-                    linewidth=1.5,
-                    edgecolor=grey,
-                    zorder=2,
-                )
-                ax[-1].add_patch(rect)
+                if location == 'vPAP':
+                    x0, x1 = inset
+                    y0, y1 = inset_y
+                    grey = "0.5"
+                    rect = Rectangle(
+                        (x0, y0),
+                        x1 - x0,
+                        y1 - y0,
+                        fill=False,
+                        linewidth=1.5,
+                        edgecolor=grey,
+                        zorder=2,
+                    )
 
-                con1 = ConnectionPatch(
-                    xyA=(x1, y0),
-                    coordsA=ax[-1].transData,
-                    xyB=(x0 - 1.5, y0),
-                    coordsB=ax_r[1].transData,
-                    color=grey,
-                    linewidth=1,
-                    zorder=3,
-                    linestyle="--",
-                )
-                con2 = ConnectionPatch(
-                    xyA=(x1, y1),
-                    coordsA=ax[-1].transData,
-                    xyB=(x0 - 1, y1),
-                    coordsB=ax_r[0].transData,
-                    color=grey,
-                    linewidth=1,
-                    zorder=3,
-                    linestyle="--",
-                )
+                    con1 = ConnectionPatch(
+                        xyA=(x1, y0),
+                        coordsA=ax[-1].transData,
+                        xyB=(x0 - 1.5, y0),
+                        coordsB=ax_r[1].transData,
+                        color=grey,
+                        linewidth=1,
+                        zorder=3,
+                        linestyle="--",
+                    )
+                    con2 = ConnectionPatch(
+                        xyA=(x1, y1),
+                        coordsA=ax[-1].transData,
+                        xyB=(x0 - 1, y1),
+                        coordsB=ax_r[0].transData,
+                        color=grey,
+                        linewidth=1,
+                        zorder=3,
+                        linestyle="--",
+                    )
 
-                fig.add_artist(con1)
-                fig.add_artist(con2)
+
+                    ax[-1].add_patch(rect)
+                    fig.add_artist(con1)
+                    fig.add_artist(con2)
 
                 plt.savefig(
                     os.path.join(
@@ -3711,7 +3973,6 @@ class procedure(plotFigures):
                 else:
                     title += f"constrained p-value:{pval:.2E}"
                     key = "confined"
-                print(pval)
                 if pval < 0.05:
                     if pval < 0.01:
                         if pval < 0.001:
@@ -4329,7 +4590,6 @@ class procedure(plotFigures):
                     break
 
             if stdout:
-                print(v, max(V))
                 print(f"Half T: {abs(t[j] - origin)}")
             Thalf.append(abs(t[j] - origin))
 
@@ -5366,7 +5626,6 @@ class procedure(plotFigures):
             for refs in IKSize_Soma:
                 for ref in refs:
                     if ref.PAP_name == 'soma':
-                        print(ref)
                         prp_cell = findbyNameSeed(ref.seed,'soma')
                         Rm = 26.7*np.log((ref.KoSize+ref.Ko)/ref.Ko)/0.05
                         Ri =prp_cell.PAP_Ri
@@ -5391,7 +5650,6 @@ class procedure(plotFigures):
 
 
             correlation_coefficient, p_value = pearsonr(x,y)
-            print(p_value)
             if p_value < 0.05:
                 plt.title(f'Total={p_value:.2e} R$^2$={correlation_coefficient**2:.1e}')
                 res = linregress(x,y)
@@ -5544,7 +5802,7 @@ class procedure(plotFigures):
     def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in [   "PAPLen","seed", "KoSize"]: #,  "durStim"]:
+        for comparison in [ "PAPLen", "seed", "KoSize"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -5657,15 +5915,11 @@ class procedure(plotFigures):
                         for name in names:
                             nv.plot_local(name)
 
-                    self.run_comp_pb(iter_bath,point_stim=point_stim,sec_range=True)
-                    self.plot_range_pb()
 
 
 
                     # change to np array for later
                     logx = np.array(logx)
-
-
 
                     iterations = [
                         (i,j)
@@ -5675,6 +5929,9 @@ class procedure(plotFigures):
 
                     if hasattr(self,'pap_win'):
                         PAP_AllProperties.release()
+
+                    self.run_comp_pb(iter_bath,point_stim=point_stim,sec_range=True)
+                    self.plot_range_pb()
 
  
                 self.runAmpLenComparison(
@@ -5788,7 +6045,6 @@ class procedure(plotFigures):
         if rank == 0:
             for cells in AllCells:
                 for cell in cells:
-                    print(cell.PAP_Ri[0])
                     plt.scatter(cell.PAP_Ri[0],sum(cell.PAP_Ri[1:])/len(cell.PAP_Ri[1:]),color='black')
             plt.savefig(
                 os.path.join(
@@ -6511,7 +6767,6 @@ class procedure(plotFigures):
                         large_sec = {'x':[],'y':[]} 
                         if ri_soma is not None and property == 'PAP_Ri':
                             t_stat, p_value = ttest_1samp(pap_corr['x'], ri_soma[0])
-                            print(p_value)
                             ax.scatter(ri_soma[0],res_column_soma[index_ko],color=self.returnColor('Soma'))
                             pap_corr['x'].append(ri_soma[0])
                             pap_corr['y'].append(res_column_soma[index_ko])
@@ -6842,8 +7097,8 @@ class procedure(plotFigures):
                                 color=self.returnColor('global')
                         if np.nan not in col and 0 not in col[1:] and all(col > 0) and not (label != 'bath' and any(col >60)) :
                             plt.plot(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col,color=color)
-                            if label not in ['soma','bath'] and 'branch' not in label:
-                                print(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col)
+                            #if label not in ['soma','bath'] and 'branch' not in label:
+                            #    print(base+np.arange(0,self.KoCompMax + 1,self.KoCompStep),col)
 
                     custom_handles = [
                         Line2D([0], [0], color=self.returnColor('PAP'), label='PAP'),
@@ -7441,7 +7696,7 @@ class procedure(plotFigures):
         cells.setTstop(tstop=151)
         cells.multiSpike(number=1, freq=100, KoSize=x[0])
         cells.run()
-        print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
+        #print(abs(max(list(cells.vPAP)) - cells.RMP - optmV))
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
     def readExpRawData(self, results):
@@ -7467,7 +7722,7 @@ class procedure(plotFigures):
         funcArgs = []
         models = ["K$^+$ Model", "GLT-1 Model", "GABA$_A$R Model", "NMDAR Model"]
         stim = [50, 100, "theta"]
-        papcounts = [1, 10]
+        papcounts = [1, 40]
         for s in stim:
             for p in papcounts:
                 for m in models:
@@ -7485,16 +7740,24 @@ class procedure(plotFigures):
                     )
                     funcArgs[-1]["PAPCount"] = p
                     funcArgs[-1]["stimtype"] = s
+                    if p > 1:
+                        funcArgs[-1]["recordAllPAP"] = True
                     if m == "GLT-1 Model":
                         funcArgs[-1]["Glu"] = True
+                        funcArgs[-1]["multiple"] = None
                         funcArgs[-1]["GluTrans"] = self.optGluT
                     elif m == "GABA$_A$R Model":
+                        funcArgs[-1]["Glu"] = False
                         funcArgs[-1]["GABA"] = True
                         funcArgs[-1]["GABACount"] = self.optGABAR
                     elif m == "NMDAR Model":
                         funcArgs[-1]["multiple"] = self.optNMDAR
                         funcArgs[-1]["Glu"] = True
                         funcArgs[-1]["GluTrans"] = self.optGluT
+
+                    if hasattr(self,'kdifl') and self.kdifl:
+                        funcArgs[-1]['dt'] = self.dt/10
+                        funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims
         iterations_per_process = len(funcArgs) // size
@@ -7521,6 +7784,10 @@ class procedure(plotFigures):
                 stype = funcArgs[index].pop("stimtype")
                 cells = PAPModel(**funcArgs[index])
                 cells.setTstop(500)
+                if hasattr(self,'kdifl') and self.kdifl:
+                    cells.set_diff_ki(True)
+                if funcArgs[index]['PAPCount'] > 1:
+                    cells.setSlowing(100)
 
                 if stype == "theta":
                     # initialize() multiSpike() run() all packaged in TBS()
@@ -7539,7 +7806,7 @@ class procedure(plotFigures):
         else:
             AllCells = self.free_read_data()
 
-        self.plot_physiological(AllCells, stim, papcounts, models)
+        self.plot_physiological(AllCells, stim, papcounts, models,syn_count=papcounts[1])
 
     def fitExpDepolarization(
         self,
@@ -8849,7 +9116,6 @@ class procedure(plotFigures):
         cells.initialize()
         print(abs(cells.RMP - optmV))
         lossKO = (cells.RMP - optmV) ** 2
-        print(x)
         funcArgs.append(
             {
                 "mode": 0,
@@ -8898,7 +9164,6 @@ class procedure(plotFigures):
         cells.initialize()
         print(abs(cells.RMP - optmV))
         lossKO = (cells.RMP - optmV) ** 2
-        print(x)
         funcArgs.append(
             {
                 "mode": 0,
