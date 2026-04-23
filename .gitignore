@@ -16,11 +16,12 @@ x86_64
 *.zip
 
 !results/
-
+!results/paperRes/
 results/*
-!results/utils/
+
 
 __pycache__
 
 outlog/*
 morphResults/*
+test/
