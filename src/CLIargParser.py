@@ -15,7 +15,7 @@ def randomGen(rangeInt):
 
 def argParser(rangeInt=100):
     parser = argparse.ArgumentParser(
-        description="Hippocampal astrocyte model implemented in NEURON"
+        description="Somatosensory cortical astrocyte model implemented in NEURONHOC with python and CL interface"
     )
     parser.add_argument(
         "-r",
@@ -51,14 +51,6 @@ def argParser(rangeInt=100):
     )
 
     parser.add_argument(
-        "-d",
-        "--distance",
-        dest="distance",
-        action="store_true",
-        default=False,
-        help="Used to run simulations for various distances",
-    )
-    parser.add_argument(
         "-c",
         "--channels",
         dest="channel",
@@ -80,14 +72,7 @@ def argParser(rangeInt=100):
         default=False,
         help="Used to run simulations for various frequency counts",
     )
-    parser.add_argument(
-        "-l",
-        "--length",
-        dest="length",
-        action="store_true",
-        default=False,
-        help="Used to run simulations for various length",
-    )
+
     parser.add_argument(
         "--spillOver",
         dest="spill",
@@ -161,13 +146,7 @@ def argParser(rangeInt=100):
         default=False,
         help="Used to run v clamp simulations",
     )
-    parser.add_argument(
-        "--debug",
-        dest="debug",
-        action="store_true",
-        default=False,
-        help="Used to employ debug mode. You can use to run with verbose comments. Mainly used to test if the simulation will construct -> run -> save properly",
-    )
+
     parser.add_argument(
         "--ko",
         type=float,
