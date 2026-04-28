@@ -6,7 +6,6 @@ video/
 *.out
 flycheck*
 .python-version
-pyproject.toml
 uv.lock
 intermediaryData/
 *.mp4
