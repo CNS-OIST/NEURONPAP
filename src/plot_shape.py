@@ -459,7 +459,7 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
             dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
             precomputed.append((dist, var))
     for dist, var in precomputed:
-        plt.plot(dist, var, color="black")
+        plt.plot(dist, var, color="black",lw=2)
 
     # plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
     plt.axvline(x=3.6, ymin=0, ymax=1, color="deepskyblue", linestyle="--")

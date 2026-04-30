@@ -29,8 +29,8 @@ class gl:
     d_volt = "Membrane potential change " + unit_mV
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
-    vm = "V$_\mathrm{m}$"
-    d_volt_short = "$\Delta$" + vm
+    vm = "V$_\mathrm{m}$" 
+    d_volt_short = "$\Delta$" + vm + unit_mV
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
     seed_num = "Seed number"
@@ -92,7 +92,7 @@ class gl:
         else:
             valence = ""
         if short:
-            return f"[{ion}{valence}]" + "$_\mathrm{o}$"
+            return f"[{ion}{valence}]" + "$_\mathrm{o}$" + gl.unit_mM
         else:
             return f"Extracellular [{ion}{valence}] " + gl.unit_mM
 

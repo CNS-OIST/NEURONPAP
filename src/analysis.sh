@@ -139,15 +139,15 @@ for i in $( # for ten random PAPs
         python NEURONPAP.py -b --stimCount $k --ko $j $i                                                                       #
         python NEURONPAP.py -b --stimCount $k --stimGlu --ko $j $i                                                             # Fig 5B
         python NEURONPAP.py -b --stimCount $k --stimGaba --ko $j $i                                                            # Fig 4B
-        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount $k --ko $j $i # Fig 6A
+        #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount $k --ko $j $i # Fig 6A
         mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount $k --ko $j $i                  # Fig 5abcd
       fi
     done
   done
-  echo "Running KO experiments" >>$output
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu --stimK $i
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu --stimK $i
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu --stimK $i
+  #echo "Running KO experiments" >>$output
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu --stimK $i
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu --stimK $i
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu --stimK $i
 done
 
 {
@@ -158,7 +158,7 @@ done
       np_phase=6
     fi
 
-    mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 0 $seed
+    #mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 0 $seed
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 1 --GABAR 0 $seed # Fig 6BCD
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 1 --GluT 1 --GABAR 0 $seed
     mpiexec -n $np_phase python NEURONPAP.py --phase --NMDAR 0 --GluT 0 --GABAR 1 $seed
@@ -170,6 +170,7 @@ done
 
 } >>$output
 mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --testPhys 1
+mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --testPhys --PAPCount 10 1
 mpiexec -n 2 python experiments.py
 mpiexec -n 1 python experiments.py
 zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf

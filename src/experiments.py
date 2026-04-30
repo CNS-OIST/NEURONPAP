@@ -6238,7 +6238,7 @@ class procedure(plotFigures):
                 f'K_v_rangeplot{self.tag}.pdf'
             )
         )
-        plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
+        plt.xlabel(f"{gl.ion_o('K',short=True)}")
         plt.xscale('log')
         xmax = self.KoCompMax
         ax = plt.gca()
@@ -6954,12 +6954,12 @@ class procedure(plotFigures):
                     if property == 'area':
                             
                         if property in log_property:
-                            ax.set_xlabel(f'Log(Area) {gl.unit_um_squared}')
+                            ax.set_xlabel(f'Area {gl.unit_um_squared}')
                         else:
                             ax.set_xlabel(f'Area {gl.unit_um_squared}')
                     elif property == 'ecs':
                         if property in log_property:
-                            ax.set_xlabel(f"Log(l$_{ECS}$) {gl.unit_micron}")
+                            ax.set_xlabel(f"l$_{ECS}$ {gl.unit_micron}")
                         else:
                             ax.set_xlabel(f'ECS {gl.unit_micron}')
                     elif property == 'PAP_Ri':
@@ -7158,7 +7158,7 @@ class procedure(plotFigures):
                 )
                 comp_lin.remove()
                 plt.draw()
-                plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
+                plt.xlabel(f"{gl.ion_o('K',short=True)}")
                 plt.xscale('log')
                 xmax = self.KoCompMax
                 ax = plt.gca()
@@ -7450,7 +7450,7 @@ class procedure(plotFigures):
                 )
 
 
-                plt.xlabel(f"Log({gl.ion_o('K',short=True)})")
+                plt.xlabel(f"{gl.ion_o('K',short=True)}")
                 plt.gca().get_xaxis().set_major_formatter(ScalarFormatter())
                 plt.xscale('log')
                 plt.savefig(
