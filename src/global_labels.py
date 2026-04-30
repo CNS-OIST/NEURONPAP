@@ -29,7 +29,7 @@ class gl:
     d_volt = "Membrane potential change " + unit_mV
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
-    vm = "V$_\mathrm{m}$" 
+    vm = "V$_\mathrm{m}$"
     d_volt_short = "$\Delta$" + vm + unit_mV
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
@@ -86,7 +86,7 @@ class gl:
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
-    def ion_o(ion, short=False):
+    def ion_o(ion, short=True):
         if ion == "K":
             valence = "$^+$"
         else:
@@ -97,7 +97,7 @@ class gl:
             return f"Extracellular [{ion}{valence}] " + gl.unit_mM
 
     @staticmethod
-    def delta_ion_o(ion, short=False):
+    def delta_ion_o(ion, short=True):
         return "$\Delta$" + gl.ion_o(ion, short=short)
 
     @staticmethod
