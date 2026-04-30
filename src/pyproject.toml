@@ -2,7 +2,7 @@
 name = "NEURONPAP"
 version = "0.1.0"
 description = "Astrocyte conductance-based model implemented in NEURON"
-requires-python = ">=3.10"
+requires-python = "==3.10.*"
 dependencies = [
     "matplotlib>=3.10.3",
     "memory-profiler>=0.61.0",
