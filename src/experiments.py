@@ -8476,8 +8476,12 @@ class procedure(plotFigures):
             return self.split_and_remove(key, *new_list)
 
     def plot_GluT_experiment(self, ax, cell):
-        df = pd.read_csv(os.path.join("Data", "glut_somato.csv"))
-        ax.axhline(min(df["i"]), 0, 1, linestyle="--", color="grey")
+        if os.path.isfile(os.path.join("Data", "glut_somato.csv")):
+            df = pd.read_csv(os.path.join("Data", "glut_somato.csv"))
+            ax.axhline(min(df["i"]), 0, 1, linestyle="--", color="grey")
+        else:
+            ax.axhline(-129.14, 0, 1, linestyle="--", color="grey")
+
 
     def combine_distance_analysis_plots(self):
         if rank != 0:
