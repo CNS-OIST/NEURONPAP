@@ -4190,13 +4190,11 @@ class procedure(plotFigures):
             plt.savefig(os.path.join("../results/paperRes", "fluxRatioOvertime.pdf"))
 
     def singleRun(
-        self, *args, expOverlay=False, GluTime=False, nearSoma=False, ki_diff=False
+        self, *args, expOverlay=False, GluTime=False, nearSoma=False,
     ):
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
-        if ki_diff:
-            self.tag += "_intra_diff"
         if len(args) > 0:
             d = 20
             k = 500
@@ -4228,6 +4226,9 @@ class procedure(plotFigures):
                 "PAPLen": 0.3,
             }
         )
+        if hasattr(self,'kdifl') and self.kdifl:
+            funcArgs[-1]['nakpump'] = self.OEpump
+            funcArgs[-1]['dt'] = self.dt/5
         if self.OE:
             funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
@@ -4250,7 +4251,7 @@ class procedure(plotFigures):
         if not self.free_read_data():
             cells = PAPModel(**funcArgs[-1])
 
-            if ki_diff:
+            if hasattr(self,'kdifl') and self.kdifl:
                 cells.set_diff_ki(True)
                 cells.durStim = 5
             if nearSoma:
