@@ -255,14 +255,14 @@ def plot_All(VClamp):
     plt.legend()
     plt.xlim((0, 500))
     plt.ylim(bottom=5)
-    plt.savefig(f"trace_M{VClamp}.pdf")
+    plt.savefig(os.path.join('../morphResults', f"trace_mol{VClamp}.pdf"))
 
     plt.figure(1)
     plt.legend()
     plt.xlabel(gl.ms)
     plt.ylabel(gl.ion_o("K"))
     plt.ylim(bottom=0)
-    plt.savefig(f"trace_mol{VClamp}.pdf")
+    plt.savefig(os.path.join('../morphResults', f"ode{VClamp}.pdf"))
 
     plt.figure(2)
     plt.scatter(VCSList, np.array(time_to_0) * 1e3)
@@ -286,7 +286,7 @@ def plot_All(VClamp):
     plt.ylabel("x(t)")
     plt.legend()
     plt.ylim(bottom=0)
-    plt.savefig(f"ode_count{VClamp}.pdf")
+    plt.savefig(os.path.join('morphResults', f"ode_count{VClamp}.pdf"))
 
     plt.figure(5)
     plt.legend()
@@ -297,7 +297,7 @@ def plot_All(VClamp):
     plt.legend()
     plt.xlabel("x (mM)")
     plt.ylabel("dxdt")
-    plt.savefig(f"phase_plot_mM_{VClamp}.pdf")
+    plt.savefig(os.path.join('morphResults',f"phase_plot_mM_{VClamp}.pdf"))
     plt.figure(7)
     x = np.linspace(10**order, 5 * 10**order, 100)
     x *= 1e-15
@@ -309,7 +309,7 @@ def plot_All(VClamp):
     plt.ylabel(r"t$_{1/2}$ " + gl.unit_ms)
     plt.ylim((0, 25))
     plt.legend()
-    plt.savefig(f"t_half_{VClamp}.pdf")
+    plt.savefig(os.path.join('morphResults', f"t_half_{VClamp}.pdf"))
 
 
 if __name__ == "__main__":

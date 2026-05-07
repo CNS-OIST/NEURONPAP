@@ -53,10 +53,8 @@ def callExperimentMode(**kwargs):
         exp.GluStim = kwargs["glustim"]
         exp.GabaStim = kwargs["gabastim"]
         if "intra_diff" in kwargs.keys() and kwargs["intra_diff"]:
-            ki_diff = True
-        else:
-            ki_diff = False
-        exp.singleRun(ki_diff=ki_diff)
+            exp.kdifl = True
+        exp.singleRun()
 
     if "shell" in kwargs.keys() and kwargs["shell"]:
         exp.GluStim = kwargs["glustim"]

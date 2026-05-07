@@ -100,7 +100,7 @@ seed=1
 #
 # Panel A: model cartoon
 mpiexec -n 11 python NEURONPAP.py --somaClamp $seed # Fig 1bc
-mpiexec -n 6 python experiments.py                  # Fig 1 de, Fig 2,A,B 
+mpiexec -n 5 python experiments.py                  # Fig 1 de, Fig 2,A,B 
 python experiments.py                                
 #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --freqComp --stimCount 10 --NMDAR 1 --GluT 1 --GABAR 0 $seed
 mpiexec -n 3 python experiments.py # fig 3,4,5 experiment fit
@@ -121,8 +121,8 @@ for i in $( # for ten random PAPs
 
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 0 --stimCount $k --ko $j $i                         
       mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 0 --NMDAR 0 --NKA 1 --stimCount $k --ko $j $i                
-      #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i                     
-      #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i                     
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGaba --GABAR 1 --GluT 0 --stimCount $k --ko $j $i                     
+      mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --GluT 1 --NMDAR 1 --stimCount $k --ko $j $i                     
       #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --GluT 0 --NMDAR 0 --GABAR 0 --GAP 1 --stimCount $k --ko $j $i            
       #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --stimGlu --PAPCount 10 --GluT 1 --NMDAR 1 --GABAR 0 --stimCount $k --ko $j $i
       if (($k == 10)); then
@@ -145,9 +145,9 @@ for i in $( # for ten random PAPs
   done
   echo "Running KO experiments" >>$output
   # fig 56
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu --stimK $i
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu --stimK $i
-  mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu --stimK $i
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimGlu --stimK $i
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 0 --stimCount 10 --stimGlu --stimK $i
+  #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py -c --ko 10 --NMDAR 0 --GluT 1 --stimCount 10 --stimGlu --stimK $i
 done
 
 {
@@ -171,7 +171,7 @@ done
 
 } >>$output
 # fig 8
-mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --testPhys 1
+#mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --testPhys 1
 mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --testPhys --intraDiff 1
 mpiexec -n 2 python experiments.py
 mpiexec -n 1 python experiments.py
