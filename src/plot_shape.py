@@ -188,7 +188,7 @@ def plot_3d_morphology(
         cmap = plt.colormaps[colormap_name]
 
     # Prepare new fig/ax if none provided
-    if fig is None or ax is None:
+    if fig is None and ax is None:
         plt.cla()
         plt.clf()
         plt.rcParams.update(gl.font)

@@ -37,8 +37,9 @@ class gl:
     seed_num = "Seed number"
     pap_len = "PAP length " + unit_micron
     fluor = "$\Delta F/F_0$ (%)"
+    lim_fluor = (0,-3)
     volt_atten = f"{vm}/V$_0$"
-    lim_cvk_volt = (-90, -40)
+    lim_cvk_volt = (-96, -40)
     lim_cvk_ko = (0, 10)
     abs_distance = f"Distance {unit_micron}"
     max_ko = 80

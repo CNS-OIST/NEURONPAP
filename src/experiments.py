@@ -5355,10 +5355,11 @@ class procedure(plotFigures):
         while PAP_AllProperties is None:
             if count > len(replace_props):
                 eMessage('Could not find pap_props')
-            self.tag = self.tag.replace(replace_props[count],"seed")
+            self.tag = self.tag.replace(replace_props[count],"seed_point_stim")
             PAP_AllProperties = self.find_pap_props()
             count += 1
 
+        
         PAP_AllProperties.release()
 
         self.compareIKSize()
@@ -5838,7 +5839,7 @@ class procedure(plotFigures):
     def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in [  "seed", "PAPLen", "KoSize"]: #,  "durStim"]:
+        for comparison in ["seed", "PAPLen"] #, "KoSize"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -5963,7 +5964,7 @@ class procedure(plotFigures):
                         for j in logx 
                     ]
 
-                    if hasattr(self,'pap_win'):
+                    if hasattr(self,'pap_win') and self.pap_win and PAP_AllProperties is not None:
                         PAP_AllProperties.release()
 
                     self.run_comp_pb(iter_bath,point_stim=point_stim,sec_range=True)
@@ -6127,7 +6128,7 @@ class procedure(plotFigures):
                 [[{},{},{"force_print_progress":True}, {"dur":50}, {}]],
             )
             self.free_figure(results)
-            AllCells = results
+            AllCells = self.find_run_comp("test_soma_response")
         if rank == 0:
             plt.figure(figsize=gl.figsize_panel)
             plt.subplots_adjust(left=0.2)
@@ -6327,38 +6328,41 @@ class procedure(plotFigures):
             totalL += cell['L']
             color_names[cell['name']] = totalL
 
+        plt.close('all')
         plt.colormaps.register(self.paplen_cm)
 
-        plot_3d_morphology(
-            rangevar='PAP',
-            color_names = color_names,
-            colormap_name = self.paplen_cm.name,
-            norm=self.paplen_norm,
-            add_null=True,
-            add_colorbar=False,
-            rangesec=(rangesec,0.1)
-        )
-        plt.ylim((0,50))
-        plt.xlim((-10,30))
-        ax = plt.gca()
-        ax.set_zlim((30,50))
-        xticks = ax.get_xticks()
-        yticks = ax.get_yticks()
-        zticks = ax.get_zticks()
 
-        ax.set_xticks(xticks[1:-1])
-        ax.set_yticks(yticks[1:-1])
-        ax.set_zticks(zticks[1:-1])
-        xlim = ax.get_xlim3d()
-        ylim = ax.get_ylim3d()
-        zlim = ax.get_zlim3d()
+        if rank == 0:
+            plot_3d_morphology(
+                rangevar='PAP',
+                color_names = color_names,
+                colormap_name = self.paplen_cm.name,
+                norm=self.paplen_norm,
+                add_null=True,
+                add_colorbar=False,
+                rangesec=(rangesec,0.1)
+            )
+            plt.ylim((0,50))
+            plt.xlim((-10,30))
+            ax = plt.gca()
+            ax.set_zlim((30,50))
+            xticks = ax.get_xticks()
+            yticks = ax.get_yticks()
+            zticks = ax.get_zticks()
 
-        xr = xlim[1] - xlim[0]
-        yr = ylim[1] - ylim[0]
-        zr = zlim[1] - zlim[0]
+            ax.set_xticks(xticks[1:-1])
+            ax.set_yticks(yticks[1:-1])
+            ax.set_zticks(zticks[1:-1])
+            xlim = ax.get_xlim3d()
+            ylim = ax.get_ylim3d()
+            zlim = ax.get_zlim3d()
 
-        ax.set_box_aspect((xr, yr, zr))
-        plt.savefig(os.path.join("../morphResults",f"rangesec_plot_morph{self.tag}.pdf"))
+            xr = xlim[1] - xlim[0]
+            yr = ylim[1] - ylim[0]
+            zr = zlim[1] - zlim[0]
+
+            ax.set_box_aspect((xr, yr, zr))
+            plt.savefig(os.path.join("../morphResults",f"rangesec_plot_morph{self.tag}.pdf"))
 
 
 
@@ -6444,15 +6448,13 @@ class procedure(plotFigures):
     def find_pap_props(self):
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
         # Mainly aims to keep additional information added during function
-        tmptag = self.tag
-        self.addChannelTag()
-        if len(tmptag) > len(self.tag):
-            self.tag = tmptag
         fileName = f"plot_seed_map{self.tag}.pickle"
+        if 'PAPLen' in self.tag:
+            fileName = fileName.replace('PAPLen','PAPLen_point_stim')
         fileName = fileName.replace('PAPLen','seed')
-        fileName = fileName.replace('_point_stim','')
         fileName = fileName.replace('_intra_diff','')
         fileName = fileName.replace('_Glu','')
+        #print(fileName)
         
 
         for f in intermediary_files:
@@ -6486,9 +6488,9 @@ class procedure(plotFigures):
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
         # Mainly aims to keep additional information added during function
         tmptag = self.tag
-        self.addChannelTag()
-        if len(tmptag) > len(self.tag):
-            self.tag = tmptag
+        #self.addChannelTag()
+        #if len(tmptag) > len(self.tag):
+        #    self.tag = tmptag
 
         for f in intermediary_files:
             if f == f"{func_name}{self.tag}.pickle":
@@ -6615,8 +6617,10 @@ class procedure(plotFigures):
             ik_soma = self.read_run_comp("run_comp_soma",func=getiKdiff)
  
             PAP_AllProperties = self.find_pap_props()
-            self.pap_win = True
+            if PAP_AllProperties is not None:
+                self.pap_win = True
             # only specific use case
+            #print(self.tag)
             def find_by_name(name):
                 save_name = []
                 for refs in PAP_AllProperties:
@@ -7316,7 +7320,7 @@ class procedure(plotFigures):
                 )
             )
         plt.close('all')
-        if hasattr(self,'pap_win'):
+        if hasattr(self,'pap_win') and PAP_AllProperties is not None:
             PAP_AllProperties.release()
 
             #if comparison == "PAPLen":
@@ -8052,6 +8056,7 @@ class procedure(plotFigures):
         normalize=False,
         split=False,
         rankDict={10: 0, 5: 1, 1: 2},
+        voltageOn=False,
     ):
         plt.close("all")
         if split:
@@ -8206,23 +8211,28 @@ class procedure(plotFigures):
 
                 else:
                     fig, ax1 = plt.subplots(figsize=gl.figsize_panel)
-                    fig.subplots_adjust(left=0.15, right=0.85, top=0.9)
-                    ax2 = ax1.twinx()
                     color = {10: "tab:blue", 5: "tab:orange", 1: "tab:green"}
                     plotObjects = []
                     plotObjects_ax2 = []
+                    if voltageOn:
+                        fig.subplots_adjust(left=0.15, right=0.85, top=0.9)
+                        ax2 = ax1.twinx()
+                    else:
+                        fig.subplots_adjust(left=0.2,right=0.95,top=0.9)
+
                     for i, t, f, yerr, sim_v, sim_f, sim_t in zip(
                         stim, expT, expF, expSTD, simV, fluorTrace, sim_time
                     ):
-                        [tmp] = ax2.plot(
-                            sim_t,
-                            sim_v,
-                            label=f"Sim.",
-                            linestyle="-",
-                            color=plotFigures.forceAlpha(color[i], 0.3),
-                            zorder=rankDict[i],
-                        )
-                        plotObjects_ax2.append(tmp)
+                        if voltageOn:
+                            [tmp] = ax2.plot(
+                                sim_t,
+                                sim_v,
+                                label=f"Sim.",
+                                linestyle="-",
+                                color=plotFigures.forceAlpha(color[i], 0.3),
+                                zorder=rankDict[i],
+                            )
+                            plotObjects_ax2.append(tmp)
                         if correctArtifact:
                             sim_f += spl(sim_t)
                             label = f"{i} stim simulation"
@@ -8249,28 +8259,30 @@ class procedure(plotFigures):
                             zorder=201 + rankDict[i],
                         )
                         plotObjects.append(tmp)
-                    ax1.set_zorder(ax2.get_zorder() + 1)
-                    ax1.patch.set_visible(False)
-                    ax2.set_xlim((100, 500))
-                    leg = ax2.legend(
-                        [
-                            plotObjects_ax2[0],
-                        ],
-                        ["Sim"],
-                        title=gl.vm,
-                        title_fontsize=10,
-                        loc="upper right",
-                        edgecolor=self.returnColor("model"),
-                        handler_map={str: LegendTitle({"fontsize": 10})},
-                        handlelength=1.5,
-                        handletextpad=0.5,
-                        borderpad=0.5,
-                    )
-                    leg.get_title().set_color(self.returnColor("model"))
-                    for legend in leg.get_lines():
-                        legend.set_color(self.returnColor("model"))
 
-                    plt.setp(leg.texts, color=self.returnColor("model"))
+                    ax1.patch.set_visible(False)
+                    if voltageOn:
+                        ax1.set_zorder(ax2.get_zorder() + 1)
+                        ax2.set_xlim((100, 500))
+                        leg = ax2.legend(
+                            [
+                                plotObjects_ax2[0],
+                            ],
+                            ["Sim"],
+                            title=gl.vm,
+                            title_fontsize=10,
+                            loc="upper right",
+                            edgecolor=self.returnColor("model"),
+                            handler_map={str: LegendTitle({"fontsize": 10})},
+                            handlelength=1.5,
+                            handletextpad=0.5,
+                            borderpad=0.5,
+                        )
+                        leg.get_title().set_color(self.returnColor("model"))
+                        for legend in leg.get_lines():
+                            legend.set_color(self.returnColor("model"))
+
+                        plt.setp(leg.texts, color=self.returnColor("model"))
                     leg = ax1.legend(
                         [
                             plotObjects[0],
@@ -8303,12 +8315,19 @@ class procedure(plotFigures):
                             pass
 
                     ax1.set_xlabel(gl.ms)
-                    ax2.set_ylabel(gl.d_volt)
                     ax1.set_ylabel(gl.fluor)
-                    _, ylim_value = gl.lim_d_volt  # mv
-                    ax1.set_ylim((0, ylim_value * -1 / 10))
-                    ax2.set_ylim((0, ylim_value))
-                    for axObj, label in {ax2: "model", ax1: "fluor"}.items():
+                    if voltageOn:
+                        _, ylim_value = gl.lim_d_volt  # mv
+                        ax1.set_ylim((0, ylim_value * -1 / 10))
+                    else:
+                        ax1.set_ylim(gl.lim_fluor)
+                    if voltageOn:
+                        ax2.set_ylabel(gl.d_volt)
+                        ax2.set_ylim((0, ylim_value))
+                        ax_objs ={ax2: "model", ax1: "fluor"} 
+                    else:
+                        ax_objs = {ax1:'fluor'}
+                    for axObj, label in ax_objs.items():
                         axObj.tick_params(axis="y", colors=self.returnColor(label))
                         axObj.yaxis.label.set_color(self.returnColor(label))
 
@@ -8353,6 +8372,94 @@ class procedure(plotFigures):
         sys.stdout.flush()
         comm.Barrier()
         return total
+
+
+    def plotExpFit_combined(self):
+        if rank != 0:
+            return
+        intermediary_files = os.listdir(os.path.join("intermediaryData"))
+        All_fits = {}
+
+        def determine_tag(tag):
+            if 'PAP' in tag:
+                if 'GABAR' in tag:
+                    return 'GABA$_A$R'
+                else:
+                    return 'NMDAR'
+            else:
+                if 'forced' in tag:
+                    return 'Accumulation'
+                else:
+                    return 'K$^+$'
+
+
+        for f in intermediary_files:
+            if "fitExpDepolarization" in f:
+                tag = determine_tag(f)
+                print(f)
+                with open(os.path.join("intermediaryData", f), "rb") as handle:
+                    AllCells = pickle.load(handle)
+                All_fits[tag]= AllCells
+
+        color = {10: "tab:green", 5: "tab:orange", 1: "tab:blue"}
+
+        fig = plt.figure(figsize=gl.figsize_halfh)
+        fig.subplots_adjust(left=0.1, right=0.99, top=0.9, bottom=0.15)
+        gs = fig.add_gridspec(nrows=2, ncols=2, wspace=0.5,hspace=0.5)
+        plotObjects_ax2 = []
+        for i, (tag, all_cells) in enumerate(All_fits.items()):
+            if i == 0:
+                sharex = None
+                sharey = None
+            else:
+                sharex = original_ax
+                sharey = original_ax
+            ax = fig.add_subplot(gs[i%2,i // 2],sharex=sharex,sharey=sharey)
+            if i == 0:
+                original_ax = ax
+
+            ax.set_title(tag,loc='left')
+            for cells in all_cells:
+                initStep = self.get_initStep(cells)
+                [tmp] = ax.plot(
+                    list(cells.time)[initStep:],
+                    list(cells.vPAP)[initStep:],
+                    linestyle="-",
+                    color=color[cells.SpikeNum]
+                )
+                plotObjects_ax2.append(tmp)
+                ax.set_ylabel(gl.volt)
+                ax.set_xlabel(gl.ms)
+
+
+        top = original_ax.get_position().y1
+        right = ax.get_position().x1
+        left = original_ax.get_position().x0
+        center = (left + right) / 2
+        color_pos = [
+            ("left", "tab:green", "1 stim."),
+            ("center", "tab:orange", "5 stim."),
+            ("right", "tab:blue", "10 stim."),
+        ]
+        for pos, color, xlabel in color_pos:
+            fig.text(
+                locals()[pos],
+                top + 0.045,
+                xlabel,
+                color=color,
+                fontsize=plt.rcParams["axes.labelsize"],
+                ha=pos,
+                va="bottom",
+                fontweight="bold",
+            ) 
+
+
+        Fname = 'Combined_fit_exp_voltage'
+        plt.savefig(f"../results/paperRes/{Fname}.pdf")
+
+
+  
+
 
     def optPotassiumSearch(self, x, optmV=19.2):
         self.addChannelTag()
@@ -9478,7 +9585,7 @@ if __name__ == "__main__":
                         kwargs["autosave"] = True
                         exp.fitExpDepolarization(res.x, **kwargs)
                 exp.foundfitExperiment = False
-
+        exp.plotExpFit_combined()
     elif size in [6,5,2, 4]:
         mprint("running bathExp")
         exp = procedure(4, 0)
