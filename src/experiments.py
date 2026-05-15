@@ -2293,7 +2293,7 @@ class plotFigures:
         plt.close("all")
 
     def plot_fluor_comparison(self,AllCells):
-        fig = plt.figure(figsize=gl.figsize_panel_long)
+        fig = plt.figure(figsize=gl.figsize_panel)
         fig.subplots_adjust(left=0.1, right=0.99, top=0.9, bottom=0.15)
         gs = fig.add_gridspec(nrows=2, ncols=1, hspace=0.5)
         ax_volt = fig.add_subplot(gs[0])
@@ -4736,8 +4736,8 @@ class procedure(plotFigures):
     def channelComparison(self):
         self.addChannelTag()
         if self.GABAR:
-            self.channelCompareMax *= 2
-            self.channelCompareStep *= 2
+            self.channelCompareMax *= 2.6 
+            self.channelCompareStep *= 2.6 
         elif self.GAP:
             self.channelCompareMax /= 2
             self.channelCompareStep /= 2
