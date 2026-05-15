@@ -1055,6 +1055,7 @@ class plotFigures:
             for recVal in AllRecVals:
                 plt.cla()
                 plt.clf()
+                plt.figure(figsize=gl.figsize_panel_long)
                 total = [
                     max(getattr(cell, recVal)) for cell in AllRes[compVal].values()
                 ]
@@ -1065,7 +1066,7 @@ class plotFigures:
                     alpha = 1
                     if getattr(cell, merge) != selected:
                         alpha = 0.3
-                    initStep = self.get_initStep(cell)
+                    initStep = self.get_initStep(cell,shift=5)
                     plt.plot(
                         list(cell.time)[initStep:],
                         list(getattr(cell, recVal))[initStep:],
@@ -1077,16 +1078,14 @@ class plotFigures:
                             else getattr(cell, merge)
                         ),
                     )
-                if zoom:
-                    plt.xlim(
-                        gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
-                    )
+
                 plt.xlabel(gl.ms)
+                plt.xlim((148,156))
                 if recVal == "vPAP":
                     plt.ylabel(gl.volt)
                 else:
                     plt.ylabel(recVal)
-                plt.ylim(gl.lim_Vmemb)
+                plt.ylim((-90,-60))
                 plt.title(
                     label=f"mean={total.mean()},std={total.std()},med={np.median(total)}"
                 )
@@ -2162,7 +2161,10 @@ class plotFigures:
                 ax_summary.set_xticks(x)
                 ax_summary.set_xticklabels(groups)
                 ax_summary.set_ylabel(gl.d_volt)
-                ax_summary.set_ylim(gl.lim_d_volt)
+                if location == 'vPAP':
+                    ax_summary.set_ylim(gl.lim_d_volt)
+                else:
+                    ax_summary.set_ylim((0,1))
                 handle, label = ax[-1].get_legend_handles_labels()
 
                 if location == 'vPAP' and p > 1:
@@ -2290,16 +2292,41 @@ class plotFigures:
                 )
         plt.close("all")
 
+    def plot_fluor_comparison(self,AllCells):
+        fig = plt.figure(figsize=gl.figsize_panel_long)
+        fig.subplots_adjust(left=0.1, right=0.99, top=0.9, bottom=0.15)
+        gs = fig.add_gridspec(nrows=2, ncols=1, hspace=0.5)
+        ax_volt = fig.add_subplot(gs[0])
+        ax_ko = fig.add_subplot(gs[1],sharey=ax_volt)
+ 
+        for cells in AllCells:
+            for cell in cells:
+                if cell.seed == 1:
+                    initStep = self.get_initStep(cell)
+                    dF = (max(list(cell.fluorVPAP)[initStep:]) - cell.RMP) * -1/10
+                    ax_ko.scatter(max(list(cell.KoPAP)[initStep:]),dF,color='black')
+                    ax_volt.scatter(max(list(cell.vPAP)[initStep:]),dF,color='black')
+
+        ax_volt.invert_yaxis()
+        ax_volt.set_ylabel(gl.fluor)
+        ax_ko.set_ylabel(gl.fluor)
+        ax_volt.set_xlabel(gl.volt)
+        ax_ko.set_xlabel(gl.ion_o('K'))
+        ax_volt.set_ylim(0,-2.5)
+        plt.savefig(os.path.join("../results/paperRes",f"fluor_comparison{self.tag}.pdf"))
+
 
 class procedure(plotFigures):
     alpha = 0.05
-    leak = 1.4  # ideal calculated from stable model
+    leak = 1.15  # ideal calculated from stable model
     optKir = 0  # std * optkir  + mean
     optNMDAR = 344
-    optGABAR = 1000
+    optGABAR = 1320
     optGluT = 0  # std * optGluT + mean
     optNKA = 1
     maxNKA = 10
+    spillOverLen = 1.78832533e+01
+    spillOverSlowing = 6.03081751e+02
     OEpump = 200
     # default NMDAR counts
     channelCompareMax = 500
@@ -2949,10 +2976,11 @@ class procedure(plotFigures):
             plt.tight_layout()
             plt.savefig(os.path.join("../results/paperRes", f"CurrentClampSoma.pdf"))
 
-    def pseudotrace(self, x, v):
+    def pseudotrace(self, x, v,bb=(80,220)):
+        min_b,max_b = bb
         tmp = []
         for t in x:
-            if t < 80 or t > 220:
+            if t < min_b or t > max_b:
                 tmp.append(0)
             else:
                 tmp.append(v)
@@ -4537,6 +4565,10 @@ class procedure(plotFigures):
         # else:
         #     setKoylim = False
         self.free_figure(AllCells)
+        if invivo:
+            for cells in AllCells:
+                for cell in cells:
+                    print(max(list(cell.vPAP)),max(list(cell.vSoma)))
         self.plotIKSeries(
             AllCells,
             setKoylim=setKoylim,
@@ -5839,7 +5871,7 @@ class procedure(plotFigures):
     def potassiumComparison(self,nearSoma=False):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
-        for comparison in ["seed", "PAPLen"] #, "KoSize"]: #,  "durStim"]:
+        for comparison in ["seed", "PAPLen"]: #, "KoSize"]: #,  "durStim"]:
             if comparison == "KoSize":
                 compMax = self.KoCompMax
                 compStep = self.KoCompStep
@@ -5860,6 +5892,7 @@ class procedure(plotFigures):
                     compMax = 6
                 compStep = 1
                 startb = 1
+
 
             if comparison != "KoSize":
                 if comparison == "PAPLen":
@@ -5977,6 +6010,7 @@ class procedure(plotFigures):
                 if comparison == "seed" and self.rect_off:
                     self.rect_off = False
                     self.tag = tmp_tag
+
 
             # Calculate the number of iterations for all parm sets
             iterations = comm.bcast(
@@ -6261,7 +6295,7 @@ class procedure(plotFigures):
         plt.plot(base + x,self.nernst(x+base,120)+85,linestyle='--',color='black') 
  
         custom_handles = [
-            Line2D([0], [0], color=self.returnColor('Soma'), label='Soma Size'),
+            Line2D([0], [0], color=self.returnColor('Soma'), label='Comparable to Soma'),
             Line2D([0], [0], color=self.returnColor('global'), label='Bath Application'),
             Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
         ]
@@ -6533,7 +6567,68 @@ class procedure(plotFigures):
         else:
             return None
 
+    @read_data
+    def runFitCaliburation(
+        self,
+    ):
+        funcArgs = []
+        funcArgs.append(
+            {
+                "mode": 0,
+                "Glu": self.GluStim,
+                "GABA": False,
+                "ComplexMorph": True,
+                "kleak": self.leak,
+                "clleak": 0,
+                "dt": self.dt,
+                "stimdelay": self.stimdelay,
+                "PAPCount": self.PAPCount,
+                "kir2": self.optKir,
+                "seed":self.seed,
+                "PAPLen":self.spillOverLen,
+            }
+        )
+        # if self.NMDAR:
+        #     funcArgs[-1]["multiple"] = self.optNMDAR
+        # else:
+        self.NMDAR = False
+        funcArgs[-1]["multiple"] = None
+        if self.GluStim:
+            self.GluT = True
+            funcArgs[-1]["GluTrans"] = self.optGluT
+        else:
+            self.GluT = False
+            funcArgs[-1]["GluTrans"] = None
 
+        ccList = ["KoSize"]
+
+
+        run_func_args = [[{}, {'slow':self.spillOverSlowing},{"number": 10, "freq": self.freq}, {"slow":1},{}]]
+
+        run_func = [["savePAPProp","initialize", "setSlow_iter","multiSpike", "setSlow_iter","run"]]
+        run_func_args[0] = [{}] + run_func_args[0]
+        self.KoCompMax = gl.max_ko
+        self.KoCompStep = 5 
+        iterations = [
+            (i)
+            for i in range(0,self.KoCompMax+1,self.KoCompStep)
+        ]
+ 
+        results = parallizeFor(
+            iterations,
+            [PAPModel],
+            funcArgs,
+            ccList,
+            run_func,
+            run_func_args,
+        )
+
+        comm.Barrier()
+        self.free_figure(results)
+        if rank == 0:
+            self.plot_fluor_comparison(results)
+
+ 
 
 
     @read_data
@@ -6667,6 +6762,8 @@ class procedure(plotFigures):
 
 
         if rank == 0:
+            if comparison == 'seed':
+                self.plot_fluor_comparison(results)
             plt.cla()
             plt.clf()
             plt.figure(figsize=gl.figsize_panel)
@@ -7176,7 +7273,7 @@ class procedure(plotFigures):
 
                     custom_handles = [
                         Line2D([0], [0], color=self.returnColor('PAP'), label='PAP Size'),
-                        Line2D([0], [0], color=self.returnColor('Soma'), label='Soma Size'),
+                        Line2D([0], [0], color=self.returnColor('Soma'), label='Comparable to Soma'),
                         Line2D([0], [0], color=self.returnColor('global'), label='Bath Application'),
                         Line2D([0], [0], color='black', linestyle='--',label=gl.ek_raw),
                     ]
@@ -7325,8 +7422,8 @@ class procedure(plotFigures):
 
             #if comparison == "PAPLen":
             #    self.plotIKSeries(results, tagReset=True, setKoylim=True)
-            #elif comparison == "seed":
-            #    self.mergePlotsIK(results, "KoSize", "seed", selected=1)
+            if comparison == "seed":
+                self.mergePlotsIK.__wrapped__(self,results, "KoSize", "seed", selected=1)
         
 
     def plot_RiPlots(self,*AllCells_List):
@@ -7617,16 +7714,16 @@ class procedure(plotFigures):
                 "voltageClamp": -60 * mV,
                 "ComplexMorph": True,
                 "Glu": False,
-                "kir2": self.optKir,
                 "GluTrans": self.optGluT,
+                "kir2":-1e7,
                 "clleak": 0,
                 "kleak": self.leak,
                 "dt": self.dt,
                 "seed": self.seed,
             }
         )
-        ccList = ["g_pas"]
-        iterations = [x for x in np.geomspace(2.60, 0.69, num=15)]
+        ccList = ["kleak"]
+        iterations = [x for x in np.geomspace(0.69, 5,num=15)]
         results = parallizeFor(
             iterations,
             [PAPModel],
@@ -7648,7 +7745,7 @@ class procedure(plotFigures):
             for cells in results:
                 for cell in cells:
                     sensitivity.append(cell.spaceConstant)
-                    test_conductance.append(cell.g_pas)
+                    test_conductance.append(cell.GENEDict['kleak'])
                     if abs(3.6 - sensitivity[-1]) < tolerance:
                         maxVal = max(cell.soma_atten) - cell.RMP
                         inject_site = cell.soma_L * inject_x
@@ -7848,6 +7945,7 @@ class procedure(plotFigures):
 
         self.plot_physiological(AllCells, stim, papcounts, models,syn_count=papcounts[1])
 
+
     def fitExpDepolarization(
         self,
         x,
@@ -7928,9 +8026,10 @@ class procedure(plotFigures):
                 )
         else:
             mprint(x)
-            if len(x) == 4:
+            KoSize = 22
+            if len(x) == 3:
                 if use_tau:
-                    glt, kir, PAPLen, KoSize = x
+                    glt, kir, PAPLen = x
                 else:
                     glt, kir = x
                     glt = int(glt)
@@ -7941,7 +8040,7 @@ class procedure(plotFigures):
             else:
                 self.tag += "_forced_accum"
                 if use_tau:
-                    glt, kir, PAPLen, KoSize, tau2, slowing = x
+                    glt, kir, PAPLen, tau2, slowing = x
                 else:
                     glt, kir = x
                 forcedAccum = True
@@ -8380,6 +8479,7 @@ class procedure(plotFigures):
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
         All_fits = {}
 
+        key_order = ['K$^+$','Accumulation','GABA$_A$R','NMDAR']
         def determine_tag(tag):
             if 'PAP' in tag:
                 if 'GABAR' in tag:
@@ -8391,10 +8491,22 @@ class procedure(plotFigures):
                     return 'Accumulation'
                 else:
                     return 'K$^+$'
+        def determine_id(tag):
+            if 'GABA' in tag or 'NMDA' in tag:
+                if 'GABA' in tag:
+                    return (1,0) 
+                else:
+                    return (1,1) 
+            else:
+                if 'Accum' in tag:
+                    return (0,1) 
+                else:
+                    return (0,0) 
+
 
 
         for f in intermediary_files:
-            if "fitExpDepolarization" in f:
+            if "fitExpDepolarization" in f and str(self.seed) in f:
                 tag = determine_tag(f)
                 print(f)
                 with open(os.path.join("intermediaryData", f), "rb") as handle:
@@ -8402,11 +8514,12 @@ class procedure(plotFigures):
                 All_fits[tag]= AllCells
 
         color = {10: "tab:green", 5: "tab:orange", 1: "tab:blue"}
-
+        All_fits = {k: All_fits[k] for k in key_order if k in All_fits}
         fig = plt.figure(figsize=gl.figsize_halfh)
         fig.subplots_adjust(left=0.1, right=0.99, top=0.9, bottom=0.15)
         gs = fig.add_gridspec(nrows=2, ncols=2, wspace=0.5,hspace=0.5)
         plotObjects_ax2 = []
+
         for i, (tag, all_cells) in enumerate(All_fits.items()):
             if i == 0:
                 sharex = None
@@ -8414,7 +8527,8 @@ class procedure(plotFigures):
             else:
                 sharex = original_ax
                 sharey = original_ax
-            ax = fig.add_subplot(gs[i%2,i // 2],sharex=sharex,sharey=sharey)
+            x,y = determine_id(tag)
+            ax = fig.add_subplot(gs[x,y],sharex=sharex,sharey=sharey)
             if i == 0:
                 original_ax = ax
 
@@ -9447,6 +9561,109 @@ class procedure(plotFigures):
                 os.path.join("../results/paperRes", f"FreqComparison{self.tag}.pdf")
             )
 
+    def fit_fluor(self):
+        iterations = [2,4,6,8,10,20,100,500] 
+        self.interval_spacing = iterations
+        # Calculate the number of iterations each process will handle
+        iterations_per_process = len(iterations) // size
+
+        # Adjust the range for the last process
+        if len(iterations) % size == 0:
+            remaining_iterations = 0
+            minimum = rank * iterations_per_process
+            maximum = (rank + 1) * iterations_per_process
+        elif rank >= size - len(iterations) % size:
+            remaining_iterations = 1
+            minimum = rank * (iterations_per_process + remaining_iterations) - (
+                size - len(iterations) % size
+            )
+            maximum = (rank + 1) * (iterations_per_process + remaining_iterations) - (
+                size - len(iterations) % size
+            )
+        else:
+            remaining_iterations = 0
+            minimum = rank * iterations_per_process
+            maximum = (rank + 1) * iterations_per_process
+
+        results = []
+        h.load_file("stdgui.hoc")
+        soma = h.Section(name='soma')
+        soma.L = 20      # length in um
+        soma.diam = 20   # diameter in um
+        soma.cm = 1      # membrane capacitance
+        soma.Ra = 100    # axial resistance
+
+        soma.insert('GEVI')
+        vclamp = h.VClamp(soma(0.5))
+
+        t = h.Vector().record(h._ref_t)
+        v = h.Vector().record(soma(0.5)._ref_dF_GEVI)
+
+
+        for index in range(minimum, maximum):
+            interval = iterations[index]
+
+            v_init = -65
+            vclamp.dur[0] = 10   # duration of first phase (ms)
+            vclamp.amp[0] = v_init   # target voltage (mV)
+
+            vclamp.dur[1] = interval 
+            vclamp.amp[1] = v_init + 100   # target voltage (mV)
+            vclamp.dur[2] = 10
+            vclamp.amp[2] = v_init   # target voltage (mV)
+
+            h.finitialize(v_init)
+            h.continuerun(20 + interval)
+            results.append((interval,list(t).copy(),np.array(v)-v_init))
+            print(max(list(t)),max(list(v)))
+        results = comm.gather(results, root=0)
+
+        comm.Barrier()
+        if rank == 0:
+            self.plot_exp_comparison_fluor(results)
+
+    def plot_exp_comparison_fluor(self,results):
+        max_v = 0
+        df = pd.read_csv(os.path.join("./Data","archlight_delay.csv"))
+        df['std'] -= df['fraction']
+
+        fig,ax = plt.subplots(figsize=gl.figsize_panel)
+        fig.subplots_adjust(left=0.2, right=0.99, top=0.9, bottom=0.15)
+        ax_inset = ax.inset_axes([0.15,0.35,0.3,0.3]) 
+        ax.errorbar(range(len(df)),df['fraction'],yerr=df['std'],label='Exp.',fmt='-o',ecolor='lightgray',color='lightgray',zorder=-1)
+
+        for cells in results:
+            for cell in cells:
+                interval,t,v = cell
+                if max(v) > max_v:
+                    max_v = max(v)
+
+        x = []
+        y = []
+        for cells in results:
+            for cell in cells:
+                interval,t,v = cell
+                x.append(self.interval_spacing.index(interval))
+                y.append(max(v)/max_v*100)
+                if interval == 500:
+                    ax_inset.plot(t,v,color='black')
+                    ax_inset.axhline(max(v),linestyle='--',color='black')
+                    ax_inset.set_xlim(0,510)
+                    df = pd.read_csv(os.path.join("./Data","archlight_500_trace.csv"))
+                    df['t'] -= df['t'].iloc[0]
+                    df['t'] += 10
+                    ax_inset.scatter(df['t'],df['v'],color='lightgray')
+                    ax_inset.set_title('Fluor. Response\n(500 ms)')
+                    ax_inset.set_xlabel(gl.ms)
+        ax.plot(x,y,label='Sim.',color='black')
+        ax.set_xticks(range(len(self.interval_spacing)),labels=self.interval_spacing)
+        ax.set_ylabel(gl.fluor_frac)
+        ax.set_xlabel(f'Voltage clamp duration {gl.unit_ms}')
+        ax.legend()
+
+        plt.savefig(os.path.join("../results/paperRes",'fluor_relation.pdf'))
+
+
     @staticmethod
     def extract_and_pair_f_by_gid(csv_file_path):
         df = pd.read_csv(csv_file_path)
@@ -9496,7 +9713,7 @@ if __name__ == "__main__":
         use_tau = False
         for PAP in testBools:
             for forcedAccum in testBools:
-                exp = procedure(seed, 0)
+                exp = procedure(1, 0)
                 kwargs = {"PAP": PAP, "showFig": False}
                 if PAP:
 
@@ -9520,13 +9737,12 @@ if __name__ == "__main__":
                     initParms = (
                         exp.optGluT,
                         exp.optKir,
-                        2,
-                        5e01,
                     )
-                    bounds = [(0, 1e5), (0, 1e5), (0.3, 50), (0.5, 50)]
+  
+                    bounds = [(0, 1e5), (-1e5, 1e5), (0.3, 50)]
 
                     if forcedAccum and use_tau:
-                        initParms += (10, 1e2)
+                        initParms += (exp.spillOverLen,6.31084066, exp.spillOverSlowing)
                         initParms = list(initParms)
                         # initParms += [
                         #    5.11574074e-01,
@@ -9548,8 +9764,10 @@ if __name__ == "__main__":
 
                         bounds += [
                             (5.8, 10000),
-                            (0, 10000),
+                            (0, 1e10),
                         ]
+                    else:
+                        initParms += (0.3,)
 
                     if not use_tau:
                         initParms = tuple(initParms[:2])
@@ -9562,7 +9780,7 @@ if __name__ == "__main__":
                     "showFig": False,
                 }
 
-                skipsave = True
+                skipsave = False
                 exp.fitExpDepolarization(
                     initParms,
                     showFig=True,
@@ -9588,13 +9806,19 @@ if __name__ == "__main__":
         exp.plotExpFit_combined()
     elif size in [6,5,2, 4]:
         mprint("running bathExp")
-        exp = procedure(4, 0)
+        exp = procedure(1, 0)
+        exp.dt *=2
         if size == 2:
             exp.bathExperiment()
         else:
             exp.bathExperiment(invivo=True)
+
+    elif size > 6:
+        exp = procedure(1, 0)
+        exp.runFitCaliburation()
+        exp.fit_fluor()
     else:
-        exp = procedure(6, 0)
+        exp = procedure(1, 0)
         exp.uptakeRatio()
         #exp.measureRi()
 

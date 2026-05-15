@@ -9,3 +9,4 @@ flycheck*
 uv.lock
 intermediaryData/
 *.mp4
+*.slurm
