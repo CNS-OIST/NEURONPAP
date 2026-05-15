@@ -444,11 +444,6 @@ class PAPModel(ResultsPAPModel):
 
     def setDualPatch(self):
         h.tstop = 50
-        # set g_pas
-        for sec in h.allsec():
-            for seg in sec:
-                setattr(seg, "g_pas", self.g_pas)
-
         h.clampSwitch(5, self.voltageClamp)
         self.lenUnits = h.lenUnits
         self.soma_L = getattr(self.soma, "L")
@@ -1019,7 +1014,7 @@ class PAPModel(ResultsPAPModel):
             self.RMP = []
             for vpap in self.vPAP:
                 self.RMP.append(list(vpap)[-1])
-        print(f"RMP:{self.RMP}")
+        # print(f"RMP:{self.RMP}")
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
         # self.ko_sim(False)
@@ -1525,6 +1520,9 @@ class PAPModel(ResultsPAPModel):
             sl.append(currentSection.sec)
             currentSection = h.SectionRef(sec=currentSection.parent)
         return sl
+
+    def setSlow_iter(self, slow=1, changeBaseline=None):
+        self.setSlowing(slow, changeBaseline)
 
     def setSlowing(self, slow, changeBaseline=None):
         if slow:

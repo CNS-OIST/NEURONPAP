@@ -11,7 +11,7 @@ class gl:
     unit_pA = "(pA)"
     unit_micron_raw = "$\mu$m"
     unit_micron = f"({unit_micron_raw})"
-    unit_micron_bold = r'($\mathbf{\mu}$m)'
+    unit_micron_bold = r"($\mathbf{\mu}$m)"
     unit_curr_density_raw = "mA/cm$^2$"
     unit_curr_density = f"({unit_curr_density_raw})"
     unit_hz_raw = "Hz"
@@ -30,14 +30,15 @@ class gl:
     d_volt = "Membrane potential change " + unit_mV
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
-    vm = "V$_\mathrm{m}$" 
-    d_volt_short = "$\Delta$" + vm + " " +unit_mV
+    vm = "V$_\mathrm{m}$"
+    d_volt_short = "$\Delta$" + vm + " " + unit_mV
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
     seed_num = "Seed number"
     pap_len = "PAP length " + unit_micron
     fluor = "$\Delta F/F_0$ (%)"
-    lim_fluor = (0,-3)
+    fluor_frac = "Fraction of max fluorescence (%)"
+    lim_fluor = (0, -3)
     volt_atten = f"{vm}/V$_0$"
     lim_cvk_volt = (-96, -40)
     lim_cvk_ko = (0, 10)
@@ -88,7 +89,7 @@ class gl:
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
-    def ion_o(ion, short=True,unit=True):
+    def ion_o(ion, short=True, unit=True):
         if ion == "K":
             valence = "$^+$"
         else:
