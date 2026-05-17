@@ -5385,8 +5385,8 @@ class procedure(plotFigures):
 
     def compareIKSizes2KoSizes(self):
         count = 0
-        PAP_AllProperties = self.find_pap_props()
-        replace_props = ['KoSize','PAPLen']
+        PAP_AllProperties = None 
+        replace_props = ['PAPLen','KoSize']
         while PAP_AllProperties is None:
             if count > len(replace_props):
                 eMessage('Could not find pap_props')
@@ -5408,115 +5408,115 @@ class procedure(plotFigures):
         ampLen = self.find_run_comp('runAmpLenComparison')
         PAP_AllProperties = self.find_pap_props()
         if rank == 0:
+            #plt.cla()
+            #plt.clf()
+           #nameList = {}
+            #for i,data in enumerate([IKSize_PAP,IKSize_Soma]):
+            #    for cells in data:
+            #        for cell in cells:
+            #            plt.plot(list(cell.time),list(cell.vPAP))
+            #plt.savefig('traces.pdf')
+            #plt.cla()
+            #plt.clf()
+            #
+            #for i,data in enumerate([IKSize_PAP,IKSize_Soma]):
+            #    if i == 0:
+            #        color = self.returnColor('PAP')
+            #    else:
+            #        color = self.returnColor('Primary Branch')
+            #    
+            #    for cells in data:
+            #        for cell in cells:
+            #            if hasattr(cell,'PAP_name') and cell.PAP_name == 'soma':
+            #                color = self.returnColor('Soma')
+
+            #            if not hasattr(cell,'fit_maxResponse'):
+            #                initStep = self.get_initStep(cell)
+            #                data = -(np.array(list(cell.vPAP)[initStep:]) - cell.RMP)
+            #                peaks,_ = find_peaks(data)
+            #                last_peak_index = peaks[-1]
+            #                last_peak_value = list(cell.vPAP)[last_peak_index]
+            #                plt.scatter(cell.KoSize,last_peak_value-cell.RMP,color=color)
+            #            else:
+            #                plt.scatter(cell.KoSize,cell.fit_maxResponse-cell.fit_minResponse,color=color)
+
+            #plt.ylabel(gl.d_volt)
+            #plt.xlabel(gl.delta_ion_o('K'))
+            #plt.savefig(
+            #    os.path.join(
+            #        "../results/paperRes",
+            #        f"KoSize_depo{self.tag}.pdf",
+            #    )
+            #)
+
+            #plt.cla()
+            #plt.clf()
+            #for cells in ampLen:
+            #    for cell in cells:
+            #        def find_seed(seed):
+            #            for refs in IKSize_PAP:
+            #                for ref in refs:
+            #                    if ref.seed == seed:
+            #                        return ref
+            #            return None 
+
+            #        iksize = find_seed(cell.seed)
+            #        if iksize is not None and cell.KoSize == self.KoCompMax:
+            #            plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
+            #res_column_soma = self.read_run_comp("run_comp_soma")
+           
+
+            ## only specific use case
+            #def find_by_name(name):
+            #    save_name = []
+            #    for refs in PAP_AllProperties:
+            #        for ref in refs:
+            #            if name in ref.PAP_name:
+            #                save_name.append(ref)
+
+            #    if len(save_name) > 0:
+            #        return save_name
+            #    else:
+            #        return None 
+
+            #ri_pb_seed = [ri.seed for ri in find_by_name('dendrite')]
+            #
+            #for j in ri_pb_seed:
+            #    def getbySeed(cell):
+            #        if cell.seed == j:
+            #            return max(cell.vPAP) - cell.RMP
+            #        else:
+            #            return None
+            #  
+            #    res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed)
+            #    def find_seed():
+            #        for refs in IKSize_Soma:
+            #            for ref in refs:
+            #                if ref.seed == j:
+            #                    return ref
+            #        return None 
+
+            #    iksize = find_seed()
+            #    if iksize is not None:
+            #        plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,res_column_pb[-1],color=self.returnColor('Primary Branch'))
+
+            #for refs in IKSize_Soma:
+            #    for ref in refs:
+            #        if ref.PAP_name == 'soma':
+            #            plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,res_column_soma[-1],color=self.returnColor('Soma'))
+
+            #plt.savefig(
+            #    os.path.join(
+            #        "../results/paperRes",
+            #        f"Response_potassiumRequirement{self.tag}.pdf",
+            #    )
+            #)
+
+
             plt.cla()
             plt.clf()
             plt.figure(figsize=gl.figsize_panel)
             plt.subplots_adjust(left=0.2,bottom=0.2)
-            nameList = {}
-            for i,data in enumerate([IKSize_PAP,IKSize_Soma]):
-                for cells in data:
-                    for cell in cells:
-                        plt.plot(list(cell.time),list(cell.vPAP))
-            plt.savefig('traces.pdf')
-            plt.cla()
-            plt.clf()
-            
-            for i,data in enumerate([IKSize_PAP,IKSize_Soma]):
-                if i == 0:
-                    color = self.returnColor('PAP')
-                else:
-                    color = self.returnColor('Primary Branch')
-                
-                for cells in data:
-                    for cell in cells:
-                        if hasattr(cell,'PAP_name') and cell.PAP_name == 'soma':
-                            color = self.returnColor('Soma')
-
-                        if not hasattr(cell,'fit_maxResponse'):
-                            initStep = self.get_initStep(cell)
-                            data = -(np.array(list(cell.vPAP)[initStep:]) - cell.RMP)
-                            peaks,_ = find_peaks(data)
-                            last_peak_index = peaks[-1]
-                            last_peak_value = list(cell.vPAP)[last_peak_index]
-                            plt.scatter(cell.KoSize,last_peak_value-cell.RMP,color=color)
-                        else:
-                            plt.scatter(cell.KoSize,cell.fit_maxResponse-cell.fit_minResponse,color=color)
-
-            plt.ylabel(gl.d_volt)
-            plt.xlabel(gl.delta_ion_o('K'))
-            plt.savefig(
-                os.path.join(
-                    "../results/paperRes",
-                    f"KoSize_depo{self.tag}.pdf",
-                )
-            )
-
-            plt.cla()
-            plt.clf()
-            for cells in ampLen:
-                for cell in cells:
-                    def find_seed(seed):
-                        for refs in IKSize_PAP:
-                            for ref in refs:
-                                if ref.seed == seed:
-                                    return ref
-                        return None 
-
-                    iksize = find_seed(cell.seed)
-                    if iksize is not None and cell.KoSize == self.KoCompMax:
-                        plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
-            res_column_soma = self.read_run_comp("run_comp_soma")
-           
-
-            # only specific use case
-            def find_by_name(name):
-                save_name = []
-                for refs in PAP_AllProperties:
-                    for ref in refs:
-                        if name in ref.PAP_name:
-                            save_name.append(ref)
-
-                if len(save_name) > 0:
-                    return save_name
-                else:
-                    return None 
-
-            ri_pb_seed = [ri.seed for ri in find_by_name('dendrite')]
-            
-            for j in ri_pb_seed:
-                def getbySeed(cell):
-                    if cell.seed == j:
-                        return max(cell.vPAP) - cell.RMP
-                    else:
-                        return None
-              
-                res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed)
-                def find_seed():
-                    for refs in IKSize_Soma:
-                        for ref in refs:
-                            if ref.seed == j:
-                                return ref
-                    return None 
-
-                iksize = find_seed()
-                if iksize is not None:
-                    plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,res_column_pb[-1],color=self.returnColor('Primary Branch'))
-
-            for refs in IKSize_Soma:
-                for ref in refs:
-                    if ref.PAP_name == 'soma':
-                        plt.scatter(iksize.fit_maxResponse-iksize.fit_minResponse,res_column_soma[-1],color=self.returnColor('Soma'))
-
-            plt.savefig(
-                os.path.join(
-                    "../results/paperRes",
-                    f"Response_potassiumRequirement{self.tag}.pdf",
-                )
-            )
-
-
-            plt.cla()
-            plt.clf()
             def find_by_name(name):
                 save_name = []
                 for refs in PAP_AllProperties:
@@ -5595,11 +5595,7 @@ class procedure(plotFigures):
                         Ga = 1/Ra
                         a = prp_cell.PAP_properties[-1]['diam']/2 * 1e-4
                         L = prp_cell.PAP_properties[-1]['L']/prp_cell.PAP_properties[-1]['nseg']*1e-4
-                        if '_point_stim' in self.tag:
-                            val = np.sqrt(Ga/Gm * L*2/a)
-                        else:
-                            nseg = prp_cell.PAP_properties[-1]['nseg']
-                            val =np.sqrt(Rm/Ra * 2/nseg/a)  
+                        val = np.sqrt(Ga/Gm * L*2/a)
 
 
                         plt.scatter(val ,max(list(cell.vPAP))-cell.RMP,color=self.returnColor('PAP'))
@@ -5669,11 +5665,7 @@ class procedure(plotFigures):
                     Ga = 1/Ra
                     a = prp_cell.PAP_properties[-1]['diam']/2 * 1e-4
                     L = prp_cell.PAP_properties[-1]['L']/prp_cell.PAP_properties[-1]['nseg']*1e-4
-                    if '_point_stim' in self.tag:
-                        val = np.sqrt(Ga/Gm * L*2/a)
-                    else:
-                        nseg = prp_cell.PAP_properties[-1]['nseg']
-                        val =np.sqrt(Rm/Ra * 2/nseg/a)  
+                    val = np.sqrt(Ga/Gm * L*2/a)
                     Gms.append(Gm)
                     Gas.append(Ga)
 
@@ -5704,11 +5696,7 @@ class procedure(plotFigures):
                         Ga = 1/Ra
                         a = prp_cell.PAP_properties[-1]['diam']/2 * 1e-4
                         L = prp_cell.PAP_properties[-1]['L']/prp_cell.PAP_properties[-1]['nseg']*1e-4
-                        if '_point_stim' in self.tag:
-                            val = np.sqrt(Ga/Gm * L*2/a)
-                        else:
-                            nseg = prp_cell.PAP_properties[-1]['nseg']
-                            val =np.sqrt(Rm/Ra * 2/nseg/a)  
+                        val = np.sqrt(Ga/Gm * L*2/a)
                         Gms.append(Gm)
                         Gas.append(Ga)
 
@@ -5729,7 +5717,7 @@ class procedure(plotFigures):
 
             plt.ylabel(gl.d_volt)
             plt.ylim(gl.clim_volt)
-            plt.xlabel('$\Gamma _K$')
+            plt.xlabel(r'$\Gamma _K$')
             plt.savefig(
                 os.path.join(
                     "../results/paperRes",
