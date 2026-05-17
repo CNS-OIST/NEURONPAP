@@ -5405,8 +5405,6 @@ class procedure(plotFigures):
     def plot_IKSizes(self,point_stim=True):
         IKSize_PAP = self.find_run_comp('compareIKSize')
         IKSize_Soma = self.find_run_comp('compareIKSize_pbSoma')
-        if point_stim:
-            self.tag += '_point_stim'
         ampLen = self.find_run_comp('runAmpLenComparison')
         PAP_AllProperties = self.find_pap_props()
         if rank == 0:
@@ -6530,6 +6528,8 @@ class procedure(plotFigures):
         #    self.tag = tmptag
 
         for f in intermediary_files:
+            #print(f)
+            #print(f'{func_name}{self.tag}.pickle')
             if f == f"{func_name}{self.tag}.pickle":
                 print(f"found intermediary file {f}")
                 sys.stdout.flush()
