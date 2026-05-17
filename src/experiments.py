@@ -2327,7 +2327,7 @@ class procedure(plotFigures):
     maxNKA = 10
     spillOverLen = 1.78832533e+01
     spillOverSlowing = 6.03081751e+02
-    OEpump = 200
+    OEpump = 150
     # default NMDAR counts
     channelCompareMax = 500
     channelCompareStep = 100
@@ -4519,6 +4519,9 @@ class procedure(plotFigures):
         if self.OE:
             funcArgs[-1]["kir2"] = self.KirMax
             self.tag += "_OE"
+
+        if invivo:
+            funcArgs[-1]['dt'] = 1000
 
         funcArgs[-1]["multiple"] = None
         funcArgs[-1]["Glu"] = False
@@ -7893,7 +7896,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GluTrans"] = self.optGluT
 
                     if hasattr(self,'kdifl') and self.kdifl:
-                        funcArgs[-1]['dt'] = self.dt/10
+                        funcArgs[-1]['dt'] = self.dt/5
                         funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims

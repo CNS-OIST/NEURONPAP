@@ -1014,7 +1014,7 @@ class PAPModel(ResultsPAPModel):
             self.RMP = []
             for vpap in self.vPAP:
                 self.RMP.append(list(vpap)[-1])
-        # print(f"RMP:{self.RMP}")
+        print(f"RMP:{self.RMP}")
         # print(f"EK: {list(self.ekSoma)[-1]}")
         # cvode.active(False)
         # self.ko_sim(False)
@@ -1607,7 +1607,13 @@ class PAPModel(ResultsPAPModel):
             else:
                 h.setK_range(self.flattenPAP(), KoSize, KoSize + papk, 2, sec_range)
             h.fcurrent()
-            h.continuerun(dur * ms + h.t)
+            try: 
+                h.continuerun(dur * ms + h.t)
+            except RuntimeError: 
+                h.dt /= 100
+                h.continuerun(dur * ms + h.t)
+                h.dt = self.dt
+
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
             if hasattr(h, "cvode"):
