@@ -647,7 +647,7 @@ class plotFigures:
                 if bath:
                     lowerBound, upperBound = gl.lim_ek
                     if 'gabaBath' in self.tag:
-                        lowerBound,upperBound = (-100,-40)
+                        lowerBound,upperBound = (-95,-20)
                         ax.set_ylim((lowerBound,upperBound))
 
 
@@ -4794,7 +4794,7 @@ class procedure(plotFigures):
         )
         ccList = ["kir2"]
         if self.GABAR:
-            funcArgs[-1]["dt"] *= 0.2
+            funcArgs[-1]["dt"] /= 50 
             funcArgs[-1]["multiple"] = None
             funcArgs[-1]["GABA"] = True
             ccList.append("GABACount")
@@ -7878,13 +7878,14 @@ class procedure(plotFigures):
                         funcArgs[-1]["Glu"] = False
                         funcArgs[-1]["GABA"] = True
                         funcArgs[-1]["GABACount"] = self.optGABAR
+                        funcArgs[-1]['dt'] / = 50 
                     elif m == "NMDAR Model":
                         funcArgs[-1]["multiple"] = self.optNMDAR
                         funcArgs[-1]["Glu"] = True
                         funcArgs[-1]["GluTrans"] = self.optGluT
 
                     if hasattr(self,'kdifl') and self.kdifl:
-                        funcArgs[-1]['dt'] = self.dt/50
+                        funcArgs[-1]['dt'] / = 20
                         funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims
@@ -9287,6 +9288,7 @@ class procedure(plotFigures):
             funcArgs[-1]["GABACount"] = (
                 self.optGABAR * syn_count
             )  # GABA alread calculates per section
+            funcArgs[-1]['dt'] /= 50
         else:
             funcArgs[-1]["GABACount"] = 0
 
