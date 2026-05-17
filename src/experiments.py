@@ -647,7 +647,7 @@ class plotFigures:
                 if bath:
                     lowerBound, upperBound = gl.lim_ek
                     if 'gabaBath' in self.tag:
-                        lowerBound,upperBound = (-100,-40)
+                        lowerBound,upperBound = (-95,-20)
                         ax.set_ylim((lowerBound,upperBound))
 
 
@@ -4794,7 +4794,7 @@ class procedure(plotFigures):
         )
         ccList = ["kir2"]
         if self.GABAR:
-            funcArgs[-1]["dt"] *= 0.2
+            funcArgs[-1]["dt"] /= 10 
             funcArgs[-1]["multiple"] = None
             funcArgs[-1]["GABA"] = True
             ccList.append("GABACount")
