@@ -1610,9 +1610,7 @@ class PAPModel(ResultsPAPModel):
             try: 
                 h.continuerun(dur * ms + h.t)
             except RuntimeError: 
-                h.dt /= 100
-                h.continuerun(dur * ms + h.t)
-                h.dt = self.dt
+                return
 
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
