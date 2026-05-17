@@ -45,6 +45,7 @@ class gl:
     abs_distance = f"Distance {unit_micron}"
     max_ko = 80
     lim_log_ko = (3, max_ko)
+    max_depo_ko = 22
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
     lim_VmembSoma = (-90, -80)

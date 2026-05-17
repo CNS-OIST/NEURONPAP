@@ -2294,7 +2294,7 @@ class plotFigures:
 
     def plot_fluor_comparison(self,AllCells):
         fig = plt.figure(figsize=gl.figsize_panel)
-        fig.subplots_adjust(left=0.1, right=0.99, top=0.9, bottom=0.15)
+        fig.subplots_adjust(left=0.2, right=0.99, top=0.9, bottom=0.15)
         gs = fig.add_gridspec(nrows=2, ncols=1, hspace=0.5)
         ax_volt = fig.add_subplot(gs[0])
         ax_ko = fig.add_subplot(gs[1],sharey=ax_volt)
@@ -2953,7 +2953,7 @@ class procedure(plotFigures):
             gs = gridspec.GridSpec(2, 1, height_ratios=[1, 3], hspace=0.05)
             ax1 = fig.add_axes([0.15, 0.75, 0.75, 0.2])
             for v in vClampList:
-                x = np.linspace(40, 240, 1000)
+                x = np.linspace(100, 240, 1000)
                 holdingpotentials = self.pseudotrace(x, v)
                 ax1.plot(x, holdingpotentials, color="grey", label=f"{v}")
             ax1.set_ylabel(gl.curr, color="grey")
@@ -2970,13 +2970,13 @@ class procedure(plotFigures):
 
             ax2.set_xlabel(gl.ms)
             ax2.set_ylabel(gl.volt)
-            ax1.set_xlim((40, 240))
-            ax2.set_xlim((40, 240))
+            ax1.set_xlim((100, 240))
+            ax2.set_xlim((100, 240))
             fig.subplots_adjust(left=0.2, right=1, bottom=0.1, top=1)
             plt.tight_layout()
             plt.savefig(os.path.join("../results/paperRes", f"CurrentClampSoma.pdf"))
 
-    def pseudotrace(self, x, v,bb=(80,220)):
+    def pseudotrace(self, x, v,bb=(130,220)):
         min_b,max_b = bb
         tmp = []
         for t in x:
@@ -3572,7 +3572,7 @@ class procedure(plotFigures):
                             if key in ["GABA", "Glu"]:
                                 funcArgs[-1][key] = False
 
-                    KoSteps = np.arange(2, gl.max_ko + 1, 2)
+                    KoSteps = np.arange(2, gl.max_depo_ko + 1, 2)
                     KoSteps = np.concatenate(([0.5], KoSteps))
 
                     iterations = comm.bcast(
