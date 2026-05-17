@@ -5387,7 +5387,7 @@ class procedure(plotFigures):
         count = 0
         PAP_AllProperties = None 
         replace_props = ['PAPLen','KoSize']
-        while PAP_AllProperties is None:
+        while PAP_AllProperties is None and 'seed' not in self.tag:
             if count > len(replace_props):
                 eMessage('Could not find pap_props')
             self.tag = self.tag.replace(replace_props[count],"seed_point_stim")
