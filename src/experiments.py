@@ -3313,7 +3313,7 @@ class procedure(plotFigures):
         return fig, axs
 
     def kvPhasePlane(self):
-        self.duramplenPhase()
+        #self.duramplenPhase()
         self.KirNMDAPhase()
 
     def duramplenPhase(self):
@@ -7896,7 +7896,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GluTrans"] = self.optGluT
 
                     if hasattr(self,'kdifl') and self.kdifl:
-                        funcArgs[-1]['dt'] = self.dt/5
+                        funcArgs[-1]['dt'] = self.dt/50
                         funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims
