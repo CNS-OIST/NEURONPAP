@@ -7878,7 +7878,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["Glu"] = False
                         funcArgs[-1]["GABA"] = True
                         funcArgs[-1]["GABACount"] = self.optGABAR
-                        funcArgs[-1]['dt'] / = 50 
+                        funcArgs[-1]['dt'] /= 50 
                     elif m == "NMDAR Model":
                         funcArgs[-1]["multiple"] = self.optNMDAR
                         funcArgs[-1]["Glu"] = True
