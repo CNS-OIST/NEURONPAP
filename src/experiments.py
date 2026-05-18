@@ -2170,6 +2170,7 @@ class plotFigures:
                 if location == 'vPAP' and p > 1:
                     for i,(l,anova) in enumerate(zip(label,anova_p.values())):
                         label[i] = f': {self.p_to_stars(anova)}'
+                        print(l,anova)
 
 
                     ax_summary.legend(
