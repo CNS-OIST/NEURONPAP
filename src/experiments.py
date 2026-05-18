@@ -6027,29 +6027,65 @@ class procedure(plotFigures):
     def gap_junction_bath_clearence(self):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
+        self.kdifl = True
         iterations = [i for i in range(0,self.KoCompMax + 1,self.KoCompStep)]
-        self.tag = '_1_0.500_Glu_NoGlu_multiSpikex10_intra_diff_seed_point_stim' 
+        self.tag = '_bath_clearence_sim' 
         AllCells = self.find_run_comp('run_comp_bath')
+        def get_trace(cell):
+            return list(cell.time),list(cell.vPAP)
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=True)
-        gap_run = self.read_run_comp('run_comp_bath')
+            self.run_comp_bath(iterations,gap=True,long=True)
+        else:
+            print('found bath with gap')
+        gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
     
         self.tag += '_no_gap'
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=False)
-        no_gap_run = self.read_run_comp('run_comp_bath')
+            self.run_comp_bath(iterations,gap=False,long=True)
+        else:
+            print('found bath with no gap')
+        no_gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
-        plt.subplots_adjust(left=0.2)
-        plt.plot(gap_run)
-        plt.plot(no_gap_run)
+        plt.subplots_adjust(left=0.2,bottom=0.15)
+        colors = ['black','lightgray']
+        label = [r'$\tau_{\mathrm{gap}}$',r'$\tau_{\mathrm{no\ gap}}$']
+        for i,cells in enumerate([gap_run,no_gap_run]):
+            color = colors[i]
+            for j,(t,v) in enumerate(cells):
+                if j == 0:
+                    continue
+                tmp_time = np.array(t)
+                initStep = np.argmin(abs(tmp_time - (150)))
+                def exp_fit(x,b):
+                    return np.exp(-b*x)
+                popt, pcov = curve_fit(
+                    exp_fit,
+                    t[initStep:]-150,
+                    (v[initStep:]-v[initStep])/(max(v[initStep:])-v[initStep]),
+                )
+                b = popt
+                plt.scatter(iterations[j],1/b,color=color)
+
+
+
+        custom_handles = [
+            Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
+            Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
+        ]
+        plt.xlabel(gl.ion_o('K'))
+        plt.ylabel(gl.ms)
+        plt.legend(
+            handles=custom_handles,
+            labels=label
+        )
         plt.savefig('gap_bath_comparison.pdf')
 
  
 
-    def run_comp_bath(self,iterations,gap=True):
+    def run_comp_bath(self,iterations,gap=True,long=False):
         funcArgs = []
         funcArgs.append(
             {
@@ -6078,6 +6114,10 @@ class procedure(plotFigures):
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
+
+        if long:
+            run_func[0] = ['setTstop'] + run_func[0]
+            run_func_args[0] = [{'tstop':500}] + run_func_args[0]  
 
         if not gap:
             funcArgs[-1]['gapCount'] = 0
