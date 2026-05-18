@@ -1226,7 +1226,7 @@ class plotFigures:
         stdChannelDict = {
             "Kir": (370 * area + 1 * 4.7e3 * area, 1 * area),
             "GluT": (14248 * area, 812 * area),
-            "GABAR": (self.optGABAR, 10),
+            "GABAR": (self.optGABAR, 50),
             "GABA$_A$R": (self.optGABAR, 10),
             "NMDAR": (self.optNMDAR, 50),
             "NKA": (1, 0.5),
@@ -6024,7 +6024,32 @@ class procedure(plotFigures):
                 )
 
 
-    def run_comp_bath(self,iterations):
+    def gap_junction_bath_clearence(self):
+        self.KoCompMax = gl.max_ko
+        self.KoCompStep = 5 
+        iterations = [i for i in range(0,self.KoCompMax + 1,self.KoCompStep)]
+        self.tag = '_1_0.500_Glu_NoGlu_multiSpikex10_intra_diff_seed_point_stim' 
+        AllCells = self.find_run_comp('run_comp_bath')
+        if AllCells is None:
+            self.run_comp_bath(iterations,gap=True)
+        gap_run = self.read_run_comp('run_comp_bath')
+    
+        self.tag += '_no_gap'
+        AllCells = self.find_run_comp('run_comp_bath')
+        if AllCells is None:
+            self.run_comp_bath(iterations,gap=False)
+        no_gap_run = self.read_run_comp('run_comp_bath')
+        plt.cla()
+        plt.clf()
+        plt.figure(figsize=gl.figsize_panel)
+        plt.subplots_adjust(left=0.2)
+        plt.plot(gap_run)
+        plt.plot(no_gap_run)
+        plt.savefig('gap_bath_comparison.pdf')
+
+ 
+
+    def run_comp_bath(self,iterations,gap=True):
         funcArgs = []
         funcArgs.append(
             {
@@ -6053,6 +6078,9 @@ class procedure(plotFigures):
         if hasattr(self,'rect_off') and self.rect_off:
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
+
+        if not gap:
+            funcArgs[-1]['gapCount'] = 0
 
         AllCells = self.find_run_comp("run_comp_bath")
         if AllCells is None:
@@ -9813,6 +9841,7 @@ if __name__ == "__main__":
         exp = procedure(1, 0)
         exp.runFitCaliburation()
         exp.fit_fluor()
+        exp.gap_junction_bath_clearence()
     else:
         exp = procedure(1, 0)
         exp.uptakeRatio()
