@@ -4568,10 +4568,9 @@ class procedure(plotFigures):
         # else:
         #     setKoylim = False
         self.free_figure(AllCells)
-        if invivo:
-            for cells in AllCells:
-                for cell in cells:
-                    print(max(list(cell.vPAP)),max(list(cell.vSoma)))
+        for cells in AllCells:
+            for cell in cells:
+                print(f'pap:{max(list(cell.vPAP))}soma:{max(list(cell.vSoma))}')
         self.plotIKSeries(
             AllCells,
             setKoylim=setKoylim,
@@ -7897,7 +7896,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GluTrans"] = self.optGluT
 
                     if hasattr(self,'kdifl') and self.kdifl:
-                        funcArgs[-1]['dt'] / = 20
+                        funcArgs[-1]['dt'] /= 20
                         funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims
