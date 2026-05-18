@@ -4570,10 +4570,9 @@ class procedure(plotFigures):
         # else:
         #     setKoylim = False
         self.free_figure(AllCells)
-        if invivo:
-            for cells in AllCells:
-                for cell in cells:
-                    print(max(list(cell.vPAP)),max(list(cell.vSoma)))
+        for cells in AllCells:
+            for cell in cells:
+                print(f'pap:{max(list(cell.vPAP))}soma:{max(list(cell.vSoma))}')
         self.plotIKSeries(
             AllCells,
             setKoylim=setKoylim,
