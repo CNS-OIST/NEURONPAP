@@ -129,7 +129,7 @@ for i in $( # for ten random PAPs
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --GluT 0 --stimCount 10 $i #Fig 2CDE
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --GluT 1 --stimCount 10 $i #Fig 4BCD
   mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --kComp --GluT 1 --stimCount 10 --intraDiff $i #Fig 4BCD
-  for j in 0.5 22; do                                                                    # for extracellular potassium condition 0.5 and 10
+  for j in 0.5 10 22; do                                                                    # for extracellular potassium condition 0.5 and 10
     echo "seed $i-Ko$j" >>$output
     for k in 1 10; do # for fig 5stimCoutn
       if (($j == 0.5)); then 
@@ -158,7 +158,7 @@ for i in $( # for ten random PAPs
         #python NEURONPAP.py -b --stimCount $k --ko $j $i                                                                       #
   # fig 56
        #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimK --stimGlu --gluSpill --koComp --stimCount $k --ko $j $i #
-        #mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount $k --ko $j $i                  # 
+        mpiexec -n $np --use-hwthread-cpus python NEURONPAP.py --stimGlu --gluSpill --stimCount $k --ko $j $i                  # 
       fi
     done
   done
