@@ -1359,17 +1359,18 @@ class plotFigures:
                 addChan = 1
 
             if not self.GluT:
+                xtick_labels = np.arange(
+                    chanStart,
+                    int(self.channelCompareMax / self.channelCompareStep) + 1,
+                    1,
+                ) * self.channelCompareStep
+
                 ax.set_xticks(
                     range(
                         0,
                         int(self.channelCompareMax / self.channelCompareStep) + addChan,
                     ),
-                    np.arange(
-                        chanStart,
-                        int(self.channelCompareMax / self.channelCompareStep) + 1,
-                        1,
-                    )
-                    * self.channelCompareStep,
+                    xtick_labels.astype(int),
                     rotation=45,
                     ha="center",
                     va="top",
@@ -1411,17 +1412,18 @@ class plotFigures:
             )
             axes[0].set_ylabel(gl.chan_num("Kir"))
         elif self.GABAR:
+            tick_labels = np.arange(
+                chanStart,
+                int(self.channelCompareMax / self.channelCompareStep) + 1,
+                1,
+            ) * self.channelCompareStep
+            print(tick_labels.as_type(int))
             axes[0].set_yticks(
                 range(
                     0,
                     int(self.channelCompareMax / self.channelCompareStep) + addChan,
                 ),
-                np.arange(
-                    chanStart,
-                    int(self.channelCompareMax / self.channelCompareStep) + 1,
-                    1,
-                )
-                * self.channelCompareStep,
+                tick_labels.astype(int)
             )
             axes[0].set_ylabel(gl.chan_num("GABA") + f" /{gl.unit_micron_raw}$^2$")
         else:
@@ -5615,7 +5617,7 @@ class procedure(plotFigures):
             def abs_vol(cell):
                 return max(list(cell.vPAP))
 
-            res_column_soma = self.read_run_comp("run_comp_soma")
+            res_column_soma = self.read_run_comp("run_comp_soma",single_load=True)
            
 
             # only specific use case
@@ -5648,7 +5650,7 @@ class procedure(plotFigures):
 
                 prp_cell = findbyNameSeed(j,'dendrite')
               
-                res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed)
+                res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed,single_load=True)
                 def find_seed():
                     for refs in IKSize_Soma:
                         for ref in refs:
@@ -6534,8 +6536,8 @@ class procedure(plotFigures):
     
         return None
 
-    def read_run_comp(self,func_name,func=None):
-        AllCells = self.find_run_comp(func_name)
+    def read_run_comp(self,func_name,func=None,single_load=False):
+        AllCells = self.find_run_comp(func_name,single_load=single_load)
         #self.plotIKSeries.__wrapped__(self,AllCells)
         if AllCells is not None:
             column_res = [] 
@@ -6552,7 +6554,8 @@ class procedure(plotFigures):
                             column_res[int(cell.KoSize/self.KoCompStep)] = func(cell) 
                 
 
-            AllCells.release()
+            if not single_load:
+                AllCells.release()
             return np.array(column_res)
 
         else:
@@ -7885,7 +7888,7 @@ class procedure(plotFigures):
                         funcArgs[-1]["GluTrans"] = self.optGluT
 
                     if hasattr(self,'kdifl') and self.kdifl:
-                        funcArgs[-1]['dt'] / = 20
+                        funcArgs[-1]['dt'] /= 20
                         funcArgs[-1]['nakpump'] = self.OEpump
 
         # distribute different sims
