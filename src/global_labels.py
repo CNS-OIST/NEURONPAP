@@ -104,8 +104,8 @@ class gl:
             return f"Extracellular [{ion}{valence}] " + gl.unit_mM
 
     @staticmethod
-    def delta_ion_o(ion, short=True):
-        return "$\Delta$" + gl.ion_o(ion, short=short)
+    def delta_ion_o(ion, short=True, unit=True):
+        return "$\Delta$" + gl.ion_o(ion, short=short, unit=unit)
 
     @staticmethod
     def chan_num(chan):

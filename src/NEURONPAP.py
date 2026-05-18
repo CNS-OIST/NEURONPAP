@@ -109,7 +109,7 @@ def callExperimentMode(**kwargs):
         if "intra_diff" in kwargs.keys() and kwargs["intra_diff"]:
             exp.kdifl = True
         exp.potassiumComparison()
-        # exp.compareIKSizes2KoSizes()
+        exp.compareIKSizes2KoSizes()
 
     if "video" in kwargs.keys() and kwargs["video"]:
         # Make video
