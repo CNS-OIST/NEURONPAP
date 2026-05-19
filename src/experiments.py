@@ -910,6 +910,7 @@ class plotFigures:
                         label=f"PAP {gl.vm}",
                         color=self.returnColor("PAP"),
                     )
+                    print(max(list(cell.vPAP))-cell.RMP)
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.ekPAP)[initStep:],
@@ -6030,13 +6031,13 @@ class procedure(plotFigures):
         self.tag = '_1_0.500_Glu_NoGlu_multiSpikex10_intra_diff_seed_point_stim' 
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=True)
+            self.run_comp_bath(iterations,gap=True,dur=1)
         gap_run = self.read_run_comp('run_comp_bath')
     
         self.tag += '_no_gap'
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=False)
+            self.run_comp_bath(iterations,gap=False,dur=1)
         no_gap_run = self.read_run_comp('run_comp_bath')
         plt.cla()
         plt.clf()
@@ -6048,7 +6049,7 @@ class procedure(plotFigures):
 
  
 
-    def run_comp_bath(self,iterations,gap=True):
+    def run_comp_bath(self,iterations,gap=True,dur=100):
         funcArgs = []
         funcArgs.append(
             {
@@ -6067,7 +6068,7 @@ class procedure(plotFigures):
         ccList = ["KoSize"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         run_func = [["initialize", "setKBath_iter"]]
-        run_func_args = [[{'force_print_progress':True},{}]]
+        run_func_args = [[{'force_print_progress':True},{'dur':dur}]]
         if hasattr(self,'kdifl') and self.kdifl:
             run_func[0] = ['set_kdfl_iter'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0] 
