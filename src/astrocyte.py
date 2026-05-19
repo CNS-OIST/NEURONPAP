@@ -1729,6 +1729,7 @@ class PAPModel(ResultsPAPModel):
         tsnap=False,
         video=False,
         clamp_ki=False,
+        changeBaseline=False,
     ):
         if h.t + delay < h.tstop:
             h.continuerun(delay * ms + h.t)
@@ -1737,6 +1738,9 @@ class PAPModel(ResultsPAPModel):
         if not isolate:
             self.set_gapBath(True)
         papk = self.getPAPK()
+        if changeBaseline:
+            self.setSlowing(np.exp(700))
+
         if hasattr(h, "cvode"):
             h.cvode.active(False)
             h.dt = self.dt

@@ -6029,72 +6029,88 @@ class procedure(plotFigures):
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
         self.kdifl = True
-        iterations = [i for i in range(0,self.KoCompMax + 1,self.KoCompStep)]
+        iterations = [i for i in range(20,self.KoCompMax + 1,self.KoCompStep)]
         self.tag = '_bath_clearence_sim' 
         AllCells = self.find_run_comp('run_comp_bath')
+
         def get_trace(cell):
-            return list(cell.time),list(cell.vPAP)
+            return list(cell.time),list(cell.KoPAP)
+
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=True,long=True,dur=1)
+            self.run_comp_bath(iterations,gap=True,long=True,dur=10,changeBath=True)
         else:
             print('found bath with gap')
-        gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
+
+        if rank == 0:
+            gap_run = self.read_run_comp('run_comp_bath',func=get_trace,single_load=True)
    
         self.tag += '_no_gap'
+        iterations = [i for i in range(20,self.KoCompMax + 1,self.KoCompStep)]
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=False,long=True,dur=1)
+            self.run_comp_bath(iterations,gap=False,long=True,dur=10,changeBath=True)
         else:
             print('found bath with no gap')
-        no_gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
-        plt.cla()
-        plt.clf()
-        fig = plt.figure(figsize=gl.figsize_panel_long)
-        fig.subplots_adjust(left=0.2,bottom=0.15)
-        gs = fig.add_gridspec(nrows=1,ncols=2,wspace=0.5)
-        ax_tau = fig.add_subplot(gs[0])
-        ax_trace = fig.add_subplot(gs[1])
-        colors = ['black','lightgray']
-        label = [r'$\tau_{\mathrm{gap}}$',r'$\tau_{\mathrm{no\ gap}}$']
-
-        for i,cells in enumerate([gap_run,no_gap_run]):
-            color = colors[i]
-            for j,(t,v) in enumerate(cells):
-                if j == 0:
-                    continue
-                initStep = np.argmax(v)
-                start_t = t[initStep]
-                def exp_fit(x,b):
-                    return np.exp(-b*x)
-                popt, pcov = curve_fit(
-                    exp_fit,
-                    t[initStep:]-start_t,
-                    (v[initStep:]+85)/(v[initStep]+85),
-                )
-                b = popt
-                ax_tau.scatter(iterations[j],1/b,color=color)
-                if j == len(cells)- 1:
-                    ax_trace.plot(t[initStep:],(v[initStep:]+85)/(v[initStep]+85),color=color)
+        if rank == 0:
+            no_gap_run = self.read_run_comp('run_comp_bath',func=get_trace,single_load=True)
+            plt.cla()
+            plt.clf()
+            fig = plt.figure(figsize=gl.figsize_panel_long)
+            fig.subplots_adjust(left=0.2,bottom=0.15)
+            gs = fig.add_gridspec(nrows=1,ncols=2,wspace=0.5)
+            ax_tau = fig.add_subplot(gs[0])
+            ax_trace = fig.add_subplot(gs[1])
+            colors = ['black','lightgray']
+            label = [r'$\tau_{\mathrm{gap}}$',r'$\tau_{\mathrm{no\ gap}}$']
 
 
+            for i,cells in enumerate([gap_run,no_gap_run]):
+                color = colors[i]
+                skip = 0
+                for j,cell in enumerate(cells):
+                    if cell is None:
+                        skip += 1
+                        continue
+                    else:
+                        t,v = cell
+                        t = np.array(t)
+                        v = np.array(v)
+                    start_t = 160
+                    initStep = np.argmin(abs(t-start_t))
+                    endStep = np.argmin(abs(t-start_t-10))
+                    def exp_fit(x,a,b,c):
+                        return a*np.exp(-b*x)+c
+                    popt, pcov = curve_fit(
+                        exp_fit,
+                        t[initStep:endStep]-start_t,
+                        v[initStep:endStep],
+                    )
+                    a,b,c = popt
+                    start_t = 159
+                    initStep = np.argmin(abs(t-start_t))
+                    endStep = np.argmin(abs(t-start_t-3))
+                    ax_tau.scatter(iterations[j-skip],1/b,color=color)
+                    ax_trace.plot(t[initStep:endStep],v[initStep:endStep],color=color,lw=0.5,alpha=0.5)
 
-        custom_handles = [
-            Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
-            Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
-        ]
-        ax_tau.set_xlabel(gl.ion_o('K'))
-        ax_tau.set_ylabel(gl.ms)
-        ax_trace.set_xlabel(gl.ms)
-        ax_trace.set_ylabel('Normalized voltage')
-        ax_tau.legend(
-            handles=custom_handles,
-            labels=label
-        )
-        plt.savefig(os.path.join('../results/paperRes','gap_bath_comparison.pdf'))
+
+
+            custom_handles = [
+                Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
+                Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
+            ]
+            ax_tau.set_xlabel(gl.ion_o('K'))
+            ax_tau.set_ylabel(gl.ms)
+            ax_trace.set_xlabel(gl.ms)
+            ax_trace.set_ylabel(gl.ion_o('K'))
+            ax_tau.legend(
+                handles=custom_handles,
+                labels=label
+            )
+            plt.savefig(os.path.join('../results/paperRes','gap_bath_comparison.pdf'))
 
  
 
-    def run_comp_bath(self,iterations,gap=True,long=False,dur=100):
+    def run_comp_bath(self,iterations,gap=True,long=False,dur=100,changeBath=False):
         funcArgs = []
         funcArgs.append(
             {
@@ -6114,6 +6130,9 @@ class procedure(plotFigures):
         # make sure that funcParms is in the correct order of whatever iterations spits out
         run_func = [["initialize", "setKBath_iter"]]
         run_func_args = [[{'force_print_progress':True},{'dur':dur}]]
+        if changeBath:
+            run_func_args[0][1]['changeBaseline']=True 
+
         if hasattr(self,'kdifl') and self.kdifl:
             run_func[0] = ['set_kdfl_iter'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0] 
@@ -6124,9 +6143,13 @@ class procedure(plotFigures):
             run_func[0] = ['kir_rect_off'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0]  
 
+
         if long:
             run_func[0] = ['setTstop'] + run_func[0]
-            run_func_args[0] = [{'tstop':500}] + run_func_args[0]  
+            run_func_args[0] = [{'tstop':300}] + run_func_args[0]  
+            run_func[0] += ['run']
+            run_func_args[0] += [{}]  
+
 
         if not gap:
             funcArgs[-1]['gapCount'] = 0
@@ -6633,7 +6656,11 @@ class procedure(plotFigures):
 
             if not single_load:
                 AllCells.release()
-            return np.array(column_res)
+            try:
+                return np.array(column_res)
+            except ValueError:
+                return column_res
+
 
         else:
             return None
