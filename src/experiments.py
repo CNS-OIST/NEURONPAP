@@ -910,6 +910,7 @@ class plotFigures:
                         label=f"PAP {gl.vm}",
                         color=self.returnColor("PAP"),
                     )
+                    print(max(list(cell.vPAP))-cell.RMP)
                     ax.plot(
                         list(cell.time)[initStep:],
                         list(cell.ekPAP)[initStep:],
@@ -6081,7 +6082,7 @@ class procedure(plotFigures):
             handles=custom_handles,
             labels=label
         )
-        plt.savefig('gap_bath_comparison.pdf')
+        plt.savefig(os.path.join('../results/paperRes','gap_bath_comparison.pdf'))
 
  
 
