@@ -6049,26 +6049,32 @@ class procedure(plotFigures):
         no_gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
         plt.cla()
         plt.clf()
-        plt.figure(figsize=gl.figsize_panel)
-        plt.subplots_adjust(left=0.2,bottom=0.15)
+        fig = plt.figure(figsize=gl.figsize_panel_long)
+        fig.subplots_adjust(left=0.2,bottom=0.15)
+        gs = fig.add_gridspec(nrows=1,ncols=2,wspace=0.5)
+        ax_tau = fig.add_subplot(gs[0])
+        ax_trace = fig.add_subplot(gs[1])
         colors = ['black','lightgray']
         label = [r'$\tau_{\mathrm{gap}}$',r'$\tau_{\mathrm{no\ gap}}$']
+
         for i,cells in enumerate([gap_run,no_gap_run]):
             color = colors[i]
             for j,(t,v) in enumerate(cells):
                 if j == 0:
                     continue
-                tmp_time = np.array(t)
-                initStep = np.argmin(abs(tmp_time - (150)))
+                initStep = np.argmax(v)
+                start_t = t[initStep]
                 def exp_fit(x,b):
                     return np.exp(-b*x)
                 popt, pcov = curve_fit(
                     exp_fit,
-                    t[initStep:]-150,
-                    (v[initStep:]-v[initStep])/(max(v[initStep:])-v[initStep]),
+                    t[initStep:]-start_t,
+                    (v[initStep:]+85)/(v[initStep]+85),
                 )
                 b = popt
-                plt.scatter(iterations[j],1/b,color=color)
+                ax_tau.scatter(iterations[j],1/b,color=color)
+                if j == len(cells)- 1:
+                    ax_trace.plot(t[initStep:],(v[initStep:]+85)/(v[initStep]+85),color=color)
 
 
 
@@ -6076,9 +6082,11 @@ class procedure(plotFigures):
             Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
             Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
         ]
-        plt.xlabel(gl.ion_o('K'))
-        plt.ylabel(gl.ms)
-        plt.legend(
+        ax_tau.set_xlabel(gl.ion_o('K'))
+        ax_tau.set_ylabel(gl.ms)
+        ax_trace.set_xlabel(gl.ms)
+        ax_trace.set_ylabel('Normalized voltage')
+        ax_tau.legend(
             handles=custom_handles,
             labels=label
         )
