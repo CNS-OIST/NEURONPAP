@@ -6035,15 +6035,15 @@ class procedure(plotFigures):
         def get_trace(cell):
             return list(cell.time),list(cell.vPAP)
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=True,long=True)
+            self.run_comp_bath(iterations,gap=True,long=True,dur=1)
         else:
             print('found bath with gap')
         gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
-    
+   
         self.tag += '_no_gap'
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=False,long=True)
+            self.run_comp_bath(iterations,gap=False,long=True,dur=1)
         else:
             print('found bath with no gap')
         no_gap_run = self.read_run_comp('run_comp_bath',func=get_trace)
@@ -6094,7 +6094,7 @@ class procedure(plotFigures):
 
  
 
-    def run_comp_bath(self,iterations,gap=True,long=False):
+    def run_comp_bath(self,iterations,gap=True,long=False,dur=100):
         funcArgs = []
         funcArgs.append(
             {
@@ -6113,7 +6113,7 @@ class procedure(plotFigures):
         ccList = ["KoSize"]
         # make sure that funcParms is in the correct order of whatever iterations spits out
         run_func = [["initialize", "setKBath_iter"]]
-        run_func_args = [[{'force_print_progress':True},{}]]
+        run_func_args = [[{'force_print_progress':True},{'dur':dur}]]
         if hasattr(self,'kdifl') and self.kdifl:
             run_func[0] = ['set_kdfl_iter'] + run_func[0]
             run_func_args[0] = [{}] + run_func_args[0] 
