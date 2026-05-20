@@ -10,7 +10,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
+from global_labels import gl
 import os
+
+plt.rcParams.update(gl.font)
+saveDir = os.path.abspath("../morphResults")
+plt.rcParams["savefig.directory"] = saveDir
+plt.ioff()
 
 
 class fitModelCurve:
@@ -227,6 +233,7 @@ class calibrateChannel:
     def plotIVCurve(self, channel, expVolt, expCurr, mdlCurr):
         plt.cla()
         plt.clf()
+        plt.figure(figsz=gl.figsize_panel)
         plt.scatter(expVolt, expCurr, label="Experiment")
         plt.plot(expVolt, mdlCurr, label="Model")
         plt.legend()

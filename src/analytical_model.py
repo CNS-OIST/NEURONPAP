@@ -92,13 +92,13 @@ class analytical_ko:
 
     def phase_plot(self, *xrange):
         x = np.linspace(*xrange, 100)
-        plt.figure(5)
-        plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.2f} um3", color="black")
-        plt.figure(6)
+        plt.figure(5, figsize=gl.figsize_panel)
+        plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.1f} um3", color="black")
+        plt.figure(6, figsize=gl.figsize_panel)
         plt.plot(
             x / self.V * 1e3,
             self.dxdt(x) / self.V * 1e3,
-            label=f"{self.V*1e15:.2f} um3",
+            label=f"{self.V*1e15:.1f} um3",
             color="black",
         )
 
@@ -132,17 +132,17 @@ class analytical_ko:
         )
 
         if sol.success:
-            plt.figure(3)
+            plt.figure(3, figsize=gl.figsize_panel)
             plt.plot(
                 sol.t,
                 sol.y[0] / self.V * 1e3,
-                label=f"{self.V * 1e15:.2f} {gl.unit_um_cubed_raw}",
+                label=f"{self.V * 1e15:.1f} {gl.unit_um_cubed_raw}",
             )
-            plt.figure(4)
+            plt.figure(4, figsize=gl.figsize_panel)
             plt.plot(
                 sol.t,
                 sol.y[0] * self.NA,
-                label=f"{self.V * 1e15:.2f} {gl.unit_um_cubed_raw}",
+                label=f"{self.V * 1e15:.1f} {gl.unit_um_cubed_raw}",
             )
         else:
             print("ODEの解に失敗しました:", sol.message)
@@ -222,14 +222,15 @@ def plot_All(VClamp):
         analytical_trace.V = V
         trace = analytical_trace.Ko(t)
         t *= 1e3
-        plt.figure(0)
+        plt.figure(0, figsize=gl.figsize_panel)
         plt.plot(
             t,
             trace / analytical_trace.V * 1e3,
-            label=f"{analytical_trace.V*1e15:.3e} {gl.unit_um_cubed_raw}",
+            label=f"{analytical_trace.V*1e15:.1e} {gl.unit_um_cubed_raw}",
             color="gray" if analytical_trace.V != exp_V else "black",
+            lw=0.5 if analytical_trace.V != exp_V else 2,
         )
-        plt.figure(1)
+        plt.figure(1, figsize=gl.figsize_panel)
         plt.plot(
             t,
             np.array(trace) * analytical_trace.NA,
@@ -242,7 +243,7 @@ def plot_All(VClamp):
             0, analytical_trace.calcInvNernst(analytical_trace.VClamp) * 2
         )
 
-    plt.figure(0)
+    plt.figure(0, figsize=gl.figsize_panel)
     plt.axhline(
         y=analytical_trace.calcInvNernst(analytical_trace.VClamp)
         / analytical_trace.V
@@ -257,19 +258,19 @@ def plot_All(VClamp):
     plt.ylim(bottom=5)
     plt.savefig(f"trace_M{VClamp}.pdf")
 
-    plt.figure(1)
+    plt.figure(1, figsize=gl.figsize_panel)
     plt.legend()
     plt.xlabel(gl.ms)
     plt.ylabel(gl.ion_o("K"))
     plt.ylim(bottom=0)
     plt.savefig(f"trace_mol{VClamp}.pdf")
 
-    plt.figure(2)
+    plt.figure(2, figsize=gl.figsize_panel)
     plt.scatter(VCSList, np.array(time_to_0) * 1e3)
     plt.xlabel("Volume (L)")
     plt.ylabel("Time to 0 (ms)")
     plt.savefig(f"time_to_0_{VClamp}.pdf")
-    plt.figure(3)
+    plt.figure(3, figsize=gl.figsize_panel)
     plt.xlabel("Time (t)")
     plt.ylabel("x(t) (mM)")
     plt.legend()
@@ -281,24 +282,24 @@ def plot_All(VClamp):
     )
     plt.ylim(bottom=0)
     plt.savefig(f"ode{VClamp}.pdf")
-    plt.figure(4)
+    plt.figure(4, figsize=gl.figsize_panel)
     plt.xlabel("Time (t)")
     plt.ylabel("x(t)")
     plt.legend()
     plt.ylim(bottom=0)
     plt.savefig(f"ode_count{VClamp}.pdf")
 
-    plt.figure(5)
+    plt.figure(5, figsize=gl.figsize_panel)
     plt.legend()
     plt.xlabel("x (mol)")
     plt.ylabel("dxdt")
     plt.savefig(f"phase_plot{VClamp}.pdf")
-    plt.figure(6)
+    plt.figure(6, figsize=gl.figsize_panel)
     plt.legend()
     plt.xlabel("x (mM)")
     plt.ylabel("dxdt")
     plt.savefig(f"phase_plot_mM_{VClamp}.pdf")
-    plt.figure(7)
+    plt.figure(7, figsize=gl.figsize_panel)
     x = np.linspace(10**order, 5 * 10**order, 100)
     x *= 1e-15
     plt.plot(x, t_half(VClamp, x) * 1e3, color="gray")
