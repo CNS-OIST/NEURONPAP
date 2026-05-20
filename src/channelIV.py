@@ -234,10 +234,10 @@ class calibrateChannel:
         plt.cla()
         plt.clf()
         plt.figure(figsz=gl.figsize_panel)
-        plt.scatter(expVolt, expCurr, label="Experiment")
-        plt.plot(expVolt, mdlCurr, label="Model")
+        plt.scatter(expVolt, expCurr, label="Experiment", color=gl.exp_color)
+        plt.plot(expVolt, mdlCurr, label="Model", color="black")
         plt.legend()
-        plt.xlabel("Voltage (mV)")
+        plt.xlabel(gl.volt)
         plt.ylabel("Normalized Current")
         plt.savefig(os.path.join("../results/paperRes/", f"IVCurve{channel}.pdf"))
 

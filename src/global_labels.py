@@ -76,6 +76,7 @@ class gl:
         "xtick.labelsize": 10,
         "text.latex.preamble": r"\usepackage{xcolor}",
     }
+    exp_color = "tab:blue"
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):

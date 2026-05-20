@@ -9731,7 +9731,7 @@ class procedure(plotFigures):
         fig,ax = plt.subplots(figsize=gl.figsize_panel)
         fig.subplots_adjust(left=0.2, right=0.99, top=0.9, bottom=0.15)
         ax_inset = ax.inset_axes([0.15,0.35,0.3,0.3]) 
-        ax.errorbar(range(len(df)),df['fraction'],yerr=df['std'],label='Exp.',fmt='-o',ecolor='lightgray',color='lightgray',zorder=-1)
+        ax.errorbar(range(len(df)),df['fraction'],yerr=df['std'],label='Exp.',fmt='-o',ecolor=gl.exp_color,color=gl.exp_color,zorder=-1)
 
         for cells in results:
             for cell in cells:
@@ -9753,7 +9753,7 @@ class procedure(plotFigures):
                     df = pd.read_csv(os.path.join("./Data","archlight_500_trace.csv"))
                     df['t'] -= df['t'].iloc[0]
                     df['t'] += 10
-                    ax_inset.scatter(df['t'],df['v'],color='lightgray')
+                    ax_inset.scatter(df['t'],df['v'],color=gl.exp_color)
                     ax_inset.set_title('Fluor. Response\n(500 ms)')
                     ax_inset.set_xlabel(gl.ms)
         ax.plot(x,y,label='Sim.',color='black')
