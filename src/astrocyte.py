@@ -444,11 +444,6 @@ class PAPModel(ResultsPAPModel):
 
     def setDualPatch(self):
         h.tstop = 50
-        # set g_pas
-        for sec in h.allsec():
-            for seg in sec:
-                setattr(seg, "g_pas", self.g_pas)
-
         h.clampSwitch(5, self.voltageClamp)
         self.lenUnits = h.lenUnits
         self.soma_L = getattr(self.soma, "L")
@@ -1526,6 +1521,9 @@ class PAPModel(ResultsPAPModel):
             currentSection = h.SectionRef(sec=currentSection.parent)
         return sl
 
+    def setSlow_iter(self, slow=1, changeBaseline=None):
+        self.setSlowing(slow, changeBaseline)
+
     def setSlowing(self, slow, changeBaseline=None):
         if slow:
             h.setSlowing(self.flattenPAP(), slow)
@@ -1609,7 +1607,11 @@ class PAPModel(ResultsPAPModel):
             else:
                 h.setK_range(self.flattenPAP(), KoSize, KoSize + papk, 2, sec_range)
             h.fcurrent()
-            h.continuerun(dur * ms + h.t)
+            try: 
+                h.continuerun(dur * ms + h.t)
+            except RuntimeError: 
+                return
+
             # papk = self.getPAPK()
             h.setK(self.flattenPAP(), 0, restKo, 0)
             if hasattr(h, "cvode"):
@@ -1727,6 +1729,7 @@ class PAPModel(ResultsPAPModel):
         tsnap=False,
         video=False,
         clamp_ki=False,
+        changeBaseline=False,
     ):
         if h.t + delay < h.tstop:
             h.continuerun(delay * ms + h.t)
@@ -1735,6 +1738,9 @@ class PAPModel(ResultsPAPModel):
         if not isolate:
             self.set_gapBath(True)
         papk = self.getPAPK()
+        if changeBaseline:
+            self.setSlowing(np.exp(700))
+
         if hasattr(h, "cvode"):
             h.cvode.active(False)
             h.dt = self.dt

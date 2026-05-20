@@ -11,6 +11,7 @@ class gl:
     unit_pA = "(pA)"
     unit_micron_raw = "$\mu$m"
     unit_micron = f"({unit_micron_raw})"
+    unit_micron_bold = r"($\mathbf{\mu}$m)"
     unit_curr_density_raw = "mA/cm$^2$"
     unit_curr_density = f"({unit_curr_density_raw})"
     unit_hz_raw = "Hz"
@@ -30,18 +31,21 @@ class gl:
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
     vm = "V$_\mathrm{m}$"
-    d_volt_short = "$\Delta$" + vm + unit_mV
+    d_volt_short = "$\Delta$" + vm + " " + unit_mV
     durstim = "Stim. duration " + unit_ms
     pap_affect = "Affected PAP length " + unit_micron
     seed_num = "Seed number"
     pap_len = "PAP length " + unit_micron
     fluor = "$\Delta F/F_0$ (%)"
+    fluor_frac = "Fraction of max fluorescence (%)"
+    lim_fluor = (0, -3)
     volt_atten = f"{vm}/V$_0$"
-    lim_cvk_volt = (-90, -40)
+    lim_cvk_volt = (-96, -40)
     lim_cvk_ko = (0, 10)
     abs_distance = f"Distance {unit_micron}"
     max_ko = 80
     lim_log_ko = (3, max_ko)
+    max_depo_ko = 22
     clim_volt = (0, 20)
     lim_Vmemb = (-90, -50)
     lim_VmembSoma = (-90, -80)
@@ -86,19 +90,22 @@ class gl:
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
-    def ion_o(ion, short=True):
+    def ion_o(ion, short=True, unit=True):
         if ion == "K":
             valence = "$^+$"
         else:
             valence = ""
         if short:
-            return f"[{ion}{valence}]" + "$_\mathrm{o}$" + gl.unit_mM
+            if unit:
+                return f"[{ion}{valence}]" + "$_\mathrm{o}$" + " " + gl.unit_mM
+            else:
+                return f"[{ion}{valence}]" + "$_\mathrm{o}$"
         else:
             return f"Extracellular [{ion}{valence}] " + gl.unit_mM
 
     @staticmethod
-    def delta_ion_o(ion, short=True):
-        return "$\Delta$" + gl.ion_o(ion, short=short)
+    def delta_ion_o(ion, short=True, unit=True):
+        return "$\Delta$" + gl.ion_o(ion, short=short, unit=unit)
 
     @staticmethod
     def chan_num(chan):
