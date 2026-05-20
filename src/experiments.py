@@ -6032,12 +6032,13 @@ class procedure(plotFigures):
         iterations = [i for i in range(20,self.KoCompMax + 1,self.KoCompStep)]
         self.tag = '_bath_clearence_sim' 
         AllCells = self.find_run_comp('run_comp_bath')
+        app_dur = 100
 
         def get_trace(cell):
             return list(cell.time),list(cell.KoPAP)
 
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=True,long=True,dur=10,changeBath=True)
+            self.run_comp_bath(iterations,gap=True,long=True,dur=app_dur,changeBath=True)
         else:
             print('found bath with gap')
 
@@ -6048,7 +6049,7 @@ class procedure(plotFigures):
         iterations = [i for i in range(20,self.KoCompMax + 1,self.KoCompStep)]
         AllCells = self.find_run_comp('run_comp_bath')
         if AllCells is None:
-            self.run_comp_bath(iterations,gap=False,long=True,dur=10,changeBath=True)
+            self.run_comp_bath(iterations,gap=False,long=True,dur=app_dur,changeBath=True)
         else:
             print('found bath with no gap')
         if rank == 0:
@@ -6075,7 +6076,7 @@ class procedure(plotFigures):
                         t,v = cell
                         t = np.array(t)
                         v = np.array(v)
-                    start_t = 160
+                    start_t = 150 + app_dur
                     initStep = np.argmin(abs(t-start_t))
                     endStep = np.argmin(abs(t-start_t-10))
                     def exp_fit(x,a,b,c):
@@ -6086,7 +6087,7 @@ class procedure(plotFigures):
                         v[initStep:endStep],
                     )
                     a,b,c = popt
-                    start_t = 159
+                    start_t -= 1 
                     initStep = np.argmin(abs(t-start_t))
                     endStep = np.argmin(abs(t-start_t-3))
                     ax_tau.scatter(iterations[j-skip],1/b,color=color)
@@ -6146,7 +6147,7 @@ class procedure(plotFigures):
 
         if long:
             run_func[0] = ['setTstop'] + run_func[0]
-            run_func_args[0] = [{'tstop':300}] + run_func_args[0]  
+            run_func_args[0] = [{'tstop':150+dur+20}] + run_func_args[0]  
             run_func[0] += ['run']
             run_func_args[0] += [{}]  
 
