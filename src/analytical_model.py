@@ -92,9 +92,9 @@ class analytical_ko:
 
     def phase_plot(self, *xrange):
         x = np.linspace(*xrange, 100)
-        plt.figure(5, figsize=gl.figsize_panel)
+        plt.figure(5)
         plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.1f} um3", color="black")
-        plt.figure(6, figsize=gl.figsize_panel)
+        plt.figure(6)
         plt.plot(
             x / self.V * 1e3,
             self.dxdt(x) / self.V * 1e3,
@@ -132,13 +132,13 @@ class analytical_ko:
         )
 
         if sol.success:
-            plt.figure(3, figsize=gl.figsize_panel)
+            plt.figure(3)
             plt.plot(
                 sol.t,
                 sol.y[0] / self.V * 1e3,
                 label=f"{self.V * 1e15:.1f} {gl.unit_um_cubed_raw}",
             )
-            plt.figure(4, figsize=gl.figsize_panel)
+            plt.figure(4)
             plt.plot(
                 sol.t,
                 sol.y[0] * self.NA,
@@ -243,7 +243,7 @@ def plot_All(VClamp):
             0, analytical_trace.calcInvNernst(analytical_trace.VClamp) * 2
         )
 
-    plt.figure(0, figsize=gl.figsize_panel)
+    plt.figure(0)
     plt.axhline(
         y=analytical_trace.calcInvNernst(analytical_trace.VClamp)
         / analytical_trace.V
@@ -258,7 +258,7 @@ def plot_All(VClamp):
     plt.ylim(bottom=5)
     plt.savefig(os.path.join("../morphResults", f"trace_mol{VClamp}.pdf"))
 
-    plt.figure(1, figsize=gl.figsize_panel)
+    plt.figure(1)
     plt.legend()
     plt.xlabel(gl.ms)
     plt.ylabel(gl.ion_o("K"))
@@ -287,7 +287,7 @@ def plot_All(VClamp):
     plt.ylabel("x(t)")
     plt.legend()
     plt.ylim(bottom=0)
-    plt.savefig(os.path.join("morphResults", f"ode_count{VClamp}.pdf"))
+    plt.savefig(os.path.join("../morphResults", f"ode_count{VClamp}.pdf"))
 
     plt.figure(5, figsize=gl.figsize_panel)
     plt.legend()
@@ -298,7 +298,7 @@ def plot_All(VClamp):
     plt.legend()
     plt.xlabel("x (mM)")
     plt.ylabel("dxdt")
-    plt.savefig(os.path.join("morphResults", f"phase_plot_mM_{VClamp}.pdf"))
+    plt.savefig(os.path.join("../morphResults", f"phase_plot_mM_{VClamp}.pdf"))
     plt.figure(7, figsize=gl.figsize_panel)
     x = np.linspace(10**order, 5 * 10**order, 100)
     x *= 1e-15
@@ -310,7 +310,7 @@ def plot_All(VClamp):
     plt.ylabel(r"t$_{1/2}$ " + gl.unit_ms)
     plt.ylim((0, 25))
     plt.legend()
-    plt.savefig(os.path.join("morphResults", f"t_half_{VClamp}.pdf"))
+    plt.savefig(os.path.join("../morphResults", f"t_half_{VClamp}.pdf"))
 
 
 if __name__ == "__main__":

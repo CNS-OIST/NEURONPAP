@@ -233,7 +233,7 @@ class calibrateChannel:
     def plotIVCurve(self, channel, expVolt, expCurr, mdlCurr):
         plt.cla()
         plt.clf()
-        plt.figure(figsz=gl.figsize_panel)
+        plt.figure(figsize=gl.figsize_panel)
         plt.scatter(expVolt, expCurr, label="Experiment", color=gl.exp_color)
         plt.plot(expVolt, mdlCurr, label="Model", color="black")
         plt.legend()

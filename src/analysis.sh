@@ -196,6 +196,8 @@ mpiexec -n 2 python experiments.py
 mpiexec -n 1 python experiments.py
 mpiexec -n $np python experiments.py
 mpiexec -n $np python experiments.py
+python channelIV.py
+python analytical_model.py
 zip -rq FullResults.zip ../results/paperRes ../morphResults/video/*.gif ../morphResults/*.psf
 
 # if uv exists use uv environment
