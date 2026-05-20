@@ -149,7 +149,7 @@ class calibrateChannel:
         # }
         self.expIVName = {
             "Kir": "Data/KirIV.csv",
-            "TWIK": "Data/twikIV.csv",
+            "TWIK": "Data/TWIKIV.csv",
             "NMDAR": "Data/NMDARIV.csv",
             "GluT": "Data/GluTrans.csv",
         }
