@@ -6061,7 +6061,7 @@ class procedure(plotFigures):
             gs = fig.add_gridspec(nrows=1,ncols=2,wspace=0.5)
             ax_tau = fig.add_subplot(gs[0])
             ax_trace = fig.add_subplot(gs[1])
-            colors = ['black','lightgray']
+            colors = [gl.sim_main,gl.sim_others]
             label = [r'$\tau_{\mathrm{gap}}$',r'$\tau_{\mathrm{no\ gap}}$']
 
 

@@ -77,6 +77,8 @@ class gl:
         "text.latex.preamble": r"\usepackage{xcolor}",
     }
     exp_color = "tab:blue"
+    sim_main = "#f1a340"
+    sim_others = "#998ec3"
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):

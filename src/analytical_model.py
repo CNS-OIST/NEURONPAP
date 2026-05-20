@@ -227,7 +227,7 @@ def plot_All(VClamp):
             t,
             trace / analytical_trace.V * 1e3,
             label=f"{analytical_trace.V*1e15:.1e} {gl.unit_um_cubed_raw}",
-            color="gray" if analytical_trace.V != exp_V else "black",
+            color=gl.sim_others if analytical_trace.V != exp_V else gl.sim_main,
             lw=0.5 if analytical_trace.V != exp_V else 2,
         )
         plt.figure(1, figsize=gl.figsize_panel)
@@ -269,7 +269,7 @@ def plot_All(VClamp):
     plt.scatter(VCSList, np.array(time_to_0) * 1e3)
     plt.xlabel("Volume (L)")
     plt.ylabel("Time to 0 (ms)")
-    plt.savefig(f"time_to_0_{VClamp}.pdf")
+    # plt.savefig(f"time_to_0_{VClamp}.pdf")
     plt.figure(3, figsize=gl.figsize_panel)
     plt.xlabel("Time (t)")
     plt.ylabel("x(t) (mM)")
@@ -281,7 +281,7 @@ def plot_All(VClamp):
         color="red",
     )
     plt.ylim(bottom=0)
-    plt.savefig(f"ode{VClamp}.pdf")
+    # plt.savefig(f"ode{VClamp}.pdf")
     plt.figure(4, figsize=gl.figsize_panel)
     plt.xlabel("Time (t)")
     plt.ylabel("x(t)")
@@ -293,7 +293,7 @@ def plot_All(VClamp):
     plt.legend()
     plt.xlabel("x (mol)")
     plt.ylabel("dxdt")
-    plt.savefig(f"phase_plot{VClamp}.pdf")
+    # plt.savefig(f"phase_plot{VClamp}.pdf")
     plt.figure(6, figsize=gl.figsize_panel)
     plt.legend()
     plt.xlabel("x (mM)")
@@ -302,9 +302,9 @@ def plot_All(VClamp):
     plt.figure(7, figsize=gl.figsize_panel)
     x = np.linspace(10**order, 5 * 10**order, 100)
     x *= 1e-15
-    plt.plot(x, t_half(VClamp, x) * 1e3, color="gray")
+    plt.plot(x, t_half(VClamp, x) * 1e3, color=gl.sim_others)
     plt.scatter(
-        exp_V, t_half(VClamp, exp_V) * 1e3, label="model", color="black", zorder=3
+        exp_V, t_half(VClamp, exp_V) * 1e3, label="model", color=gl.sim_main, zorder=3
     )
     plt.xlabel(r"V$_{ECS}$ " + gl.unit_liter)
     plt.ylabel(r"t$_{1/2}$ " + gl.unit_ms)
@@ -314,7 +314,7 @@ def plot_All(VClamp):
 
 
 if __name__ == "__main__":
-    for v in [-80, -60]:
+    for v in [-80]:
         plt.cla()
         plt.clf()
         plot_All(v)
