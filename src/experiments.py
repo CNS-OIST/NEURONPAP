@@ -6091,13 +6091,13 @@ class procedure(plotFigures):
                     initStep = np.argmin(abs(t-start_t))
                     endStep = np.argmin(abs(t-start_t-3))
                     ax_tau.scatter(iterations[j-skip],1/b,color=color)
-                    ax_trace.plot(t[initStep:endStep],v[initStep:endStep],color=color,lw=0.5,alpha=0.5)
+                    ax_trace.plot(t[initStep:endStep],v[initStep:endStep],color=color)
 
 
 
             custom_handles = [
-                Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
-                Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
+                Line2D([0], [0], marker='o', color=gl.sim_main, markerfacecolor=gl.sim_main, linestyle=''),
+                Line2D([0], [0], marker='o', color=gl.sim_others, markerfacecolor=gl.sim_others, linestyle=''),
             ]
             ax_tau.set_xlabel(gl.ion_o('K'))
             ax_tau.set_ylabel(gl.ms)
