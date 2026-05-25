@@ -27,6 +27,7 @@ class gl:
     s = "Time" + unit_s
     volt = "Voltage " + unit_mV
     curr = "Current " + unit_pA
+    curr_na = "Current (nA)"
     d_volt = "Membrane potential change " + unit_mV
     ek_raw = "E$_\mathrm{K}$"
     ek = ek_raw + " " + unit_mV
@@ -47,6 +48,7 @@ class gl:
     lim_log_ko = (3, max_ko)
     max_depo_ko = 22
     clim_volt = (0, 20)
+    clim_volt_extra = (0, 25)
     lim_Vmemb = (-90, -50)
     lim_VmembSoma = (-90, -80)
     lim_d_volt = (0, 80)
