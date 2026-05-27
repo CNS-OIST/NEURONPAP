@@ -2936,27 +2936,27 @@ class procedure(plotFigures):
         else:
             results = self.free_read_data()
 
-            if rank == 0:
-                for cells in results:
-                    for cell in cells:
+        if rank == 0:
+            for cells in results:
+                for cell in cells:
+                    if hasattr(cell, "paths_toward"):
+                        plot_paths(
+                            "v",
+                            None,
+                            None,
+                            fname=f"soma_attenuation_{getattr(cell,'voltageClamp')}",
+                            precomputed=cell.paths_away,
+                        )
                         if hasattr(cell, "paths_toward"):
-                            plot_paths(
+                            plot_combined(
                                 "v",
                                 None,
                                 None,
-                                fname=f"soma_attenuation_{getattr(cell,'voltageClamp')}",
-                                precomputed=cell.paths_away,
+                                None,
+                                fName=f"combined_v_soma_{getattr(cell,'voltageClamp')}",
+                                precomputed_toward=cell.paths_toward,
+                                precomputed_away=cell.paths_away,
                             )
-                            if hasattr(cell, "paths_toward"):
-                                plot_combined(
-                                    "v",
-                                    None,
-                                    None,
-                                    None,
-                                    fName=f"combined_v_soma_{getattr(cell,'voltageClamp')}",
-                                    precomputed_toward=cell.paths_toward,
-                                    precomputed_away=cell.paths_away,
-                                )
 
     @read_data
     def SomaCC(self):
