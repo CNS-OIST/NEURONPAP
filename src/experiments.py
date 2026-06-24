@@ -486,11 +486,33 @@ class plotFigures:
                             endStim = startStim + 1
                         else:
                             endStim = max(cell.time) + 10
-                    fig, (ax, ax2) = plt.subplots(1, 2, figsize=gl.figsize_panel)
-                    fig.subplots_adjust(wspace=0.5)
+                    if 'gabaBath' in self.tag:
+                        fig, (ax, cur,ax2) = plt.subplots(1, 3, figsize=gl.figsize_panel_long)
+                        fig.subplots_adjust(wspace=0.7)
+                    else:
+                        fig, (ax, ax2) = plt.subplots(1, 2, figsize=gl.figsize_panel)
+                        fig.subplots_adjust(wspace=0.5)
                 else:
                     fig, ax = plt.subplots(figsize=gl.figsize_ikPlots)
 
+                if bath and 'gabaBath' in self.tag:
+
+                    #total_curr = np.array(cell.iKSoma) + np.array(cell.iNaSoma) + np.array(cell.iClSoma) + np.array(cell.iGluTSoma) + np.array(cell.iMemSoma) 
+                    #print(total_curr)
+                    cur.plot(
+                        list(cell.time)[initStep:],
+                        (np.array(cell.VClampI)[initStep:]-np.array(cell.VClampI)[initStep])/1000,
+                        label="Soma",
+                        color=self.returnColor("Soma"),
+                    )
+                    cur.plot(
+                        list(cell.time)[initStep:],
+                        np.array(cell.iGABA)[initStep:]*3/1000,
+                        label="PAP",
+                        color=self.returnColor("PAP"),
+                    )
+                    cur.set_xlabel(gl.ms)
+                    cur.set_ylabel(gl.curr_na)
                 ax.plot(
                     list(cell.time)[initStep:],
                     list(cell.KoPAP)[initStep:],
@@ -556,6 +578,15 @@ class plotFigures:
                             linewidth=lineWidth,
                             label=f"Global stim",
                         )
+                        if 'gabaBath' in self.tag:
+                            cur.hlines(
+                                0.1,
+                                startStim,
+                                endStim,
+                                color=self.returnColor(self.locality),
+                                linewidth=lineWidth,
+                                label=f"Global stim",
+                            )
 
                 if bath:
                     if second:
@@ -600,6 +631,13 @@ class plotFigures:
                         "y", right=False, labelright=False, left=True, labelleft=True
                     )
                 else:
+                    if 'gabaBath' in self.tag:
+                        plt.savefig(
+                            os.path.join(
+                                "../results/paperRes",
+                                f"inVivoK{cell.GENEDict['kir2']}_{cell.comparecount}{self.tag}.pdf",
+                            )
+                        )
                     plt.cla()
                     plt.clf()
                     fig, ax = plt.subplots()
@@ -707,7 +745,7 @@ class plotFigures:
                         gl.lim_zoom(initStep, cell.dt, cvode=list(cell.time)[initStep])
                     )
 
-                if not bath:
+                if not bath: # or 'gabaBath' in self.tag:
                     plt.tight_layout()
                     plt.savefig(
                         os.path.join(
@@ -2317,6 +2355,8 @@ class plotFigures:
         ax_volt.set_xlabel(gl.volt)
         ax_ko.set_xlabel(gl.ion_o('K'))
         ax_volt.set_ylim(0,-2.5)
+        ax_volt.set_xlim(-87.4,-43.8)
+        ax_ko.set_xlim(0,88)
         plt.savefig(os.path.join("../results/paperRes",f"fluor_comparison{self.tag}.pdf"))
 
 
@@ -2896,27 +2936,27 @@ class procedure(plotFigures):
         else:
             results = self.free_read_data()
 
-            if rank == 0:
-                for cells in results:
-                    for cell in cells:
+        if rank == 0:
+            for cells in results:
+                for cell in cells:
+                    if hasattr(cell, "paths_toward"):
+                        plot_paths(
+                            "v",
+                            None,
+                            None,
+                            fname=f"soma_attenuation_{getattr(cell,'voltageClamp')}",
+                            precomputed=cell.paths_away,
+                        )
                         if hasattr(cell, "paths_toward"):
-                            plot_paths(
+                            plot_combined(
                                 "v",
                                 None,
                                 None,
-                                fname=f"soma_attenuation_{getattr(cell,'voltageClamp')}",
-                                precomputed=cell.paths_away,
+                                None,
+                                fName=f"combined_v_soma_{getattr(cell,'voltageClamp')}",
+                                precomputed_toward=cell.paths_toward,
+                                precomputed_away=cell.paths_away,
                             )
-                            if hasattr(cell, "paths_toward"):
-                                plot_combined(
-                                    "v",
-                                    None,
-                                    None,
-                                    None,
-                                    fName=f"combined_v_soma_{getattr(cell,'voltageClamp')}",
-                                    precomputed_toward=cell.paths_toward,
-                                    precomputed_away=cell.paths_away,
-                                )
 
     @read_data
     def SomaCC(self):
@@ -5719,7 +5759,7 @@ class procedure(plotFigures):
 
 
             plt.ylabel(gl.d_volt)
-            plt.ylim(gl.clim_volt)
+            plt.ylim(gl.clim_volt_extra)
             plt.xlabel(r'$\Gamma _K$')
             plt.savefig(
                 os.path.join(
@@ -6091,13 +6131,13 @@ class procedure(plotFigures):
                     initStep = np.argmin(abs(t-start_t))
                     endStep = np.argmin(abs(t-start_t-3))
                     ax_tau.scatter(iterations[j-skip],1/b,color=color)
-                    ax_trace.plot(t[initStep:endStep],v[initStep:endStep],color=color,lw=0.5,alpha=0.5)
+                    ax_trace.plot(t[initStep:endStep],v[initStep:endStep],color=color)
 
 
 
             custom_handles = [
-                Line2D([0], [0], marker='o', color='black', markerfacecolor='black', linestyle=''),
-                Line2D([0], [0], marker='o', color='lightgray', markerfacecolor='lightgray', linestyle=''),
+                Line2D([0], [0], marker='o', color=gl.sim_main, markerfacecolor=gl.sim_main, linestyle=''),
+                Line2D([0], [0], marker='o', color=gl.sim_others, markerfacecolor=gl.sim_others, linestyle=''),
             ]
             ax_tau.set_xlabel(gl.ion_o('K'))
             ax_tau.set_ylabel(gl.ms)
@@ -6710,8 +6750,10 @@ class procedure(plotFigures):
         self.KoCompStep = 5 
         iterations = [
             (i)
-            for i in range(0,self.KoCompMax+1,self.KoCompStep)
+            for i in np.logspace(-2,np.log10(self.KoCompMax),9)
         ]
+        iterations = [0] + iterations
+        print(iterations)
  
         results = parallizeFor(
             iterations,
@@ -7146,11 +7188,11 @@ class procedure(plotFigures):
 
 
                     ax.set_ylabel(gl.d_volt)
-                    ax.set_ylim(gl.clim_volt)
+                    ax.set_ylim(gl.clim_volt_extra)
                     if property in inset_props or property in inset_pb:
                         ax.set_ylabel(gl.d_volt_short)
                         ax_inset.set_ylabel(gl.d_volt_short)
-                        ax_inset.set_ylim(gl.clim_volt)
+                        ax_inset.set_ylim(gl.clim_volt_extra)
                     if not (np.amax(pap_corr['x']) == np.amin(pap_corr['x']) and len(pap_corr['x']) > 1):
                         if property == search_closest:
                             tmp_min = np.inf
@@ -9916,8 +9958,13 @@ if __name__ == "__main__":
 
     elif size > 6:
         exp = procedure(1, 0)
+        if any(['runFitCaliburation' in f for f in os.listdir('./intermediaryData/')]):
+            run_fit_fluor= True
+        else:
+            run_fit_fluor = False
         exp.runFitCaliburation()
-        exp.fit_fluor()
+        if run_fit_fluor:
+            exp.fit_fluor()
         exp.gap_junction_bath_clearence()
     else:
         exp = procedure(1, 0)

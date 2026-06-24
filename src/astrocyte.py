@@ -1607,9 +1607,9 @@ class PAPModel(ResultsPAPModel):
             else:
                 h.setK_range(self.flattenPAP(), KoSize, KoSize + papk, 2, sec_range)
             h.fcurrent()
-            try: 
+            try:
                 h.continuerun(dur * ms + h.t)
-            except RuntimeError: 
+            except RuntimeError:
                 return
 
             # papk = self.getPAPK()
@@ -1778,31 +1778,39 @@ class PAPModel(ResultsPAPModel):
         if hasattr(h, "cvode"):
             h.cvode.active(True)
 
-    def GABABath(self, number, freq, video=False):
-        self.set_cvode()
-        self.setStimStart()
-        # all section besides soma
-        h.slPAP = h.SectionList(
-            [sec for sec in self.soma.wholetree() if sec != self.soma]
-        )
-        # by default GABA count is uniformly distributed among all PAP sl.
-        # since the whole astrocyte is manipulated as PAP we convert to all slPAP having the initially defined GABACount
-        numSecs = len(list(h.slPAP))
-        self.GABACount *= numSecs
-        self.setGap()
-        self.setGluTs()
-        self.setGABAas()
+    def GABABath(self, number, freq, video=False, clamp=True, rerun=False):
+        if not rerun:
+            self.set_cvode()
+            self.setStimStart()
+            # all section besides soma
+            h.slPAP = h.SectionList(
+                [sec for sec in self.soma.wholetree() if sec != self.soma]
+            )
+            # by default GABA count is uniformly distributed among all PAP sl.
+            # since the whole astrocyte is manipulated as PAP we convert to all slPAP having the initially defined GABACount
+            numSecs = len(list(h.slPAP))
+            self.GABACount *= numSecs
+            self.setGap()
+            self.setGluTs()
+            self.setGABAas()
+        if clamp:
+            h.clampSwitch(1, -85)
         self.KoSize = 0
 
-        self.record()
+        if not rerun:
+            self.record(sGABA=self.GABAas)
+        if clamp:
+            self.record_VClampI()
         h.finitialize(self.v_init)
         h.fcurrent()
         self.getkin()
         h.set_gleakNa(self.v_init)
         h.fcurrent()
         h.continuerun(self.initTstop * ms)
-
         self.multiSpike(number=number, freq=freq, video=video)
+        self.VClampI = list(self.VClampI).copy()
+        self.iGABA_PAP_VC = list(self.iGABA).copy()
+        # self.GABABath(number, freq, video=video, clamp=False, rerun=True)
 
     def setKClearance(self, mode):
         if type(mode) == bool:

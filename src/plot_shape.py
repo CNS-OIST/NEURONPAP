@@ -12,7 +12,6 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from global_labels import gl
 import os
 
-
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
@@ -456,10 +455,12 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
         precomputed = []
         section_dict = convert_list_section_to_python(list_section)
         for key, sec_list in section_dict.items():
-            dist, var = convert_sec_list_to_var_distance(rangevar, origin, sec_list)
+            dist, var = convert_sec_list_to_var_distance(
+                rangevar, origin, sec_list, RMP=None
+            )
             precomputed.append((dist, var))
     for dist, var in precomputed:
-        plt.plot(dist, var, color="black",lw=0.3,alpha=0.5)
+        plt.plot(dist, var, color="black", lw=0.3, alpha=0.5)
 
     # plt.axvline(x=0, ymin=0, ymax=1, color="lightgrey", linestyle="--")
     plt.axvline(x=3.6, ymin=0, ymax=1, color="deepskyblue", linestyle="--")
@@ -476,9 +477,17 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
     return precomputed
 
 
-def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True):
+def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True, RMP=-85):
     varList = []
     distanceList = []
+    min = 0
+    if RMP is None:
+        for i, sec in enumerate(sec_list):
+            if getattr(sec(0.5), "v") < min:
+                min = getattr(sec(0.5), "v")
+        RMP = min
+        print(RMP)
+
     for i, sec in enumerate(sec_list):
         if i == 0:
             if normalize:
@@ -488,7 +497,7 @@ def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True):
             h.distance(sec=h.soma)
         distanceList.append(h.distance(0.5, sec=sec) - h.distance(0.5, sec=origin))
         try:
-            rv = (getattr(sec(0.5), var) + 85) / (norm + 85)
+            rv = (getattr(sec(0.5), var) - RMP) / (norm - RMP)
         except:
             rv = 0.0
         varList.append(rv)

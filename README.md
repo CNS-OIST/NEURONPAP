@@ -1,6 +1,6 @@
 # Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Processes(PAPs)
 
-## Global Nernstian Dynamics Breakdown for Local Synaptic Stimuli in Astrocytic Depolarization
+##  Global Nernstian astrocytic depolarization property breaks down during local synaptic input
 
 - Ryo J. Nakatani(<ryo.nakatani@oist.jp>)
 
