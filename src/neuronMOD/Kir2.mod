@@ -72,7 +72,7 @@ NEURON {
         RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
         RANGE ik_kir,gk
         RANGE rect_off
-        GLOBAL linf,taul
+        RANGE linf,taul
         
         THREADSAFE
 }

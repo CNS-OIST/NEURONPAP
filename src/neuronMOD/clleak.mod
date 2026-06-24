@@ -24,7 +24,7 @@ UNITS {
         F  = (faraday) (coulombs)
     }
     CONSTANT {
-	T = 300	(degC)
+	T = 307	(degC)
  	R        = 8.3145   (J/degC) 	
         z = -1
     }

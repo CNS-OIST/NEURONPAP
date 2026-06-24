@@ -149,7 +149,7 @@ BREAKPOINT {
 	: However, M. Hines encouraged us to use "derivimplicit" method instead - which is slightly slower than runge - 
 	: to avoid probable unstability problems
 
-	iNMDA = (wtau3*C + wtau2*B - A)*(gVI + gVD)*multiple*Mgblock(v)*(v - e)
+	iNMDA = (1e-6)*(wtau3*C + wtau2*B - A)*(gVI + (1e6) *gVD)*multiple*Mgblock(v)*(v - e)
 }
 
 DERIVATIVE state {
@@ -187,7 +187,7 @@ FUNCTION Mgblock(v(mV)) {
 }
 
 PROCEDURE rates(v (mV)) { 
-	inf = (v - gVDv0) * gVDst * gVI
+	inf = (1e-6)*(v - gVDv0) * gVDst * gVI
 	
 	tau2 = (tau2_0 + a2*(1-exp(-b2*v)))*q10_tau2
 	tau3 = (tau3_0 + a3*(1-exp(-b3*v)))*q10_tau3
