@@ -248,13 +248,13 @@ def plot_All(VClamp):
         y=analytical_trace.calcInvNernst(analytical_trace.VClamp)
         / analytical_trace.V
         * 1e3,
-        color="red",
+        color="darkgray",
         linestyle="--",
     )
     plt.xlabel(gl.ms)
     plt.ylabel(gl.ion_o("K"))
     plt.legend()
-    plt.xlim((0, 500))
+    plt.xlim((0, 50))
     plt.ylim(bottom=5)
     plt.savefig(os.path.join("../morphResults", f"trace_mol{VClamp}.pdf"))
 

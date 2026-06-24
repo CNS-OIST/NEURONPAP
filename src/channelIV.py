@@ -234,6 +234,7 @@ class calibrateChannel:
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
+        plt.subplots_adjust(left=0.2)
         plt.scatter(expVolt, expCurr, label="Experiment", color=gl.exp_color)
         plt.plot(expVolt, mdlCurr, label="Model", color="black")
         plt.legend()
