@@ -304,17 +304,21 @@ def plot_All(VClamp):
     x *= 1e-15
     plt.plot(x, t_half(VClamp, x) * 1e3, color=gl.sim_others)
     plt.scatter(
-        exp_V, t_half(VClamp, exp_V) * 1e3, label="model", color=gl.sim_main, zorder=3
+        exp_V,
+        t_half(VClamp, exp_V) * 1e3,
+        label="realistic ECS",
+        color=gl.sim_main,
+        zorder=3,
     )
     plt.xlabel(r"V$_{ECS}$ " + gl.unit_liter)
     plt.ylabel(r"t$_{1/2}$ " + gl.unit_ms)
-    plt.ylim((0, 25))
+    plt.ylim((0, 7))
     plt.legend()
     plt.savefig(os.path.join("../morphResults", f"t_half_{VClamp}.pdf"))
 
 
 if __name__ == "__main__":
-    for v in [-80]:
+    for v in [-80, -60]:
         plt.cla()
         plt.clf()
         plot_All(v)
