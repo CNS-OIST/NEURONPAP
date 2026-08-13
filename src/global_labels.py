@@ -84,6 +84,7 @@ class gl:
 
     @staticmethod
     def lim_zoom(initStep, dt, time_frame=20, cvode=None):
+        """Return a (start, end) time window for zooming a plot: anchored on the cvode index if given, otherwise on initStep*dt, spanning time_frame."""
         if cvode:
             # get index of initTstop
             return (cvode, cvode + time_frame)
@@ -92,10 +93,12 @@ class gl:
 
     @staticmethod
     def current_ion(ion):
+        """Format a LaTeX-style current label for the given ion, e.g. I$_K$."""
         return "I$_\mathrm{" + str(ion) + "}$"
 
     @staticmethod
     def ion_o(ion, short=True, unit=True):
+        """Format a LaTeX label for extracellular concentration of the given ion, adding a + valence for potassium, in short or long form with an optional unit suffix."""
         if ion == "K":
             valence = "$^+$"
         else:
@@ -110,25 +113,30 @@ class gl:
 
     @staticmethod
     def delta_ion_o(ion, short=True, unit=True):
+        """Format a LaTeX label for the change (delta) in extracellular concentration of the given ion."""
         return "$\Delta$" + gl.ion_o(ion, short=short, unit=unit)
 
     @staticmethod
     def chan_num(chan):
+        """Format a label string for the number of channels of the given type."""
         return f"# of {chan} Channels"
 
     @staticmethod
     def density_num(chan):
+        """Format a label string for the current density of the given channel type."""
         return f"Current density of {chan} Channels {gl.unit_curr_density}"
 
     @staticmethod
     def free(label):
+        """Intended to apply sentence-case correction to a label, but discards the result of correct_sentence_case and returns the original label unchanged."""
         # TODO: add rules to implement like sentence case
         #
-        gl.correct_sentence_case(label)
+        label = gl.correct_sentence_case(label)
         return label
 
     @staticmethod
     def correct_sentence_case(label):
+        """Capitalize the first alphabetic character of the string and lowercase everything after it, preserving any leading non-letter prefix; return the input unchanged if it is empty or has no letters."""
         s = label
         if not s:
             return s

@@ -18,6 +18,10 @@ rank = comm.Get_rank()
 
 
 def plot_distance_shells(ax, origin, step_num=5, alpha=0.05, color="k", resolution=30):
+    """
+    Draw concentric semi-transparent spherical shells centered on origin, spaced
+    evenly out to the farthest morphology point, to visualize distance bins.
+    """
     center = (h.x3d(0, sec=origin), h.y3d(0, sec=origin), h.z3d(0, sec=origin))
     xlist, ylist, zlist = get_all_coords()
     all_x = np.concatenate(xlist)
@@ -40,6 +44,10 @@ def plot_distance_shells(ax, origin, step_num=5, alpha=0.05, color="k", resoluti
 
 
 def split_into_n_equal_parts(lst, n=5):
+    """
+    Split a list into n parts of near-equal size, with each part (except the
+    last) sharing its final point with the first point of the next part.
+    """
     k, m = divmod(len(lst), n)
     parts = [lst[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)]
     for i in range(len(parts) - 1):
@@ -50,6 +58,12 @@ def split_into_n_equal_parts(lst, n=5):
 
 
 def get_all_coords(rangesec_name=None, rangesec_step=None):
+    """
+    Collect 3D pt3d coordinates for every section in the model. If
+    rangesec_name/rangesec_step are given, that section's points are instead
+    subsampled at rangesec_step intervals and split into equal sub-segments,
+    each appended as its own entry. Returns per-section x/y/z coordinate arrays.
+    """
     xlist = []
     ylist = []
     zlist = []
@@ -99,6 +113,11 @@ def animate_morphology(
     clim=None,
     no_advance=False,
 ):
+    """
+    Run and save an MP4 animation of the 3D morphology plot over the course of
+    a NEURON simulation, redrawing the shape at each timestep and advancing the
+    simulation (unless no_advance is set). No-op on any rank other than 0.
+    """
     if rank != 0:
         return
     fig = plt.figure(figsize=gl.figsize_distCurr_panel)
@@ -130,6 +149,11 @@ def animate_morphology(
     )
 
     def update(frame_t):
+        """
+        Clear the axes, redraw the 3D morphology for the current frame (without
+        adding a new colorbar), and advance the simulation by dt unless
+        no_advance is set.
+        """
         ax.cla()  # fully clear axes
         print(f"rendering {frame_t}/{frames}")
 
@@ -401,6 +425,13 @@ def plot_combined(
     precomputed_toward=None,
     precomputed_away=None,
 ):
+    """
+    Plot a range variable against distance along paths toward the soma and
+    paths away from origin on one axis (away-paths use negated distance so
+    both directions meet at origin). Computes distance/variable data via
+    convert_sec_list_to_var_distance if not already precomputed, saves the
+    figure as a PDF, and returns the computed data for reuse.
+    """
     if not fName:
         fName = f"combined_{rangevar}_{origin=}"
     plt.cla()
@@ -448,6 +479,12 @@ def plot_combined(
 
 
 def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
+    """
+    Plot a range variable against distance from origin for each path in
+    list_section as thin, semi-transparent lines. Computes the distance/
+    variable data via convert_sec_list_to_var_distance if not already
+    precomputed, saves the figure as a PDF, and returns the computed data.
+    """
     plt.cla()
     plt.clf()
     plt.figure(figsize=gl.figsize_panel)
@@ -478,6 +515,12 @@ def plot_paths(rangevar, origin, list_section, fname="", precomputed=None):
 
 
 def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True, RMP=-85):
+    """
+    Compute, for each section in sec_list, its distance from origin and its
+    range variable value normalized between RMP and the origin's own value
+    (or unnormalized if normalize is False). If RMP is None, it is instead
+    taken as the minimum membrane voltage found across sec_list.
+    """
     varList = []
     distanceList = []
     min = 0
@@ -506,6 +549,11 @@ def convert_sec_list_to_var_distance(var, origin, sec_list, normalize=True, RMP=
 
 
 def convert_list_section_to_python(list_section):
+    """
+    Convert a list of section refs / iterables of section refs into a plain
+    dict of Python section lists: non-iterable entries are grouped under
+    "to_soma", while iterable entries become their own "to_leafN" list.
+    """
     tmp_section = {}
     tmp_section["to_soma"] = []
     for i, obj in enumerate(list_section):
@@ -523,12 +571,18 @@ def convert_list_section_to_python(list_section):
 
 class NeuronMorphologyVisualizer:
     def __init__(self, saveDir="."):
+        """
+        Initialize empty section/children maps and create saveDir for output plots.
+        """
         self.sections = {}
         self.children = {}
         self.saveDir = saveDir
         os.makedirs(self.saveDir, exist_ok=True)
 
     def load_morphology(self, filepath):
+        """
+        Load a NEURON .hoc morphology file and extract its section topology.
+        """
         if filepath.endswith(".hoc"):
             h.load_file(filepath)
         else:
@@ -537,6 +591,11 @@ class NeuronMorphologyVisualizer:
         self._extract_topology()
 
     def _extract_topology(self):
+        """
+        Build self.sections (name -> length, average diameter, parent name)
+        and self.children (parent name -> list of child names) by iterating
+        over every loaded NEURON section.
+        """
         self.sections = {}
         self.children = {}
 
@@ -554,6 +613,12 @@ class NeuronMorphologyVisualizer:
                 self.children.setdefault(parent, []).append(name)
 
     def _cylinder(self, start, direction, length, radius, n=30):
+        """
+        Build the 3D surface mesh (lateral wall plus bottom and top end caps)
+        of a cylinder of given length and radius, starting at start and
+        extending along direction. Returns the (X,Y,Z) mesh tuples for the
+        wall, bottom cap, and top cap, plus the computed end point.
+        """
         direction = direction / np.linalg.norm(direction)
 
         not_v = np.array([1, 0, 0]) if abs(direction[0]) < 0.9 else np.array([0, 1, 0])
@@ -601,6 +666,13 @@ class NeuronMorphologyVisualizer:
         return (X, Y, Z), (Xb, Yb, Zb), (Xt, Yt, Zt), end
 
     def plot_local(self, section_name, tilt_angle=np.pi / 6):
+        """
+        Plot a schematic 3D view of one section together with its parent and
+        child sections as cylinders, each scaled relative to section_name's
+        own length/diameter. The section is drawn vertically, its parent
+        extends straight below it, and children fan out at tilt_angle around
+        the soma (or stack vertically otherwise); the figure is saved as a PDF.
+        """
         if section_name not in self.sections:
             raise ValueError(f"{section_name} not found")
 
@@ -618,6 +690,10 @@ class NeuronMorphologyVisualizer:
         other_color = "lightgrey"
 
         def draw_cyl(start, direction, L, r, color):
+            """
+            Build a cylinder mesh via self._cylinder and plot its wall and end
+            caps on the current axis, returning the cylinder's end point.
+            """
             (X, Y, Z), (Xb, Yb, Zb), (Xt, Yt, Zt), end = self._cylinder(
                 start, direction, L, r
             )

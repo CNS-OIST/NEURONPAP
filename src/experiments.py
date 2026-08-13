@@ -61,10 +61,12 @@ rank = comm.Get_rank()
 
 class LegendTitle(object):
     def __init__(self, text_props=None):
+        """Store the text properties to use when rendering this legend title."""
         self.text_props = text_props or {}
         super(LegendTitle, self).__init__()
 
     def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        """Draw orig_handle as a bold colored text title (blue/orange/green depending on whether "10" or "5" appears in it) instead of a normal legend handle."""
         x0, y0 = handlebox.xdescent, handlebox.ydescent
         if "10" in orig_handle:
             color = "tab:blue"
@@ -113,6 +115,7 @@ class plotFigures:
 
     @staticmethod
     def forceAlpha(color, alpha, bkg=(255, 255, 255, 1)):
+        """Composite `color` at the given alpha over background `bkg`, returning the flattened opaque-equivalent RGBA color."""
         rgba_color = np.array(mcolors.to_rgba(color)) * np.array([255, 255, 255, 1])
         return (rgba_color * alpha + np.array(bkg) * (1 - alpha)) / np.array(
             [255, 255, 255, 1]
@@ -120,6 +123,7 @@ class plotFigures:
 
     @staticmethod
     def p_to_stars(p):
+        """Convert a p-value into significance stars ('****'/'***'/'**'/'*') or 'ns' using standard thresholds."""
         if p < 1e-4:
             return '****'
         elif p < 1e-3:
@@ -134,6 +138,7 @@ class plotFigures:
 
     @staticmethod
     def adjust_pvals(pvals, method='holm'):
+        """Multiple-comparison correct a list of p-values using either Bonferroni or Holm (default) method."""
         pvals = np.array(pvals)
         m = len(pvals)
 
@@ -179,6 +184,7 @@ class plotFigures:
 
         levels = []
         def get_level(i, j):
+            """Find the lowest stacking level for a bracket spanning categories i..j that does not overlap any bracket already placed at that level."""
             level = 0
             while True:
                 conflict = False
@@ -221,6 +227,7 @@ class plotFigures:
             ax.set_ylim(top=global_top + y_offset + (max_level + 2) * (line_height + y_offset))
 
     def get_papLen_color_from_value(self,value):
+        """Map a PAP-length value to a hex color along a custom PAP-to-Soma(-to-global) colormap, log-scaled around the peakLen midpoint, caching the built colormap and normalization on self for reuse."""
         vmid = 6.5454
         if self.peakLen is None:
             self.peakLen = 100
@@ -266,8 +273,10 @@ class plotFigures:
         return mcolors.to_hex(rgba)
 
     def save_src_Data(plot_func):
+        """Decorator for plotting methods: before running the wrapped plot function, pickle its AllCells argument to intermediaryData/<caller><tag>.pickle (on rank 0 or when global_rw_data is set), skipping the dump if the file already exists unless override_src is set."""
         @wraps(plot_func)
         def wrapper(self, *args, **kwargs):
+            """Save AllCells to a per-caller pickle file (unless already saved and override_src is not set), then call the wrapped plotting function and return its result."""
             caller = inspect.stack()[1].function
             if self.global_rw_data or rank == 0:
                 AllCells = args[0]
@@ -295,12 +304,14 @@ class plotFigures:
 
     @save_src_Data
     def free_figure(self, AllCells):
+        """No-op plotting function; exists only so the @save_src_Data decorator triggers a dump of AllCells to disk."""
         pass
         #if size != 1:
         #    del AllCells
         # just to force call decorator
 
     def resetTag(self, cell):
+        """Rebuild self.tag (the filename suffix used when saving figures) from a cell's seed, KoSize, gene/PAP parameters, and Glu/GABA flags."""
         # reset figure tag based on result parms
         self.tag = f"_{cell.seed}_{cell.KoSize}"
         for attr in ["GluTrans", "kir2"]:
@@ -319,6 +330,7 @@ class plotFigures:
             self.tag += "_GABA"
 
     def saveSourceData(self, dataDict):
+        """Write dataDict out as JSON to results/paperRes/SourceData<tag>."""
         with open(
             os.path.join("../results/paperRes", f"SourceData{self.tag}"),
             "w",
@@ -326,6 +338,7 @@ class plotFigures:
             json.dump(dataDict, ofile)
 
     def returnColor(self, key, words=False):
+        """Look up the plot color for `key` by substring match against colorDict, optionally returning a darkened RGB variant (used for word/legend labels) when words=True."""
         for typeName in self.colorDict.keys():
             if typeName in key:
                 if not words:
@@ -341,6 +354,7 @@ class plotFigures:
             eMessage(f"Color not found for {key}")
 
     def get_initStep(self, cell, shift=10):
+        """Return the time-step index corresponding to `shift` ms before a cell's initTstop, accounting for variable-timestep (cvode) simulations."""
         if hasattr(cell, "cvode") and cell.cvode:
             # get index of initTstop
             tmp_time = np.array(cell.time)
@@ -350,6 +364,7 @@ class plotFigures:
         return int(initStep)
 
     def plotPAPs(self):
+        """Build and run a single PAPModel with the optimal Kir/NMDAR settings and render its multi-spike simulation as a video."""
         funcArgs = []
         funcArgs.append(
             {
@@ -372,6 +387,7 @@ class plotFigures:
         cells.run(video=True)
 
     def plotMorphProperties(self):
+        """Build a PAPModel with complex morphology and plot its morphological properties."""
         funcArgs = []
         funcArgs.append(
             {
@@ -386,6 +402,7 @@ class plotFigures:
     def GABANMDARTrace(
         self, AllCells, NMDARCount, GABACount, fName="NMDAR_GABAR_TraceComp"
     ):
+        """Plot overlaid PAP voltage and fluorescence traces for the cell matching NMDARCount and the cell matching GABACount, then recursively re-run once more with fixed optimal NMDAR/GABA counts (labeled OPT_) unless this call is already that optimal run."""
         plt.cla()
         plt.clf()
         fig, ax = plt.subplots()
@@ -446,6 +463,7 @@ class plotFigures:
         tagReset=False,
         panelF=False,
     ):
+        """Plot detailed per-cell time series (extracellular K+, membrane voltage/Ek, ionic concentrations, and PAP/soma currents) for every cell in AllCells, saving one PDF per cell/trace type. Optionally recurses to also render a zoomed-in version of the optimal/control cells, and can draw bath or stimulation-bar variants, or a combined "panel F" summary figure."""
         for cells in AllCells:
             for cell in cells:
                 if tagReset:
@@ -1076,6 +1094,7 @@ class plotFigures:
 
     @save_src_Data
     def mergePlotsIK(self, AllCells, comparison, merge, selected=1, zoom=True):
+        """For each distinct value of `comparison`, overlay the time series of vPAP/KoPAP/ekPAP across all cells sharing that value, highlighting the cell whose `merge` attribute equals `selected`, and save one figure per comparison value/recorded variable. If zoom=True, first recurses once with zoom=False to also produce the unzoomed versions."""
         AllRes = {}
         AllRecVals = ["vPAP", "KoPAP", "ekPAP"]
 
@@ -1141,6 +1160,7 @@ class plotFigures:
         self,
         AllCells,
     ):
+        """Plot, for each cell, a combined 3-panel figure of membrane voltage/Ek, PAP currents (with an inset zoom), and extracellular K+ (PAP vs soma), saved per cell."""
         for cells in AllCells:
             for cell in cells:
                 initStep = self.get_initStep(cell)
@@ -1262,6 +1282,7 @@ class plotFigures:
     def setLabelColors(
         self, area, Kir=True, x=False, y=False, chanOverride=None, labelObj=None
     ):
+        """Grey out x and/or y tick labels whose numeric value falls within one std of the expected reference value (Kir/GluT/GABAR/NMDAR/NKA/PAPLen, scaled by `area`), de-emphasizing labels near the baseline/reference condition."""
         stdChannelDict = {
             "Kir": (370 * area + 1 * 4.7e3 * area, 1 * area),
             "GluT": (14248 * area, 812 * area),
@@ -1315,6 +1336,7 @@ class plotFigures:
                     l.set_color("grey")
 
     def combined_heatmap(self, results, PAPattr, Kir=True):
+        """Load the matching single-stimulus results (by stripping '_multiSpikex10' from the caller-derived pickle filename, returning early if none exist) and plot single-stim vs. multi-stim heatmaps of `PAPattr` peak depolarization side by side, with a shared colorbar and channel-count tick labels."""
         caller = inspect.stack()[3].function
         fName = f"{caller}{self.tag}.pickle"
         if "_multiSpikex10" in fName:
@@ -1543,6 +1565,7 @@ class plotFigures:
         )
 
     def combined_somaPAP_heatmap(self, results, Kir=True):
+        """Plot vPAP vs. vSoma peak-depolarization heatmaps for `results` side by side, with a shared colorbar and channel-count tick labels."""
         vmin, vmax = gl.clim_volt
         plt.cla()
         plt.clf()
@@ -1753,6 +1776,7 @@ class plotFigures:
         )
 
     def createIMArray(self, results, PAPattr, Kir=True):
+        """Build a 2D array of peak depolarization (max(PAPattr) - RMP) for each result, indexed by Kir count vs. channel count (or GABA count vs. channel count, or PAPLen vs. channel count, depending on which channels are being varied) for use as a heatmap image."""
         if Kir:
             if self.GluT:
                 imArray = np.zeros(
@@ -1819,6 +1843,7 @@ class plotFigures:
 
     @save_src_Data
     def plotHeatmap(self, results, tag="", divedend=1, Kir=True, stdLabels=False):
+        """Render the full heatmap comparison for `results`: draw the per-cell IK series (with fixed K+/Ek limits), the combined single-vs-multi and soma-vs-PAP heatmaps, then a standalone imshow heatmap of peak depolarization (divided by `divedend`) with channel-count tick labels and colorbar, saved as FullComparison<tag>_<PAPattr>.pdf for both vPAP and vSoma."""
         plt.cla()
         plt.clf()
         self.plotIKSeries.__wrapped__(
@@ -1973,6 +1998,7 @@ class plotFigures:
 
     @save_src_Data
     def plot_physiological(self, AllCells, stim, papcounts, models,syn_count=25):
+        """For each stimulation location (vPAP, vSoma) and PAP count, plot per-model voltage traces across stimulus conditions (with an inset zoom for theta stimulation) alongside a bar chart of peak depolarization per model/stimulus. When multiple PAPs are recorded, annotate the bars with ANOVA and pairwise-t-test significance across models, then save one combined figure per PAP count/location."""
         if rank != 0:
             return
             # for cell in AllCells:
@@ -2134,6 +2160,7 @@ class plotFigures:
                         )
                         
                         def ttest_from_summary(mean1, std1, n1, mean2, std2, n2):
+                            """Compute a Welch's t-test two-tailed p-value for two groups from their summary statistics (mean, std, n) rather than raw samples."""
                             # Welch’s t-test
                             se = np.sqrt(std1**2 / n1 + std2**2 / n2)
                             t_stat = (mean1 - mean2) / se
@@ -2152,6 +2179,7 @@ class plotFigures:
                         all_pvalues[models[i]] = [ttest_from_summary(*values[:,i][j],syn_count,*values[:,i][k],syn_count) for j,k in list(combinations(range(len(mean)),2))]
                     
                         def anova_from_summary(means, stds, ns):
+                            """Computes a one-way ANOVA p-value from summary statistics (means, stds, sample sizes) via between/within sum of squares and the F-distribution."""
                             means = np.array(means, dtype=float)
                             stds  = np.array(stds,  dtype=float)
                             ns    = np.array(ns,    dtype=float)
@@ -2335,6 +2363,7 @@ class plotFigures:
         plt.close("all")
 
     def plot_fluor_comparison(self,AllCells):
+        """Scatter-plots fluorescence change (dF) against peak PAP voltage and peak extracellular K+ for seed==1 cells, then saves the figure."""
         fig = plt.figure(figsize=gl.figsize_panel)
         fig.subplots_adjust(left=0.2, right=0.99, top=0.9, bottom=0.15)
         gs = fig.add_gridspec(nrows=2, ncols=1, hspace=0.5)
@@ -2404,6 +2433,7 @@ class procedure(plotFigures):
     global_rw_data = False  # default False only for bath exp
 
     def __init__(self, seed, ko):
+        """Stores the seed and Ko, builds the base file tag, and initializes the private Kir channel max/step values."""
         self.seed = seed
         self.ko = ko
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
@@ -2413,13 +2443,16 @@ class procedure(plotFigures):
     # no write access to KirMax
     @property
     def KirMax(self):
+        """Read-only accessor for the maximum Kir channel count (no external write access)."""
         return self._KirMax
 
     @property
     def KirStep(self):
+        """Read-only accessor for the Kir channel count step size."""
         return self._KirStep
 
     def addChannelTag(self):
+        """Rebuilds self.tag from seed/Ko plus suffixes for each active channel/stimulation flag (Glu, NMDAR, GABAR, GAP, NKA, stim variants, delay, counts, ek, spillover, frequency, intra diffusion), so cached filenames reflect the current configuration."""
         self.tag = ""
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
 
@@ -2462,12 +2495,14 @@ class procedure(plotFigures):
 
 
     def read_data(exp_func):
+        """Decorator: wraps exp_func so cached results are loaded from intermediaryData/ pickles matching the current tag when available, and parallizeFor is monkey-patched to only simulate missing iterations."""
         calling_module_globals = inspect.currentframe().f_back.f_globals
         calling_module_name = calling_module_globals["__name__"]
 
 
         @wraps(exp_func)
         def wrapper(self, *args, **kwargs):
+            """Looks up an intermediary pickle for this call (accounting for free_read_data/find_missing_iter callers), loads/broadcasts it if found and patches parallizeFor to fill in gaps, otherwise runs exp_func normally."""
             if not self.no_read_data:
                 func_name = exp_func.__name__
                 if func_name == "free_read_data":
@@ -2502,6 +2537,7 @@ class procedure(plotFigures):
 
                         # temporarily override simulation and just output result
                         def parallizeFor_dummy(*args, AllCells=AllCells,**kwargs):
+                            """Stand-in for parallizeFor that returns the loaded AllCells, calling find_missing_iter to simulate any parameter combinations not already present."""
                             if len(args) > 0 and not self.global_rw_data:
                                 AllCells = self.find_missing_iter(AllCells,*args,**kwargs)
                             return AllCells
@@ -2534,6 +2570,7 @@ class procedure(plotFigures):
         mode="InitArgs",
         randomize=True,
     ):
+        """Compares AllCells against the requested `iterations` (matched by functionParms attribute values) to find missing combinations, reruns them via parallizeFor, and merges the new results back in."""
         missing_iter = deepcopy(iterations) 
         if AllCells is not None:
             for cells in AllCells:
@@ -2589,6 +2626,7 @@ class procedure(plotFigures):
 
 
     def match_attr(self,a,b,functionParms):
+        """Matches cells between AllCells collections `a` and `b` by two identifying attributes (functionParms) and copies any attributes present on the matched b_cell but missing on a_cell."""
         for a_cells in a:
             for a_cell in a_cells:
                 for b_cells in b:
@@ -2614,6 +2652,7 @@ class procedure(plotFigures):
         mode="InitArgs",
         randomize=True,
     ):
+        """Runs parallizeFor for the given call methods (rejecting simulation-altering ones like run/setK/replayK) and merges the returned attributes into AllCells via match_attr."""
         # specialized call for only non simulation run
                 #
                 #
@@ -2645,6 +2684,7 @@ class procedure(plotFigures):
 
     @read_data
     def free_read_data(self):
+        """Placeholder exp_func for the @read_data decorator: calls parallizeFor() with no arguments (returning None on TypeError) purely so the wrapper can look up a cached pickle for the actual caller."""
         try:
             res = parallizeFor()
         except TypeError:
@@ -2652,6 +2692,7 @@ class procedure(plotFigures):
         return res
 
     def nernst(self, k, kin):
+        """Computes the K+ Nernst equilibrium potential (mV) at 34C given extracellular (k) and intracellular (kin) concentrations."""
         T = 273.16 + 34  # kelvin
         R = 8.3145  # J/K
         z = 1  # k+
@@ -2659,6 +2700,7 @@ class procedure(plotFigures):
         return (1e3) * R * T / F / z * np.log(k / kin)
 
     def nernstINV(self, ek, kin):
+        """Inverts the Nernst equation: computes extracellular K+ concentration from a given equilibrium potential (ek) and intracellular concentration (kin)."""
         T = 273.16 + 34  # kelvin
         R = 8.3145  # J/K
         z = 1  # k+
@@ -2666,6 +2708,7 @@ class procedure(plotFigures):
         return np.exp(ek * F * z / ((1e3) * R * T)) * kin
 
     def multiChannel(self, itr=100):
+        """Runs PAPModel simulations across an increasing channel multiple (1..itr), records the peak depolarization above RMP for each, and saves the results as a pickle and scatter plot."""
         dList = []
         for i in range(1, itr + 1):
             sim = PAPModel(40, multiple=i, mode=0)
@@ -2680,6 +2723,7 @@ class procedure(plotFigures):
         plt.savefig(os.path.join("../results/paperRes", "patchXDepolar.pdf"))
 
     def multiDistance(self, x, read=False):
+        """Sweeps branch length/current combinations for the given morphology parameters (parallel via MPI or serial), recording peak somatic and PAP voltage responses, then saves/loads results as a pickle and renders 3D scatter plots of the response surfaces."""
         somaSize, bLen, bWid, PAPWid, bNum = x
         dList = []
         cList = []
@@ -2818,6 +2862,7 @@ class procedure(plotFigures):
                 )
 
     def readIterationRi(self, all_file_names, dName="../results/paperRes"):
+        """Returns the section names in all_file_names that do not yet have a matching RiRes*.json result file in dName."""
         pattern = "RiRes*"
         full_path = os.path.join(dName, pattern)
 
@@ -2837,6 +2882,7 @@ class procedure(plotFigures):
         return list(unique_all)
 
     def measureRi(self):
+        """Measures input resistance for every section of the morphology, splitting remaining (not-yet-measured) sections across MPI ranks when running in parallel, then merges the per-section RiRes*.json files and maps them onto the model."""
         funcArgs = []
         funcArgs.append(
             {
@@ -2906,6 +2952,7 @@ class procedure(plotFigures):
             comm.Barrier()
 
     def SomaVC(self):
+        """Runs (or loads a cached) somatic voltage-clamp simulation and plots the voltage attenuation along paths away from/toward the soma."""
         funcArgs = []
         plt.cla()
         plt.clf()
@@ -2960,6 +3007,7 @@ class procedure(plotFigures):
 
     @read_data
     def SomaCC(self):
+        """Runs somatic current-clamp injections across a range of amplitudes (in parallel), then plots the injected pseudo-current waveform above the resulting somatic voltage traces."""
         # acutally current injection
         funcArgs = []
         vClampList = comm.bcast(list(np.arange(-40, 461, 50)), root=0)
@@ -3021,6 +3069,7 @@ class procedure(plotFigures):
             plt.savefig(os.path.join("../results/paperRes", f"CurrentClampSoma.pdf"))
 
     def pseudotrace(self, x, v,bb=(130,220)):
+        """Builds a step-pulse waveform: 0 outside the [min_b, max_b] window in `bb`, value v inside it, sampled at each point in x."""
         min_b,max_b = bb
         tmp = []
         for t in x:
@@ -3031,6 +3080,7 @@ class procedure(plotFigures):
         return tmp
 
     def branchAttenuation(self, alterDist=False, replay=False):
+        """Runs (or loads a cached) stimulation and plots a heatmap of branch depolarization (dV) over time versus normalized distance from soma to PAP, saving as branchAtten_*.pdf (filename varies with alterDist/replay)."""
         self.addChannelTag()
         funcArgs = []
         funcArgs.append(
@@ -3203,6 +3253,7 @@ class procedure(plotFigures):
         # plt.show()
 
     def alteredDist(self):
+        """Runs simulations across a log-spaced range of Kir channel distribution ratios (soma:PAP) and overlays the resulting somatic voltage traces."""
         funcArgs = []
         funcArgs.append(
             {
@@ -3249,6 +3300,7 @@ class procedure(plotFigures):
         final_label=None,
         **plt_args,
     ):
+        """Draws one phase-plane trace into the given subplot of a 2x2 panel (creating the panel if figObj isn't passed); when `finalize`/`final_label` are given, also adds the shared legend, axis labels, and row/column headers before returning (fig, axs)."""
         # get data
 
         if not figObj:
@@ -3357,10 +3409,12 @@ class procedure(plotFigures):
         return fig, axs
 
     def kvPhasePlane(self):
+        """Entry point that runs the Kir/NMDAR phase-plane analysis (KirNMDAPhase); the PAP-length variant (duramplenPhase) is currently disabled."""
         #self.duramplenPhase()
         self.KirNMDAPhase()
 
     def duramplenPhase(self):
+        """Runs (or loads cached) simulations sweeping Kir channel count (max vs optimal) and PAP length (short vs long) across Ko steps, then plots K+ vs voltage phase-plane panels (with the Nernst curve overlaid) comparing PAP length against Kir channel count."""
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
 
@@ -3530,6 +3584,7 @@ class procedure(plotFigures):
 
     @read_data
     def KirNMDAPhase(self):
+        """Runs (or loads cached) simulations sweeping Kir channel count and a neurotransmitter-receptor channel count (NMDAR, GABAR, NKA, or GluT depending on which flags are set) across Ko steps, then plots K+ vs voltage phase-plane panels (with the Nernst curve overlaid) comparing NT channel count against Kir channel count."""
         self.tag = "_" + str(self.seed) + f"_{self.ko:.3f}"
         self.addChannelTag()
 
@@ -3767,6 +3822,7 @@ class procedure(plotFigures):
             plt.close("all")
 
     def ekComp(self):
+        """Run PAPModel across a range of Ek values (-95 to -40 mV, matched to an equivalent Ko via the Nernst equation) and plot resulting depolarization, current traces, and depolarization vs Ek/Ko summaries."""
         self.addChannelTag()
         AllCells = []
         funcArgs = []
@@ -3879,6 +3935,7 @@ class procedure(plotFigures):
         plt.savefig(os.path.join("../results/paperRes", "ekKODepolarcomp.pdf"))
 
     def KOComp(self, papCount=15, koCond=6):
+        """For each of NMDAR and GABAR transmitters, set the corresponding stimulation/receptor flags and run the knockout comparison via runKOComp."""
         for transmitter in ["NMDAR", "GABAR"]:
             self.NMDAR = False
             self.GABAR = False
@@ -3896,6 +3953,7 @@ class procedure(plotFigures):
             self.runKOComp(transmitter, papCount, koCond)
 
     def runKOComp(self, transmitter, papCount, koCond):
+        """Run parallelized simulations across knockout conditions (control, Kir overexpression, Kir block, transmitter KO, GluT KO, double KO) crossed with confined/spillover PAPLen, then compute one-way ANOVA and paired t-tests and plot bar charts of peak depolarization per condition."""
         AllCells = []
         for i in range(koCond):
             funcArgs = []
@@ -4216,6 +4274,7 @@ class procedure(plotFigures):
             )
 
     def uptakeRatio(self):
+        """Run a single PAPModel simulation with a step K+ bath, then plot Ko over time alongside the fraction of K+ removal attributable to diffusional loss versus net flux."""
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -4299,6 +4358,7 @@ class procedure(plotFigures):
     def singleRun(
         self, *args, expOverlay=False, GluTime=False, nearSoma=False,
     ):
+        """Run a single PAPModel simulation with configurable NMDA Mg-block/kinetics parameters, optional Kir overexpression and near-soma PAP placement, apply multi-spike K+ stimulation, then plot voltage/current traces and optionally overlay experimental fluorescence data or glutamate transporter state time courses."""
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -4491,6 +4551,7 @@ class procedure(plotFigures):
                 )
 
     def bathExperiment(self, runAll=True, invivo=False, isolate=False, gaba=False,soma=False):
+        """Dispatch, one condition per MPI rank, the K+ bath (in-vitro/in-vivo, isolated/global, soma) and GABA bath experiments; when runAll=False, run the single specified condition directly."""
         self.global_rw_data = True
         # call to set global rw data i.e. each indicidual rank will read and write src_data for plots instead of waiting for all
         if runAll:
@@ -4531,6 +4592,7 @@ class procedure(plotFigures):
                 self.kbathExperiment(invivo, isolate,soma=soma)
 
     def kbathExperiment(self, invivo, isolate,soma=False):
+        """Run a K+ bath experiment - either a step K+ bath in vitro or a replayed in-vivo K+ trace - with optional local/global ECS isolation and near-soma PAP placement, then plot the resulting voltage/current traces."""
         # add multispike ek clamp
         self.addChannelTag()
         if invivo:
@@ -4626,6 +4688,7 @@ class procedure(plotFigures):
         # print(max(list(results.vPAP)))
 
     def gababathExperiment(self):
+        """Run a bath-applied GABA experiment on the PAP's GABA receptors and plot the resulting voltage/current traces."""
         self.addChannelTag()
         self.tag += "_gabaBath"
         self.locality = "global"
@@ -4681,6 +4744,7 @@ class procedure(plotFigures):
         # print(max(list(results.vPAP)))
 
     def calcRiseFall(self, t, V, label=None, stdout=False):
+        """Compute the half-max rise time (from stimulus onset to half-peak) and half-max fall time (from peak to half-peak) of a voltage trace."""
         t = list(t)
         V = list(V)
         Thalf = []
@@ -4710,6 +4774,7 @@ class procedure(plotFigures):
         return Thalf
 
     def GABANMDARCompare(self):
+        """Run a parallelized grid of simulations varying NMDAR count and GABA receptor count together, pickle the raw results, and plot a comparison trace figure."""
         self.addChannelTag()
         # Calculate the number of iterations for all parm sets
         iterations = comm.bcast(
@@ -4780,6 +4845,7 @@ class procedure(plotFigures):
 
     @read_data
     def channelComparison(self):
+        """Run a parallelized grid comparison of Kir conductance against another channel/transmitter parameter (GABA receptor count, NMDAR count, GluT transporter count, gap junction count, or Na/K-ATPase pump rate, depending on which is enabled), scaling the comparison range per channel type, and plot the result as a heatmap."""
         self.addChannelTag()
         if self.GABAR:
             self.channelCompareMax *= 2.6 
@@ -4897,6 +4963,7 @@ class procedure(plotFigures):
 
     @read_data
     def shift_PAP_location(self):
+        """Run simulations shifting the PAP's location along the dendrite (0 to 1) crossed with different gap junction counts, then plot a heatmap of peak depolarization versus PAP shift position and gap junction count."""
         self.addChannelTag()
         gapCounts = [0, 50, 100]
         shift_range = np.arange(0, 1, 0.1)
@@ -4977,6 +5044,7 @@ class procedure(plotFigures):
     #
     @read_data
     def glutamateSpillOver(self, sampleNum=10):
+        """Run simulations across a log-spaced range of PAPLen (spillover confinement length) values, repeated sampleNum times per length, to study glutamate spillover; plot voltage traces with a zoomed inset and cable-length schematic, a peak-depolarization-vs-PAPLen summary, and additional IK series plots for the control, maximal, and peak-response PAPLen conditions."""
         self.addChannelTag()
         if self.GluStim:
             iterations = np.concatenate(
@@ -5306,6 +5374,7 @@ class procedure(plotFigures):
 
 
     def plot_seed_map(self,start,end,skip_seed=None,save=False,no_gap=False):
+        """Compute PAP name/properties/input resistance across a range of morphology seeds (optionally also for extra primary-branch/soma seeds when saving), detect seeds whose morphology duplicates an already-seen PAP_name, optionally save a 3D color-coded morphology plot, and return the list of redundant seeds."""
         funcArgs = []
         funcArgs.append(
             {
@@ -5427,6 +5496,7 @@ class procedure(plotFigures):
 
 
     def compareIKSizes2KoSizes(self):
+        """Locate cached PAP properties data (retrying with a 'seed_point_stim' tag variant if needed), then run compareIKSize, compareIKSize_pbSoma and plot_IKSizes in sequence."""
         count = 0
         PAP_AllProperties = None 
         replace_props = ['PAPLen','KoSize']
@@ -5446,6 +5516,7 @@ class procedure(plotFigures):
 
 
     def plot_IKSizes(self,point_stim=True):
+        """Load cached IK-size-fit and PAP-property data and produce diagnostic plots relating PAP/primary-branch/soma electrical size and geometry (input resistance, Ra/Rm-derived geometric factor) to peak depolarization, including a linear regression/correlation summary and a Gm vs Ga plot."""
         IKSize_PAP = self.find_run_comp('compareIKSize')
         IKSize_Soma = self.find_run_comp('compareIKSize_pbSoma')
         ampLen = self.find_run_comp('runAmpLenComparison')
@@ -5561,6 +5632,7 @@ class procedure(plotFigures):
             plt.figure(figsize=gl.figsize_panel)
             plt.subplots_adjust(left=0.2,bottom=0.2)
             def find_by_name(name):
+                """Return all PAP_AllProperties entries whose PAP_name contains the given substring, or None if none match."""
                 save_name = []
                 for refs in PAP_AllProperties:
                     for ref in refs:
@@ -5583,6 +5655,7 @@ class procedure(plotFigures):
                         if hasattr(cell,'PAP_name') and cell.PAP_name == 'soma':
                             color = self.returnColor('Soma')
                         def findbyNameSeed(comp_cell):
+                            """Find the PAP_AllProperties entry matching a cell's PAP_name (or, for cells lacking a PAP_name, the Glia entry with the same seed), used to look up that PAP's input resistance."""
                             for refs in PAP_AllProperties:
                                 for ref in refs:
                                     if not hasattr(comp_cell,'PAP_name'):
@@ -5622,6 +5695,7 @@ class procedure(plotFigures):
             for cells in ampLen:
                 for cell in cells:
                     def find_seed(seed):
+                        """Return the entry in IKSize_PAP whose seed matches the given seed, or None if not found."""
                         for refs in IKSize_PAP:
                             for ref in refs:
                                 if ref.seed == seed:
@@ -5656,6 +5730,7 @@ class procedure(plotFigures):
                         Gas.append(Ga)
 
             def abs_vol(cell):
+                """Return the peak (maximum) vPAP value recorded for a cell."""
                 return max(list(cell.vPAP))
 
             res_column_soma = self.read_run_comp("run_comp_soma",single_load=True)
@@ -5663,6 +5738,7 @@ class procedure(plotFigures):
 
             # only specific use case
             def find_by_name(name):
+                """Return all PAP_AllProperties entries whose PAP_name contains the given substring, or None if none match."""
                 save_name = []
                 for refs in PAP_AllProperties:
                     for ref in refs:
@@ -5678,11 +5754,13 @@ class procedure(plotFigures):
             
             for j in ri_pb_seed:
                 def getbySeed(cell):
+                    """Return the peak depolarization (max vPAP - RMP) for the cell if its seed matches the enclosing loop's seed j, else None."""
                     if cell.seed == j:
                         return max(list(cell.vPAP)) - cell.RMP
                     else:
                         return None
                 def findbyNameSeed(comp_cell_seed,name):
+                    """Find the PAP_AllProperties entry whose PAP_name contains the given substring and whose seed matches comp_cell_seed."""
                     for refs in PAP_AllProperties:
                         for ref in refs:
                             if hasattr(ref,'PAP_name') and name in ref.PAP_name and ref.seed == comp_cell_seed:
@@ -5693,6 +5771,7 @@ class procedure(plotFigures):
               
                 res_column_pb = self.read_run_comp("run_comp_pb",func=getbySeed,single_load=True)
                 def find_seed():
+                    """Return the entry in IKSize_Soma whose seed matches the enclosing loop's seed j, or None if not found."""
                     for refs in IKSize_Soma:
                         for ref in refs:
                             if ref.seed == j:
@@ -5788,6 +5867,7 @@ class procedure(plotFigures):
   
     @read_data
     def compareIKSize(self):
+        """Run fitIKSize on each PAP (Glia) morphology seed found in the cached PAP properties, to fit the relationship between injected K+ size and PAP voltage response."""
         funcArgs = []
         funcArgs.append(
             {
@@ -5839,6 +5919,7 @@ class procedure(plotFigures):
 
     @read_data
     def compareIKSize_pbSoma(self):
+        """Run fitIKSize, after relocating the PAP to a primary-branch/dendrite position, on each 'dendrite' seed found in cached PAP properties, and additionally generate a dedicated soma-placed run if no cached soma data exists yet."""
         funcArgs = []
         funcArgs.append(
             {
@@ -5901,6 +5982,7 @@ class procedure(plotFigures):
         
 
     def potassiumComparison(self,nearSoma=False):
+        """For each comparison axis (seed, PAPLen, and separately KoSize), run a battery of parallelized bath/soma/primary-branch amplitude-length-potassium comparison experiments - including seed-map deduplication and morphology plotting for the seed axis - then summarize and plot the results via runAmpLenComparison/runPotassiumComparison."""
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
         for comparison in ["seed", "PAPLen"]: #, "KoSize"]: #,  "durStim"]:
@@ -6066,6 +6148,7 @@ class procedure(plotFigures):
 
 
     def gap_junction_bath_clearence(self):
+        """Compares K+ clearance from the bath with and without gap junctions, fitting an exponential decay to the post-stimulus recovery and plotting the fitted time constants and traces for both conditions."""
         self.KoCompMax = gl.max_ko
         self.KoCompStep = 5 
         self.kdifl = True
@@ -6075,6 +6158,7 @@ class procedure(plotFigures):
         app_dur = 100
 
         def get_trace(cell):
+            """Returns the cell's time vector and KoPAP (perisynaptic K+) trace as plain lists."""
             return list(cell.time),list(cell.KoPAP)
 
         if AllCells is None:
@@ -6120,6 +6204,7 @@ class procedure(plotFigures):
                     initStep = np.argmin(abs(t-start_t))
                     endStep = np.argmin(abs(t-start_t-10))
                     def exp_fit(x,a,b,c):
+                        """Exponential decay function a*exp(-b*x)+c used to fit the K+ recovery time constant."""
                         return a*np.exp(-b*x)+c
                     popt, pcov = curve_fit(
                         exp_fit,
@@ -6152,6 +6237,7 @@ class procedure(plotFigures):
  
 
     def run_comp_bath(self,iterations,gap=True,long=False,dur=100,changeBath=False):
+        """Runs (or loads cached) bath-application K+ simulations across KoSize iterations, optionally with gap junctions, K+ diffusion, rectification-off, and an extended run duration."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6211,6 +6297,7 @@ class procedure(plotFigures):
             AllCells.release()
 
     def run_comp_ri(self,iterations):
+        """Runs (or loads cached) PAP input-resistance simulations across seeds and scatter-plots each cell's PAP_Ri against the mean of the remaining Ri values."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6260,6 +6347,7 @@ class procedure(plotFigures):
 
 
     def test_soma_response(self,iterations,mode='branch'):
+        """Runs (or loads cached) simulations of the somatic K+ response, optionally sweeping primary-branch diameter as well as KoSize, and plots the peak PAP voltage against branch diameter."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6315,6 +6403,7 @@ class procedure(plotFigures):
 
 
     def run_comp_soma(self,iterations,point_stim=False):
+        """Runs (or loads cached) simulations that relocate the PAP stimulus to the soma across KoSize iterations, optionally with point stimulation, K+ diffusion, rectification-off, or gap junctions disabled."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6368,6 +6457,7 @@ class procedure(plotFigures):
 
 
     def plot_range_pb(self):
+        """Plots depolarization vs bath K+ for a range of fractional primary-branch section lengths alongside the soma-comparable and bath-application reference curves and the Nernst potential, then generates a companion 3D morphology plot of the primary branch."""
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
@@ -6380,6 +6470,7 @@ class procedure(plotFigures):
             if range_len in [0,1]:
                 continue
             def getbyRange(cell):
+                """Returns the peak depolarization for a cell whose fractional section-range matches range_len, else None."""
                 if cell.sec_range == range_len:
                     return max(cell.vPAP) - cell.RMP
                 else:
@@ -6468,6 +6559,7 @@ class procedure(plotFigures):
 
 
     def plot_morphology_range(self,rangesec):
+        """Builds and saves a colored 3D morphology plot of a single PAP branch (rangesec), coloring segments by cumulative distance-to-soma length."""
         # range sec
         range_secs = [(2,rangesec,None,0.1)]
         funcArgs = []
@@ -6534,6 +6626,7 @@ class procedure(plotFigures):
 
 
     def run_comp_pb(self,iterations,point_stim=False,sec_range=False):
+        """Runs (or fills in any missing) primary-branch stimulation simulations across KoSize/seed (or, with point_stim and sec_range, KoSize/section-range) combinations, with optional point stimulation, K+ diffusion, rectification-off, or gap-junction settings."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6612,6 +6705,7 @@ class procedure(plotFigures):
         #    self.free_figure(results)
 
     def find_pap_props(self):
+        """Loads the previously pickled per-PAP-segment property data (plot_seed_map) matching the current tag, optionally restricting to a cutoff plus any dendrite/soma cells, and returns it processed via load_interm_data (or None if no matching file exists)."""
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
         # Mainly aims to keep additional information added during function
         fileName = f"plot_seed_map{self.tag}.pickle"
@@ -6651,6 +6745,7 @@ class procedure(plotFigures):
 
 
     def find_run_comp(self,func_name,single_load=False):
+        """Looks for a previously pickled intermediary result file for func_name matching the current tag and loads it, either raw (single_load) or processed via load_interm_data; returns None if no matching file is found."""
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
         # Mainly aims to keep additional information added during function
         tmptag = self.tag
@@ -6678,6 +6773,7 @@ class procedure(plotFigures):
         return None
 
     def read_run_comp(self,func_name,func=None,single_load=False):
+        """Loads cached results for func_name and builds a column array indexed by KoSize step, using peak depolarization by default or a custom per-cell func if provided."""
         AllCells = self.find_run_comp(func_name,single_load=single_load)
         #self.plotIKSeries.__wrapped__(self,AllCells)
         if AllCells is not None:
@@ -6710,6 +6806,7 @@ class procedure(plotFigures):
     def runFitCaliburation(
         self,
     ):
+        """Runs a K+ calibration sweep (log-spaced KoSize values plus zero) with slowed onset/offset kinetics, saving PAP properties, then plots the resulting fluorescence comparison."""
         funcArgs = []
         funcArgs.append(
             {
@@ -6776,6 +6873,9 @@ class procedure(plotFigures):
     def runAmpLenComparison(
         self, comparison, iterations, maxStep, intermStep, logx=None, add_bath=True,plot_total_p=True,point_stim=False
     ):
+        """
+        Runs (or loads) an amplitude-vs-comparison-variable (e.g. seed or PAPLen) simulation sweep, and, when comparing seed/PAPLen, cross-references against cached bath/soma/primary-branch runs and PAP property data to scatter depolarization against morphological/electrical properties (Ri, area, Kir count, etc.), fitting per-group and total regressions with correlation/p-value/OLS/FDR-corrected statistics. Finally renders the combined K+-vs-response line and heatmap plots.
+        """
         funcArgs = []
         funcArgs.append(
             {
@@ -6849,6 +6949,7 @@ class procedure(plotFigures):
             res_column = self.read_run_comp("run_comp_bath")
             res_column_soma = self.read_run_comp("run_comp_soma")
             def getiKdiff(cell):
+                """Returns the peak-to-trough swing of the PAP K+ current for a cell."""
                 return -(min(list(cell.iKPAP))- max(list(cell.iKPAP)))
             ik_soma = self.read_run_comp("run_comp_soma",func=getiKdiff)
  
@@ -6858,6 +6959,7 @@ class procedure(plotFigures):
             # only specific use case
             #print(self.tag)
             def find_by_name(name):
+                """Finds all PAP property entries whose PAP_name contains the given substring, returning None if none match."""
                 save_name = []
                 for refs in PAP_AllProperties:
                     for ref in refs:
@@ -6879,11 +6981,13 @@ class procedure(plotFigures):
             
                 for i,j in enumerate(ri_pb_seed):
                     def getbySeed(cell):
+                        """Returns the peak depolarization for a cell matching the current seed j, else None."""
                         if cell.seed == j:
                             return max(cell.vPAP) - cell.RMP
                         else:
                             return None
                     def getiKdiff(cell):
+                        """Returns the peak-to-trough K+ current swing for a cell matching the current seed j, else None."""
                         if cell.seed == j:
                             return -(min(list(cell.iKPAP))- max(list(cell.iKPAP)))
                         else:
@@ -6947,6 +7051,7 @@ class procedure(plotFigures):
                     for cells in results:
                         for cell in cells:
                             def find_seed(seed):
+                                """Finds the reference PAP property entry matching the given seed, else None."""
                                 for refs in ref_paps:
                                     for ref in refs:
                                         if ref.seed == seed:
@@ -7568,6 +7673,7 @@ class procedure(plotFigures):
         
 
     def plot_RiPlots(self,*AllCells_List):
+        """Plots overlaid depolarization traces (relative to RMP) around the stimulus window for PAP, primary-branch, and soma cells drawn from one or more cached result sets, colored by cell type."""
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
@@ -7607,6 +7713,7 @@ class procedure(plotFigures):
 
     @read_data
     def runPotassiumComparison(self, comparison, iterations, maxStep=10, intermStep=1):
+        """Runs a Kir-conductance vs comparison-variable sweep (optionally with multi-spike stimulation), then plots the resulting peak-depolarization heatmap (and, for KoSize, an additional line plot) across Kir levels."""
         # reset tag to current status
         funcArgs = []
         funcArgs.append(
@@ -7841,10 +7948,12 @@ class procedure(plotFigures):
             #    self.plotIKSeries(results, tagReset=True, setKoylim=True)
 
     def SCeq(self, x, a, l, c):
+        """Exponential space-constant fit function a*exp(-x/l)+c."""
         return a * np.exp(-x / l) + c
 
     @read_data
     def spaceConstant(self):
+        """Runs dual-patch voltage-clamp simulations across a range of leak conductances to estimate the somato-dendritic space constant, plotting the attenuation profile that matches a target space constant and the sensitivity of the space constant to membrane resistance."""
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -7948,6 +8057,7 @@ class procedure(plotFigures):
             )
 
     def optDepolarizationSearch(self, x, optmV=20.0):
+        """Runs a single-spike simulation at bath K+ concentration x and returns the absolute difference between the resulting peak depolarization and a target value (optmV), for use as an optimization objective."""
         # add multispike ek clamp
         self.addChannelTag()
         # print(self.tag)
@@ -7978,6 +8088,7 @@ class procedure(plotFigures):
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
     def readExpRawData(self, results):
+        """Loads experimental depolarization time-course data from CSV, baseline-corrects and rescales it, and shifts its time axis to align with the model's stimulus onset."""
         df = pd.read_csv("./Data/depolarTime.csv")
         stimIndex = 5
         # calibrate to relative point from stimulus onset
@@ -7995,6 +8106,7 @@ class procedure(plotFigures):
     def physiological_stim(
         self,
     ):
+        """Distributes a grid of physiological stimulation simulations (across stim patterns, PAP counts, and channel models: K+, GLT-1, GABA_A, NMDAR) across MPI ranks, runs (or loads cached) them, and plots the combined comparison."""
         self.tag += "_physiological"
         AllCells = []
         funcArgs = []
@@ -8097,6 +8209,7 @@ class procedure(plotFigures):
         autosave=True,
         skipsave=False,
     ):
+        """Runs (or loads a cached) simulation configured per the PAP/GABAR/NMDAR/forced-accumulation parameter set x, matches MPI ranks to stimulus counts, then fits/compares the resulting trace to experimental depolarization data and returns the fit loss."""
 
         # print(f"{rank}:{x}")
         # unify x value
@@ -8273,11 +8386,13 @@ class procedure(plotFigures):
         return loss
 
     def artifactCurve(self, x, a, l, c):
+        """Exponential artifact-decay model used to fit/correct the stimulation artifact: clamps x below 150 to 150, then returns -a*exp(-(x-150)/l) + c."""
         x = np.array(x)
         x[x < 150] = 150
         return -a * np.exp(-(x - 150) / l) + c
 
     def fitbaselineCurve(self, expData, tdata):
+        """Fits artifactCurve to the experimental baseline data via least-squares curve_fit and returns the optimized parameters."""
         popt, pcov = curve_fit(
             self.artifactCurve,
             tdata,
@@ -8299,6 +8414,13 @@ class procedure(plotFigures):
         rankDict={10: 0, 5: 1, 1: 2},
         voltageOn=False,
     ):
+        """
+        Compares simulated PAP voltage/fluorescence against experimental fluorescence data for a set of
+        stimulus counts, optionally correcting for a stimulation-artifact spline baseline, and computes a
+        squared-error loss (only where the residual exceeds the measured SEM) gathered across MPI ranks.
+        When showFig is set, plots combined or per-stim-count voltage/fluorescence figures overlaying
+        experiment vs. simulation and saves them as PDFs; returns the total loss summed across ranks.
+        """
         plt.close("all")
         if split:
             for i in range(2):
@@ -8616,6 +8738,9 @@ class procedure(plotFigures):
 
 
     def plotExpFit_combined(self):
+        """Loads pickled per-condition fit results from intermediaryData matching the current seed, tags
+        each by channel type via determine_tag/determine_id, and plots a 2x2 grid of simulated membrane
+        voltage traces (K+, Accumulation, GABA_AR, NMDAR) colored by stimulus count, saving a combined PDF."""
         if rank != 0:
             return
         intermediary_files = os.listdir(os.path.join("intermediaryData"))
@@ -8623,6 +8748,7 @@ class procedure(plotFigures):
 
         key_order = ['K$^+$','Accumulation','GABA$_A$R','NMDAR']
         def determine_tag(tag):
+            """Classifies a fit-result filename tag into one of 'K$^+$', 'Accumulation', 'GABA$_A$R', or 'NMDAR' based on substrings present in it."""
             if 'PAP' in tag:
                 if 'GABAR' in tag:
                     return 'GABA$_A$R'
@@ -8634,6 +8760,7 @@ class procedure(plotFigures):
                 else:
                     return 'K$^+$'
         def determine_id(tag):
+            """Maps a classified channel tag to its (row, col) position in the 2x2 subplot grid."""
             if 'GABA' in tag or 'NMDA' in tag:
                 if 'GABA' in tag:
                     return (1,0) 
@@ -8718,6 +8845,9 @@ class procedure(plotFigures):
 
 
     def optPotassiumSearch(self, x, optmV=19.2):
+        """Runs a single PAPModel simulation with extracellular K+ concentration x and returns the absolute
+        difference between the peak PAP depolarization and the target voltage optmV (objective function
+        for potassium-concentration optimization)."""
         self.addChannelTag()
         # print(self.tag)
         AllCells = []
@@ -8748,6 +8878,9 @@ class procedure(plotFigures):
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
     def optSpikeSearch(self, x, optmV=19.2):
+        """Runs a multi-spike PAPModel simulation for a given (freq, number) spike train (with fixed Kir)
+        and returns the absolute difference between the peak PAP depolarization and the target voltage
+        optmV (objective function for spike-train optimization)."""
         freq, number = x
         freq = round(freq)
         number = round(number)
@@ -8780,6 +8913,9 @@ class procedure(plotFigures):
         return abs(max(list(cells.vPAP)) - cells.RMP - optmV)
 
     def compareLen(self):
+        """For each Kir conductance value (-5, 0, 5), sweeps a grid of NMDAR/synapse count (multiple) and
+        PAP process length (PAPLen) values in parallel, running (optionally K+-stimulated) PAPModel
+        simulations, and plots a heatmap of the results tagged by that Kir setting."""
         self.addChannelTag()
         controlLeak = self.leak
         controldt = self.dt
@@ -8851,6 +8987,7 @@ class procedure(plotFigures):
                 self.plotHeatmap(results, tag=f"{self.tag}_Kir{kir}_CompLen", Kir=False)
 
     def flatten_list(self, nested_data):
+        """Generator that recursively flattens an arbitrarily nested list into a flat sequence of items."""
         for item in nested_data:
             if isinstance(item, list):
                 yield from self.flatten_list(item)
@@ -8858,6 +8995,8 @@ class procedure(plotFigures):
                 yield item
 
     def split_and_remove(self, key, *args):
+        """Recursively splits each string argument on `key` and strips remaining occurrences of `key`,
+        repeating until the resulting list length stops changing; returns the flat list of cleaned strings."""
         original_len = len(args)
         new_list = []
         flat_list = list(self.flatten_list(args))
@@ -8875,6 +9014,8 @@ class procedure(plotFigures):
             return self.split_and_remove(key, *new_list)
 
     def plot_GluT_experiment(self, ax, cell):
+        """Draws a horizontal dashed reference line at the minimum experimental somatic current from
+        glut_somato.csv, falling back to a hardcoded value if that file is missing."""
         if os.path.isfile(os.path.join("Data", "glut_somato.csv")):
             df = pd.read_csv(os.path.join("Data", "glut_somato.csv"))
             ax.axhline(min(df["i"]), 0, 1, linestyle="--", color="grey")
@@ -8883,6 +9024,14 @@ class procedure(plotFigures):
 
 
     def combine_distance_analysis_plots(self):
+        """
+        Loads pickled distance_analysis results for the GluT, NMDAR, and GABAR channels matching the
+        current tag and plots each channel's per-shell current-amplitude curve (via plot_shell) into one
+        combined figure. If all three channel datasets are found, also builds a multi-panel figure
+        comparing each channel's normalized current to the voltage-clamp current across shells, with
+        zoomed insets highlighting shells 1 and 3, and optionally saves a ratio plot of clamp current to
+        channel current per shell.
+        """
         if rank != 0:
             return
         curr_tag = self.tag
@@ -9230,6 +9379,7 @@ class procedure(plotFigures):
                         if cell_id == 0:
 
                             def get_origin_y(ax):
+                                """Converts the axis's left x-limit (at y=0) into a figure-fraction y-coordinate, used to align text labels with the axis origin."""
                                 x0 = ax.get_xlim()[0]
 
                                 _, fig_y = fig.transFigure.inverted().transform(
@@ -9362,6 +9512,9 @@ class procedure(plotFigures):
             plt.close("all")
 
     def plot_shell(self, results, ax, ax2=None, mask=None):
+        """Extracts each cell's minimum voltage-clamp current amplitude relative to its baseline
+        (excluding masked shells and the outermost shell), then plots amplitude vs. shell number on ax
+        and a zoomed inset (shells 5-9) on ax2 (creating ax2 if not given); returns both axes."""
         resList = []
         shell_num = []
         for cells in results:
@@ -9401,6 +9554,11 @@ class procedure(plotFigures):
 
     @read_data
     def distance_analysis(self, shell_range=10):
+        """Sweeps a spatial 'shell' distance (1..shell_range) of clustered synaptic input on the PAP process
+        in parallel, running multi-spike PAPModel simulations (with NMDAR/GluT/GABAR channels enabled per
+        instance flags) while recording voltage-clamp current at each shell, then combines the per-channel
+        plots via combine_distance_analysis_plots and saves a shell-vs-current-amplitude summary figure via
+        plot_shell."""
         self.addChannelTag()
         syn_count = 4e1
         # clustered input into n sections
@@ -9493,6 +9651,9 @@ class procedure(plotFigures):
             )
 
     def optRMPSearch(self, x, optmV=-76.3):
+        """Runs two PAPModel simulations to fit resting membrane potential: one with only leak conductance
+        set (matching its RMP against optmV), and one adding the Kir conductance (matching its RMP against
+        -80 mV); returns the summed squared error of both (objective function for RMP optimization)."""
         # x = leak value
         leak, kir = x
         # add multispike ek clamp
@@ -9541,6 +9702,9 @@ class procedure(plotFigures):
         return lossKO + loss
 
     def optRMPSearch(self, x, optmV=-76.3):
+        """Runs two PAPModel simulations to fit resting membrane potential: one with only leak conductance
+        set (matching its RMP against optmV), and one adding the Kir conductance (matching its RMP against
+        -80 mV); returns the summed squared error of both (objective function for RMP optimization)."""
         # x = leak value
         leak, kir = x
         # add multispike ek clamp
@@ -9590,6 +9754,9 @@ class procedure(plotFigures):
 
     @read_data
     def freqComparison(self):
+        """Sweeps a grid of spike-train (spike count, spike frequency) combinations, running a multi-spike
+        PAPModel simulation per combination in parallel, and builds/saves a heatmap of the peak
+        depolarization (max vPAP - RMP) as a function of stimulus count vs. frequency."""
         self.addChannelTag()
         # Calculate the number of iterations for all parm sets
         spikeNumStep = 2
@@ -9705,6 +9872,9 @@ class procedure(plotFigures):
             )
 
     def fit_fluor(self):
+        """Uses a NEURON voltage-clamp + GEVI mechanism to simulate the fluorescence response to a set of
+        clamp durations (2-500 ms), splitting the duration list across MPI ranks, then gathers all results
+        to rank 0 and calls plot_exp_comparison_fluor to compare against experimental data."""
         iterations = [2,4,6,8,10,20,100,500] 
         self.interval_spacing = iterations
         # Calculate the number of iterations each process will handle
@@ -9766,6 +9936,10 @@ class procedure(plotFigures):
             self.plot_exp_comparison_fluor(results)
 
     def plot_exp_comparison_fluor(self,results):
+        """Plots simulated peak fluorescence fraction (normalized to its max) against voltage-clamp
+        duration, overlaid on experimental archlight fluorescence-response data with error bars, including
+        an inset showing the raw fluorescence trace over time for the 500 ms clamp vs. the experimental
+        trace; saves the figure."""
         max_v = 0
         df = pd.read_csv(os.path.join("./Data","archlight_delay.csv"))
         df['std'] -= df['fraction']
@@ -9809,6 +9983,9 @@ class procedure(plotFigures):
 
     @staticmethod
     def extract_and_pair_f_by_gid(csv_file_path):
+        """Reads a CSV of per-cell (gId) time/fluorescence rows; for each gId, records its first timestamp
+        and pairs up its sequential 'f' values into tuples (pairing an odd trailing value with None).
+        Returns the list of per-gId timestamps and the list of paired fluorescence values."""
         df = pd.read_csv(csv_file_path)
         res = []
         t = []
@@ -9833,12 +10010,16 @@ class procedure(plotFigures):
 
     @staticmethod
     def getExpRes(fName):
+        """Loads experimental fluorescence pairs via extract_and_pair_f_by_gid, computing the per-point
+        error as the absolute difference within each pair; returns time, fluorescence, and error arrays."""
         t, res = procedure.extract_and_pair_f_by_gid(fName)
         yerr = [abs(m - s) if s is not None else 0 for m, s in res]
         f, _ = list(zip(*res))
         return t, f, yerr
 
     def plotExpRes(self):
+        """For each stimulus condition (1, 5, 10), loads experimental fluorescence data via getExpRes and
+        plots scatter + error-bar points on a shared figure comparing responses across stim conditions."""
         for fTag in [1, 5, 10]:
             t, f, yerr = procedure.getExpRes(os.path.join("./Data", f"{fTag}stim.csv"))
             plt.scatter(t, f, label=f"{fTag} stim")

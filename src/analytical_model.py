@@ -20,10 +20,16 @@ def inverse_exponential_integral_equation(x, target_y):
 
 
 def halt_at_zero(t, y):
+    """
+    Event function for solve_ivp that fires when the state variable y[0] crosses zero, used with terminal=True to stop integration there.
+    """
     return y[0]
 
 
 def test_get_inverse_expi(target_y_value):
+    """
+    Solves for x such that Ei(x) equals target_y_value using fsolve, then prints the result and a check by re-evaluating Ei at that x.
+    """
     # Example usage:
     initial_guess = 1.0  # An initial guess for x
 
@@ -53,6 +59,9 @@ class analytical_ko:
     g_scale = 0.09534626
 
     def __init__(self, **kwargs):
+        """
+        Overrides any matching class attributes with values passed in kwargs, then scales the conductance g by the 'multiple' factor, g_scale, and the voltage-dependent gating term lV(VClamp).
+        """
         for key in kwargs.keys():
             if hasattr(self, key):
                 setattr(self, key, kwargs[key])
@@ -62,19 +71,31 @@ class analytical_ko:
         print(f"VC is {self.VClamp} mV")
 
     def lV(self, V):
+        """
+        Sigmoidal (Boltzmann) voltage-dependence function used to scale the channel conductance.
+        """
         return 1 / (1 + np.exp((V - self.vhalf) / self.kl))
 
     def init_Ko(self, mM):
+        """
+        Computes the exponential-integral value corresponding to an initial extracellular K+ concentration (mM), used as the initial condition for the analytical Ko(t) solution.
+        """
         self.get_ALPH_vals()
         return expi(
             0.5 * (np.log(self.V * mM * 1e-3 / self.gamma) - self.alpha / self.beta)
         )
 
     def calc_analytical(self, inverse_x):
+        """
+        Converts an inverse-exponential-integral value back into the corresponding K+ amount using the analytical solution's gamma/alpha/beta coefficients.
+        """
         self.get_ALPH_vals()
         return self.gamma * np.exp(2 * inverse_x + self.alpha / self.beta)
 
     def get_ALPH_vals(self):
+        """
+        Computes and stores the alpha, beta, and gamma coefficients of the analytical ODE solution from the channel conductance, clamp voltage, volume, and ion concentration parameters.
+        """
         alph = self.g / self.z / self.F / np.sqrt(self.V)
         self.A = self.VClamp * 1e-3 * alph
         self.B = alph * self.R * self.T / self.z / self.F
@@ -85,12 +106,21 @@ class analytical_ko:
         self.gamma = self.C * self.D
 
     def calcNernst(self, ko):
+        """
+        Computes the Nernst equilibrium potential for the given extracellular K+ amount (ko).
+        """
         return self.R * self.T / self.z / self.F * np.log(ko / self.V / self.ki)
 
     def calcInvNernst(self, E):
+        """
+        Computes the extracellular K+ amount corresponding to a given Nernst potential E (inverse of calcNernst).
+        """
         return np.exp(self.F * self.z / self.R / self.T * E * 1e-3) * self.V * self.ki
 
     def phase_plot(self, *xrange):
+        """
+        Plots the phase-plane trajectory dx/dt versus x over xrange, in molecule-amount units (figure 5) and in concentration units mM (figure 6).
+        """
         x = np.linspace(*xrange, 100)
         plt.figure(5)
         plt.plot(x, self.dxdt(x), label=f"{self.V*1e15:.1f} um3", color="black")
@@ -103,6 +133,9 @@ class analytical_ko:
         )
 
     def dxdt(self, x):
+        """
+        Computes the rate of change dx/dt of the ODE state variable at x, returning 0 if a RuntimeWarning (e.g. an invalid log/sqrt) occurs.
+        """
         self.get_ALPH_vals()
         try:
             tmp = np.sqrt(x) * (self.A - self.B * np.log(x / (self.C * self.D)))
@@ -112,10 +145,16 @@ class analytical_ko:
         return tmp
 
     def ode_system(self, t, y):
+        """
+        ODE right-hand-side wrapper for solve_ivp, returning dx/dt as a single-element list for the state y[0].
+        """
         x = y[0]
         return [self.dxdt(x)]
 
     def NI_Ko(self, endt, dt):
+        """
+        Numerically integrates x(t) from t=0 to endt via solve_ivp (halting early if x crosses zero), then plots the resulting trace in concentration units (figure 3) and molecule count (figure 4); prints an error message if integration fails.
+        """
         self.get_ALPH_vals()
         x0 = [self.ko0 * self.V * 1e-3]
         t_span = (0, endt)
@@ -148,6 +187,9 @@ class analytical_ko:
             print("ODEの解に失敗しました:", sol.message)
 
     def Ko(self, t):
+        """
+        Computes the analytical extracellular K+ trajectory Ko(t) by inverting the exponential-integral relation via fsolve at the given time(s), starting from the initial K+ level and the alpha/beta/gamma decay coefficients; for a scalar t it also prints the corresponding Nernst potential.
+        """
         self.get_ALPH_vals()
         initial_guess = 1e-17
         target_y_value = self.init_Ko(self.ko0) - self.beta * t / (
@@ -183,6 +225,9 @@ class analytical_ko:
 
 
 def t_half(clamp, V_ECS):
+    """
+    Computes the analytical half-decay time (time for extracellular K+ to fall to half its initial value) for a given clamp voltage and ECS volume, using the closed-form exponential-integral solution.
+    """
     analytical_trace = analytical_ko(ko0=20, multiple=5e2, VClamp=clamp)
     g = analytical_trace.g
     F = analytical_trace.F
@@ -205,6 +250,9 @@ def t_half(clamp, V_ECS):
 
 
 def plot_All(VClamp):
+    """
+    Generates and saves the full set of analytical/numerical figures for a range of ECS volumes at a given clamp voltage: K+ concentration and molecule-count traces over time, time-to-zero-K+ vs volume, ODE integration traces, phase-plane plots, and the half-decay-time curve.
+    """
     analytical_trace = analytical_ko(ko0=20, multiple=5e2, VClamp=VClamp)
     print(f"{analytical_trace.Ko(0) / analytical_trace.V * 1e3} mM for t0")
     endt = 5  # s

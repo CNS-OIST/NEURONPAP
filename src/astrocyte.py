@@ -88,6 +88,10 @@ class PAPModel(ResultsPAPModel):
         recordAllPAP=False,
         **kwargs,
     ):
+        """Build the PAPModel: load the NEURON astrocyte HOC template, set simulation/clamp/
+        morphology parameters, attach one or more PAP branches to the soma, compute soma/PAP
+        areas, and derive synapse/channel counts (NMDA, GABA, gap junctions, Na/K pump) from kwargs.
+        """
         from neuron import h
 
         h.nrn_load_dll("nrniv.so")
@@ -281,13 +285,19 @@ class PAPModel(ResultsPAPModel):
             self.sec_range = sec_range
 
     def get_PAPName(self):
+        """Store and return the string name of the current PAP section."""
         self.PAP_name = str(self.PAP)
         return str(self.PAP)
 
     def kir_rect_off(self):
+        """Disable inward rectification of the Kir channel."""
         h.kir_rect_off(1)
 
     def setIKSize2KoSize(self, *val, analytical=True):
+        """Set self.KoSize directly from the positional argument, or, when PAP_properties are
+        available and analytical mode is requested, analytically estimate the Kir-mediated
+        current for the current resting potential and Ko instead.
+        """
         if not hasattr(self, "IKSize"):
             wMessage("IKSize not defined")
         elif hasattr(self, "PAP_properties") and analytical:
@@ -304,6 +314,9 @@ class PAPModel(ResultsPAPModel):
             self.KoSize = val[0]
 
     def fitIKSize(self, goalSize=-0.05):
+        """Fit self.KoSize so the resulting peak K+ current matches goalSize, by minimizing
+        getKoSize4IKSize, then continue the run and record the min/max voltage response.
+        """
         self.goal_IK = goalSize
         curr_index = len(list(self.iKPAP))
         self.stable_current = list(self.iKPAP)[-1]
@@ -322,6 +335,10 @@ class PAPModel(ResultsPAPModel):
         self.fit_minResponse = min(list(self.vPAP)[curr_index:])
 
     def getKoSize4IKSize(self, x):
+        """Optimizer objective: apply a trial Ko step, measure the resulting peak K+ current
+        deviation (in nA) from baseline, restore the baseline Ko, and return the squared error
+        against the target goal_IK.
+        """
         # make segment specific
         Ko = x[0] + self.Ko - self.getPAPK()
         # print(x[0], self.getPAPK(), Ko)
@@ -358,6 +375,10 @@ class PAPModel(ResultsPAPModel):
         return ((self.goal_IK - current) * factor) ** 2
 
     def savePAPProp(self, name=False):
+        """Initialize the simulation and record per-PAP-section properties (length, diameter,
+        nseg, area, kir2 channel counts, ECS space, adjacent diameter, distance from origin,
+        diffusion time constant, and optionally the section name) into self.PAP_properties.
+        """
         self.PAP_properties = []
         h.finitialize()
         for i, pap in enumerate(self.flattenPAP()):
@@ -380,6 +401,10 @@ class PAPModel(ResultsPAPModel):
                 self.PAP_properties[-1]["name"] = str(pap)
 
     def setPAPNearSoma(self, onSoma=False, onPB=True, diam=1, dist_radius=2):
+        """Select a PAP location near the soma: directly on the soma, on a nearby process
+        branch (PB), or at a section matching the given diameter/distance, updating self.PAP
+        and self.PAPs accordingly.
+        """
         if onSoma:
             return self.setPAP2Soma()
         elif onPB:
@@ -398,6 +423,9 @@ class PAPModel(ResultsPAPModel):
         #
 
     def nernstK(self, ko, kin):
+        """Compute the Nernst equilibrium potential for K+ given extracellular (ko) and
+        intracellular (kin) concentrations.
+        """
         R = 8.314  # Gas constant J/(mol*K)
         F = 96485  # Faraday constant C/mol
         T = h.celsius + 273.15  # Convert to Kelvin
@@ -405,9 +433,14 @@ class PAPModel(ResultsPAPModel):
         return (R * T) / (F) * np.log(ko / kin)
 
     def set_kdfl_iter(self):
+        """Enable iterative diffusion-based simulation of intracellular K+."""
         self.set_diff_ki(True)
 
     def set_diff_ki(self, on):
+        """Turn on diffusion-based simulation of intracellular K+ along the path from soma to
+        the current PAP (including child branches when the section is a "Glia" section); does
+        nothing when off.
+        """
         if on:
             if str(self.PAP) == "soma":
                 h.set_ki_sim(h.all_pb())
@@ -417,12 +450,18 @@ class PAPModel(ResultsPAPModel):
                 h.set_ki_sim(h.getPath(self.PAP, sec=self.PAP))
 
     def set_gapBath(self, on):
+        """Set the gap junction bath voltage to the K+ Nernst potential for a 10/120 mM
+        gradient when on, or back to the resting potential when off.
+        """
         if on:
             h.set_gapv(self.nernstK(10, 120) * 1000)
         else:
             h.set_gapv(self.v_init)
 
     def plot_path_attenuation(self, parmName="voltageClamp", origin=None):
+        """Compute paths away from (and toward) the given origin section, and plot voltage
+        attenuation along them, saving files labeled with the given parameter's current value.
+        """
         if not origin:
             origin = self.soma
 
@@ -443,6 +482,9 @@ class PAPModel(ResultsPAPModel):
         )
 
     def setDualPatch(self):
+        """Configure a short dual-patch clamp run: set tstop, switch on the voltage clamp, and
+        cache the soma length/units for later attenuation analysis.
+        """
         h.tstop = 50
         h.clampSwitch(5, self.voltageClamp)
         self.lenUnits = h.lenUnits
@@ -450,6 +492,9 @@ class PAPModel(ResultsPAPModel):
         # wMessage(f'Did not find PAP candidate with {diam=} in {radius=}')
 
     def getDualPatch_lambda(self):
+        """Record somatic voltage attenuation and estimate the space constant, the distance at
+        which attenuation falls to 1/e of its maximum, via interpolation.
+        """
         # get v atten
         tmpV = []
         for seg in self.soma:
@@ -461,6 +506,7 @@ class PAPModel(ResultsPAPModel):
         )
 
     def _find_nearest(self, array, value):
+        """Return the pair of indices in array that bracket value, nearest index first."""
         idx = (np.abs(array - value)).argmin()
         if value - array[idx] > 0:
             return idx, idx + 1
@@ -468,17 +514,24 @@ class PAPModel(ResultsPAPModel):
             return idx - 1, idx
 
     def _find_interpolate(self, array, value):
+        """Linearly interpolate between the bracketing points in array to find the position on
+        the h.lenUnits axis corresponding to value.
+        """
         id_start, id_end = self._find_nearest(array, value)
         b = array[id_end] - (array[id_end] - array[id_start]) * id_start
         return (value - b) * h.lenUnits / (array[id_end] - array[id_start])
 
     def channelDist(self, **channelDict):
+        """Scale the density of one or more channels by the given fold-change relative to
+        the PAP, via the GENExpression object.
+        """
         # change the density of a certain channel by xfold
         for channel, xfold in channelDict.items():
             # print(channel,xfold)
             self.GENEobj.alterDistribution(channel, ratioToPAP=xfold)
 
     def cleanMorphology(self):
+        """Delete all NEURON sections and clear cached soma/PAP/branch references."""
         # Used for removing morphology
         # python interface
         # print('cleaning')
@@ -495,15 +548,18 @@ class PAPModel(ResultsPAPModel):
         #     delattr(self, "GENEDict")
 
     def koClamp(self, ko=None):
+        """Clamp extracellular K+ concentration to a fixed value."""
         h.koclamp(ko)
 
     def ko_sim(self, on):
+        """Toggle extracellular K+ dynamic simulation on or off."""
         if on:
             h.ko_sim_on()
         else:
             h.ko_sim_off()
 
     def setGEVI(self, tON, tOFF):
+        """Configure the genetically encoded voltage indicator's on/off times."""
         h.setGEVI(tON, tOFF)
 
     def multiSpike(
@@ -518,6 +574,10 @@ class PAPModel(ResultsPAPModel):
         delay=0,
         point=True,
     ):
+        """Deliver a train of `number` K+ (or synaptic) stimuli at `freq` Hz: reconfigure the
+        NetStim if present, optionally scale synaptic weights, then either run continuously
+        under a Ko clamp or step through each pulse (recording video frames if requested).
+        """
         self.SpikeFreq = freq
         self.SpikeNum = number
         # print(self.SpikeFreq,self.SpikeNum)
@@ -585,6 +645,10 @@ class PAPModel(ResultsPAPModel):
         initvoltageClamp=True,
         delay=0,
     ):
+        """Run a theta-burst stimulation protocol: after initializing, repeatedly apply 3
+        extra pulses spaced 10 ms apart (4 pulses total at ~100 Hz) followed by a 200 ms rest,
+        until tstop is reached, applying either a synaptic weight or K+ pulses at each step.
+        """
         if KoSize == None:
             KoSize = self.KoSize
         if dur == None:
@@ -623,21 +687,28 @@ class PAPModel(ResultsPAPModel):
                     h.continuerun(t)
 
     def setkin(self, kin):
+        """Set the intracellular potassium concentration."""
         h.setkin(kin)
 
     def getkin(self):
+        """Read the intracellular potassium concentration into self.kin."""
         self.kin = h.getkin()
 
     def setGap(self):
+        """Apply the configured gap junction count to every gap junction in h.gaplist."""
         for _, sGap in enumerate(list(h.gaplist)):
             if self.gapcount is not None:
                 sGap.multiple = self.gapcount
 
     def checkGap(self):
+        """Print the gap count, multiple, and conductance of each gap junction (debugging)."""
         for _, sGap in enumerate(h.gaplist):
             print(self.gapcount, sGap.multiple, sGap.g)
 
     def initNMDAs(self):
+        """Lazily create NMDA receptor point processes and NetCons on all PAP sections,
+        reading parameters from file first if configured to do so.
+        """
         if self.readParms:
             self.readParameters()  # readfile in parallel causes errors
 
@@ -651,6 +722,10 @@ class PAPModel(ResultsPAPModel):
             # h.setNMDAs(self.flattenPAP())
 
     def setNMDAs(self):
+        """Initialize NMDAs, then, when glutamate signaling is on, distribute the total
+        `multiple` synapse count evenly across all NMDA synapses (extra remainder clustered at
+        the tip); otherwise disable all NMDA synapses and NetCons.
+        """
         self.initNMDAs()
         self.NMDAs = list(h.NMDAs)
         # print(self.NMDAs)
@@ -670,6 +745,9 @@ class PAPModel(ResultsPAPModel):
                     nc.active(False)
 
     def setNMDA_TC(self, *args):
+        """Set NMDA receptor time constants (tau1_0, tau2_0) on every NMDA synapse from the
+        given positional arguments, skipping any that are None/falsy.
+        """
         names = ["tau1_0", "tau2_0"]
         if not hasattr(self, "NMDAs"):
             wMessage("NO NMDAs defined for setNMDA_TC")
@@ -681,6 +759,9 @@ class PAPModel(ResultsPAPModel):
                         setattr(sNMDA, names[i], parm)
 
     def setNMDA_Mgblock(self, *args):
+        """Set NMDA receptor Mg2+ block parameters (K0, delta, shift) on every NMDA synapse
+        from the given positional arguments, skipping any that are None/falsy.
+        """
         names = ["K0", "delta", "shift"]
         if not hasattr(self, "NMDAs"):
             wMessage("NO NMDAs defined for setNMDA_Mgblock")
@@ -692,6 +773,7 @@ class PAPModel(ResultsPAPModel):
                         setattr(sNMDA, names[i], parm)
 
     def initGABAas(self):
+        """Lazily create GABA-A receptor point processes and NetCons on all PAP sections."""
         if not hasattr(self, "GABAas"):
             self.GABAas = []
             if not hasattr(self, "NCs"):
@@ -702,6 +784,10 @@ class PAPModel(ResultsPAPModel):
             # h.setGABAas(self.flattenPAP())
 
     def setGABAas(self):
+        """Initialize GABAas, then, when GABA signaling is on, distribute self.GABACount
+        evenly across all GABAa synapses (extra remainder clustered at the tip) and turn them
+        on; otherwise disable all GABAa synapses and NetCons.
+        """
         self.initGABAas()
         self.GABAas = list(h.GABAas)
         # print(self.GABAas)
@@ -723,6 +809,9 @@ class PAPModel(ResultsPAPModel):
                     nc.active(False)
 
     def initGluTs(self):
+        """Lazily create glutamate transporter point processes and NetCons on all PAP
+        sections.
+        """
         if not hasattr(self, "GluTs"):
             self.GluTs = []
             if not hasattr(self, "NCs"):
@@ -735,6 +824,10 @@ class PAPModel(ResultsPAPModel):
             # causes error
 
     def setGluTs(self):
+        """Initialize GluTs, then, if glutamate transporter expression and Glu signaling are
+        both enabled, set each transporter's count from GENEDict; otherwise disable all GluT
+        NetCons.
+        """
         self.initGluTs()
         self.GluTs = list(h.GluTs)
         # print(self.NMDAs)
@@ -771,6 +864,9 @@ class PAPModel(ResultsPAPModel):
             #        self.shell_synapse_glut.append(nc)
 
     def setGLT_TC(self, *args):
+        """Set glutamate transporter time constants (tau1, tau2) on every GluT synapse from
+        the given positional arguments, if GluTrans gene expression is configured.
+        """
         names = ["tau1", "tau2"]
         if "GluTrans" not in self.GENEDict.keys() or self.GENEDict["GluTrans"] == None:
             wMessage("NO GluTs defined for setNMDA_TC")
@@ -783,6 +879,9 @@ class PAPModel(ResultsPAPModel):
                         setattr(sGLT, names[i], parm)
 
     def getGLTCountPAP(self):
+        """Sum glutamate transporter counts (and their standard deviation) across all GluT
+        synapses into self.PAPGluTCount and self.PAPGluTCount_std.
+        """
         self.PAPGluTCount = 0
         self.PAPGluTCount_std = 0
 
@@ -794,6 +893,9 @@ class PAPModel(ResultsPAPModel):
         self.PAPGluTCount_std = self.PAPGluTCount_std
 
     def getKirCountPAP(self):
+        """Sum Kir2 channel counts (and their standard deviation) across all segments of all
+        PAP sections into self.PAPKirCount and self.PAPKirCount_std.
+        """
         self.PAPKirCount = 0
         self.PAPKirCount_std = 0
 
@@ -806,6 +908,7 @@ class PAPModel(ResultsPAPModel):
         self.PAPKirCount_std = self.PAPKirCount_std
 
     def setStimStart(self):
+        """Create a single-pulse NetStim object starting at initTstop + stimdelay."""
         h("objref stim")
         h("stim = new NetStim(.5)")
         h(f"stim.start = {(self.initTstop+self.stimdelay) * ms}")
@@ -814,6 +917,7 @@ class PAPModel(ResultsPAPModel):
         h("stim.interval = 0")
 
     def setVecStim(self, time):
+        """Replace the stim object with a VecStim driven by the given list of spike times."""
         # rewrite stim object
         h("objref stimTime")
         h("stimTime = new Vector()")
@@ -823,16 +927,19 @@ class PAPModel(ResultsPAPModel):
         h("stim.play(stimTime)")
 
     def NaKpumpOn(self, state):
+        """Turn the Na+/K+ pump mechanism on or off."""
         if state:
             h.setNak_pump(1)
         else:
             h.setNak_pump(0)
 
     def setTstop(self, tstop=500):
+        """Set the simulation stop time, both on the HOC side and self.tstop."""
         h.tstop = tstop
         self.tstop = tstop
 
     def checkNetCons(self):
+        """Print all NetCons along with their active state, weight, and target synapse (debugging)."""
         print(self.NCs)
         for nc in self.NCs:
             print(f"{nc}:{nc.active()}")
@@ -840,6 +947,7 @@ class PAPModel(ResultsPAPModel):
             print(nc.syn())
 
     def set_cvode(self, force_print_progress=False):
+        """Enable cvode integration if the HOC cvode object is available, and print progress when running on a single process or when forced."""
         self.cvode = False
         if hasattr(h, "cvode"):
             self.cvode = True
@@ -857,6 +965,7 @@ class PAPModel(ResultsPAPModel):
         TBS=None,
         force_print_progress=False,
     ):
+        """Configure and run the initialization phase: apply the kbath rule, set up stimulus timing, place gap junctions, NMDARs, GluT transporters and GABAa receptors (with optional shell-based synapse redistribution), set up recording, apply clamp protocols, advance to initTstop, and record the resulting RMP. Optionally records a video of the initialization or saves the HOC SaveState to disk."""
         self.set_cvode(force_print_progress=force_print_progress)
         if hasattr(h, "cvode"):
             voltageClamp = False
@@ -1026,6 +1135,7 @@ class PAPModel(ResultsPAPModel):
 
     @staticmethod
     def gen_colors(total_shell):
+        """Generate a grayscale gradient of solid RGBA colors, one per shell, blended against a white background."""
         colors = [
             (
                 255 * (1 - n / (total_shell - 1)),
@@ -1044,6 +1154,7 @@ class PAPModel(ResultsPAPModel):
         return solid_colors
 
     def run(self, printRes=False, video=False, koclamp=None, noclear=False):
+        """Run the simulation to tstop, optionally recording a video/topology plot or applying a potassium clamp; on a HOC runtime error, retries with a progressively smaller time step until it gives up. Optionally prints recorded results and cleans up temporary morphology structures afterward."""
         # print('running')
         # sys.stdout.flush()
         # Clamp settings
@@ -1087,6 +1198,7 @@ class PAPModel(ResultsPAPModel):
         #
 
     def getRMP(self):
+        """Deprecated: initialize and run the model, then compute and store the mean somatic voltage as the RMP."""
         # decapreated
         # just call self.RMP
         print("function getRMP is decapreated")
@@ -1097,6 +1209,7 @@ class PAPModel(ResultsPAPModel):
         return RMP
 
     def makeVideo(self, var, frame_num=200, stop=None, zoom=False):
+        """Render an animated video of the morphology for one or more RANGE variables (with preset color limits for voltage or potassium), optionally zoomed into the PAP, saving each to an auto-generated filename under morphResults."""
         if not hasattr(self, "frames"):
             self.frames = []
         if stop == None:
@@ -1134,6 +1247,7 @@ class PAPModel(ResultsPAPModel):
         return
 
     def flattenPAP(self):
+        """Flatten the nested list of PAP sections in self.PAPs into a single HOC SectionList."""
         # flatten self.PAPs to section list
         flattenPap = []
         for pap in self.PAPs:
@@ -1141,12 +1255,14 @@ class PAPModel(ResultsPAPModel):
         return h.SectionList(flattenPap)
 
     def plot_morph_iter(self):
+        """Plot whole-cell voltage and potassium maps, saving each to a per-rank PDF file."""
         for name in ["v", "ko"]:
             self.plotWholecellVariable(
                 name, f"{name}_{self.KoSize}_{rank}.pdf", zoom=False
             )
 
     def plotWholecellVariable(self, var, frameName, zoom=False):
+        """Plot the morphology in 3D colored by the given RANGE variable (with preset color limits for voltage or potassium), optionally zoomed into the PAP, and save it to file."""
         if "v" in var:
             clim = gl.lim_Vmemb
         elif "ko" in var:
@@ -1161,6 +1277,7 @@ class PAPModel(ResultsPAPModel):
         plt.savefig(frameName)
 
     def plot_topology(self, zoom=False):
+        """On rank 0, save a topology diagram of the morphology (or of just the PAP subtree if zoomed) to a .psf file."""
         if rank == 0:
             if zoom:
                 ps = h.plotPAP_topology(
@@ -1178,6 +1295,7 @@ class PAPModel(ResultsPAPModel):
                 )
 
     def plotMorphParms(self):
+        """On rank 0, plot and save PDF maps of section diameter and number of segments across the morphology."""
         if rank == 0:
             plot_3d_morphology(rangevar="diam")
             plt.savefig("DiamMap.pdf")
@@ -1190,6 +1308,7 @@ class PAPModel(ResultsPAPModel):
         # h.plot_varMorph("nseg", "nsegMap.psf")
 
     def morph(self, isolate=False, printTopology=False):
+        """Deprecated: build the PAP (and, unless isolated, a soma with connected branches) directly in Python rather than loading morphology from a hoc file; optionally print the resulting topology."""
         print("function morph is depracated")
         # Access the PAP object
         if not hasattr(self, "PAP"):
@@ -1231,6 +1350,7 @@ class PAPModel(ResultsPAPModel):
             h.topology()
 
     def readParameters(self, fDir="./results/optimize"):
+        """Read optimized NMDA receptor kinetic parameters (Tau2/Tau3 fit coefficients) from files and store them on the instance; not safe to call under parallel execution."""
         # used only when model constructed within
         # python interface and NMDAR parameters are read from file
         # fails during parallel
@@ -1250,6 +1370,7 @@ class PAPModel(ResultsPAPModel):
         self.DELTA = 0  # Lalo 2006 J. Neuroscience
 
     def nmda(self):
+        """Create an Exp5NMDA synapse at the PAP midpoint, applying previously read/fitted kinetic parameters if available, and return it."""
         sNMDA = h.Exp5NMDA(self.PAP(0.5))
         if self.readParms:
             # load files if parameters are read
@@ -1265,12 +1386,14 @@ class PAPModel(ResultsPAPModel):
         return sNMDA
 
     def set_list_record(self, attr, rec_attr, list_syn):
+        """Create and store a list of Vectors on self, each recording the given attribute from one object in list_syn."""
         setattr(self, attr, [])
         for s in list_syn:
             getattr(self, attr).append(h.Vector())
             getattr(self, attr)[-1].record(getattr(s, rec_attr))
 
     def record(self, sNMDA=None, sGABA=None, sGluT=None, toFile=False):
+        """Set up NEURON Vector recordings for the tracked simulation variables: synaptic currents (NMDA, GABA, GluT and its kinetic states), membrane and ion currents/concentrations at the PAP and soma, voltage attenuation along the branch/path to the soma, and simulation time. Optionally opens matching output files for each recorded quantity."""
         # Function recording each individual aspect of astrocyte variable
         h.frecord_init()
         # Save Stuff
@@ -1483,6 +1606,7 @@ class PAPModel(ResultsPAPModel):
             self.tFile.wopen("tFile.dat")
 
     def getEquiDistSec(self, path, cutLen=10):
+        """Walk the section path from soma to PAP and pick out cutLen evenly spaced segments by path distance, returning them (bracketed by soma(0.5) and PAP(0.5)) for attenuation recording."""
         totLen = h.distance(self.PAP(1), sec=self.soma)
         if self.PAP == self.soma:
             return []
@@ -1513,6 +1637,7 @@ class PAPModel(ResultsPAPModel):
         return equiDistSec
 
     def getPath(self, section):
+        """Build and return a SectionList of all ancestor sections from the given section up to the root (soma)."""
         # get section list from PAP to soma
         currentSection = h.SectionRef(sec=section)
         sl = h.SectionList()
@@ -1522,21 +1647,25 @@ class PAPModel(ResultsPAPModel):
         return sl
 
     def setSlow_iter(self, slow=1, changeBaseline=None):
+        """Convenience wrapper that calls setSlowing with the given slowing factor and optional baseline change."""
         self.setSlowing(slow, changeBaseline)
 
     def setSlowing(self, slow, changeBaseline=None):
+        """Apply a kinetics slowing factor to the PAP sections and, if given, shift their baseline via HOC helper functions."""
         if slow:
             h.setSlowing(self.flattenPAP(), slow)
         if changeBaseline is not None:
             h.changeBaseline(self.flattenPAP(), changeBaseline)
 
     def setPAP2Soma(self):
+        """Repurpose the soma as the PAP by converting it into an slPAP section list via HOC and updating the PAP/soma references accordingly."""
         self.PAP = h.soma
         h.convertSoma2slPAP()
         self.PAPs = [h.slPAP]
         self.soma = h.soma
 
     def setK(self, KoSize=None, mode="step", dur=0.5, delay=0):
+        """Apply an extracellular potassium perturbation to the PAP, either as a brief pulse or a step held for dur ms, then restore the resting Ko; disables cvode adaptivity during a step change for accuracy."""
         if dur == 0 or KoSize == 0:
             return
         restKo = self.Ko
@@ -1570,6 +1699,7 @@ class PAPModel(ResultsPAPModel):
         self.KoSize = KoSize
 
     def setKPoint(self, KoSize=None, mode="step", dur=0.5, delay=0, sec_range=None):
+        """Like setK but restricts the potassium perturbation to a single point or a given section range via HOC's setK_point/setK_range, and tolerates a RuntimeError during the step run by aborting cleanly."""
         if (
             sec_range is None
             and hasattr(self, "sec_range")
@@ -1620,18 +1750,21 @@ class PAPModel(ResultsPAPModel):
         self.KoSize = KoSize
 
     def set_ECS(self, angs, scale=True):
+        """Configure the extracellular space geometry via HOC's setECS, optionally scaling it."""
         if scale:
             h.setECS(angs, 1)
         else:
             h.setECS(angs, 0)
 
     def clamp_ki(self, clamp):
+        """If enabled, disable gap-junctional potassium flux and clamp intracellular potassium, assuming the astrocyte network equilibrates ki elsewhere."""
         if clamp:
             h.set_gap_k(0)
             # under the assumption the astrocyte network equilibriates ki
             h.ki_clamp(1)
 
     def define_shell(self, total_shell=5, synapse=10000):
+        """Partition the astrocyte into concentric shells via HOC's define_shell, record how many synapses were removed per shell, apply a clamp, and on rank 0 plot and save a color-coded shell map."""
         self.total_shell = total_shell
         self.shell_synapse = synapse
         removed = h.define_shell(total_shell, synapse)
@@ -1658,11 +1791,13 @@ class PAPModel(ResultsPAPModel):
     # only for rank 0
 
     def record_VClampI(self):
+        """Record the current from the most recently created voltage-clamp electrode."""
         self.VClampI = h.Vector()
         vc = h.electrodeList[-1]
         self.VClampI.record(vc._ref_i)
 
     def select_shell(self, scale=False):
+        """Activate the synapses belonging to shell self.shell, clearing previously placed NMDA/GABA/GluT synapses first; rescales synapse density (GABA count or NMDA multiple) to account for removed synapses and PAP section length, then recomputes the active PAP surface area."""
         # clean up all previous synapses
         i = self.shell
         if i == 0:
@@ -1715,9 +1850,11 @@ class PAPModel(ResultsPAPModel):
                 self.PAParea += sec.area()
 
     def set_pb(self):
+        """Set the primary branch length in the HOC model via h.pb."""
         h.pb(self.pbLen)
 
     def setKBath_iter(self, **kwargs):
+        """Convenience wrapper that calls setKBath using the instance's current KoSize."""
         self.setKBath(self.KoSize, **kwargs)
 
     def setKBath(
@@ -1731,6 +1868,7 @@ class PAPModel(ResultsPAPModel):
         clamp_ki=False,
         changeBaseline=False,
     ):
+        """Apply a sustained extracellular potassium step of Ko (either to the whole tree or isolated to the PAP) for dur ms, optionally enabling gap-junction bath coupling, slowing kinetics, clamping ki, and recording a video or snapshot plot, then revert Ko back to baseline afterward."""
         if h.t + delay < h.tstop:
             h.continuerun(delay * ms + h.t)
         if hasattr(h, "cvode"):
@@ -1779,6 +1917,7 @@ class PAPModel(ResultsPAPModel):
             h.cvode.active(True)
 
     def GABABath(self, number, freq, video=False, clamp=True, rerun=False):
+        """Run a GABA-bath protocol: unless rerunning, treat the whole non-soma morphology as PAP, redistribute the GABA synapse count across it, place synapses, and set up recording; then equilibrate and deliver a train of GABA spike events at the given number/frequency, saving copies of the resulting clamp and GABA current traces."""
         if not rerun:
             self.set_cvode()
             self.setStimStart()
@@ -1813,6 +1952,7 @@ class PAPModel(ResultsPAPModel):
         # self.GABABath(number, freq, video=video, clamp=False, rerun=True)
 
     def setKClearance(self, mode):
+        """Configure the potassium clearance mechanism: toggle it on/off if mode is a bool, or set a numeric clearance rule via HOC's kbath_rule."""
         if type(mode) == bool:
             if not mode:
                 h.kbath_off()
@@ -1822,6 +1962,7 @@ class PAPModel(ResultsPAPModel):
             h.kbath_rule(mode)
 
     def replayK(self, fileName, isolate=False, video=False, setStop=None):
+        """Replay a recorded time series of extracellular potassium values from a CSV file, aligning each timestamp to the simulation's current time and dt, and step the potassium level (isolated to the PAP or across the whole tree) at each recorded time point, optionally recording video frames along the way."""
         df = pd.read_csv(fileName)
         baselineK = self.getPAPK()
         df["k"] += baselineK
@@ -1870,9 +2011,11 @@ class PAPModel(ResultsPAPModel):
             h.fcurrent()
 
     def LambdaEq(self, ra, rm, d):
+        """Compute the electrotonic space constant (lambda) from axial resistance, membrane resistance, and diameter."""
         return (rm * d / ra / 4) ** 0.5  # um
 
     def spaceConstant(self):
+        """Initialize the model, compute the theoretical electrotonic space constant at each equidistant path segment from soma to PAP, then run a voltage-clamp attenuation experiment and return the space constants, resulting steady-state voltages, and path distances for comparison."""
         # TODO: double check if this is correct
         # h.clampSwitch(4, self.voltageClamp)
         # h.run()
@@ -1888,6 +2031,7 @@ class PAPModel(ResultsPAPModel):
         return LambdaList, VList, LenList
 
     def getSecbyName(self, secname):
+        """Look up and return the section whose hname matches secname, or None if not found."""
         for sec in h.allsec():
             if sec.hname() == secname:
                 return sec
@@ -1895,6 +2039,7 @@ class PAPModel(ResultsPAPModel):
             return None
 
     def calcPAPRi(self, direct=True, all=False, cleanMorph=False):
+        """Measure the input resistance of one or all PAP sections, either directly (running an extra current-step interval and computing Ri from the resulting steady-state voltage deflection from RMP) or via HOC's built-in measurement, accumulating results into self.PAP_Ri."""
         if all:
             measure_pap = self.flattenPAP()
         else:
@@ -1927,6 +2072,7 @@ class PAPModel(ResultsPAPModel):
                 self.cleanMorphology()
 
     def measureRiAll(self, parallel=False):
+        """Measure input resistance across the model: in parallel mode, measure only self.RiSec and save the result to a dict/file; otherwise measure all sections via HOC's getAllRi and, on rank 0, plot and save a resistance map."""
         if parallel:
             if self.RiSec != None:
                 RiSec = self.getSecbyName(self.RiSec)
@@ -1943,6 +2089,7 @@ class PAPModel(ResultsPAPModel):
                 plt.savefig("RiMap.pdf")
 
     def mapRi(self, sectionDict):
+        """Assign precomputed input-resistance values to named sections from sectionDict and, on rank 0, plot and save the resulting resistance map."""
         for k, v in sectionDict.items():
             RiSec = self.getSecbyName(k)
             RiSec.insert("inputRes")
@@ -1953,6 +2100,7 @@ class PAPModel(ResultsPAPModel):
             plt.savefig("RiMap.pdf")
 
     def saveRiDict(self):
+        """Write each entry of self.RiDict to a JSON file under paperRes, named per section."""
         for sName, v in self.RiDict.items():
             with open(
                 os.path.join("../results/paperRes", f"RiRes{sName}.json"), "w"
@@ -1960,9 +2108,11 @@ class PAPModel(ResultsPAPModel):
                 json.dump(self.RiDict, ofile)
 
     def getPAPK(self):
+        """Return the current extracellular potassium concentration at the PAP via HOC's getPAPK."""
         return h.getPAPK(self.PAP, sec=self.PAP)
 
     def printRec(self):
+        """Deprecated: write recorded current, voltage, and time vectors to their corresponding .dat files, returning the final and peak NMDA current if it was recorded."""
         # used to write each recorded aspect into .dat file
         #  need to update to fit new record function
         # fails under parallel

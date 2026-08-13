@@ -10,10 +10,12 @@ import random
 
 
 def randomGen(rangeInt):
+    """Generate a random integer between 0 and rangeInt, inclusive."""
     return random.randint(0, rangeInt)
 
 
 def argParser(rangeInt=100):
+    """Build and return the argparse parser defining all command-line options for configuring and running astrocyte/PAP simulations."""
     parser = argparse.ArgumentParser(
         description="Somatosensory cortical astrocyte model implemented in NEURONHOC with python and CL interface"
     )

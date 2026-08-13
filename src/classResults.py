@@ -38,6 +38,7 @@ class ResultsPAPModel:
     ppcurrents = ["iGluT", "iNMDA", "iGluTSoma", "iGABA", "VClampI"]
 
     def copyAttr(self):
+        """Deep-copy this instance's attributes (excluding NEURON-only objects) into a new ResultsPAPModel, converting membrane currents to nA using compartment area, summing point-process currents when not recording single synapses, and rescaling currents from nA to pA."""
         # print("copying to result class")
         newInstance = ResultsPAPModel()
         # print(self.__dict__)
@@ -80,6 +81,7 @@ class ResultsPAPModel:
         return newInstance
 
     def cleanNEURONVariables(self):
+        """Null out every HocObject reference held in the NEURON h namespace to release memory."""
         all_hoc_names = dir(h)
 
         for name in all_hoc_names:
@@ -93,5 +95,6 @@ class ResultsPAPModel:
                 continue
 
     def getRMP(self):
+        """Return the resting membrane potential as the last recorded somatic voltage value."""
         RMP = list(self.vSoma)[-1]
         return RMP

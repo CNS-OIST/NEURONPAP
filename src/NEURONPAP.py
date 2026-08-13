@@ -22,6 +22,7 @@ from scipy.optimize import minimize
 
 
 def callExperimentMode(**kwargs):
+    """Configure a simulation procedure from parsed CLI keyword arguments and dispatch to the appropriate experiment method(s) based on which flags are set."""
     for k, v in kwargs.items():
         if type(v) == list:
             kwargs[k] = v[0]

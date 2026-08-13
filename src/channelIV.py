@@ -25,6 +25,7 @@ class fitModelCurve:
 
     class cellDict:
         def __init__(self, cellType):
+            """Store synapse configuration (mechanism name, parameters, data file, current reference) for a GABA or NMDA synapse type."""
             self.Type = cellType
             if cellType == "GABA":
                 self.Name = "inhSyn"
@@ -39,12 +40,14 @@ class fitModelCurve:
                 self.currName = "_ref_iNMDA"
 
     def __init__(self, cellType):
+        """Initialize NEURON, build the cell/synapse configuration for the given synapse type, and set up the soma and synapse."""
         h.load_file("stdgui.hoc")
         self.cellType = self.cellDict(cellType)
         self.createCell()
         self.createSynapse(self.cellType.Name)
 
     def optimize(self):
+        """Fit synapse kinetic parameters by minimizing the loss function with Nelder-Mead, optionally re-plotting the final fit, and write the optimization result to a text file."""
         res = minimize(
             self.lossFunction,
             self.cellType.initParms,
@@ -58,12 +61,14 @@ class fitModelCurve:
             f.write(res)
 
     def defbounds(self):
+        """Build a list of non-negative bounds, one per synapse parameter, for use in the optimizer."""
         boundsList = []
         for parm in self.cellType.Parms:
             boundsList.append((0, None))
         return boundsList
 
     def lossFunction(self, x):
+        """Run the synapse simulation with parameter vector x and return the sum of squared errors between simulated and experimental current traces, optionally plotting the comparison."""
         expData, expTime = np.array(self.readData())
         self.adjustParms(x)
         self.setupSim(max(expTime) + 1, max(expTime))
@@ -74,6 +79,7 @@ class fitModelCurve:
         return sum((simData - expData) ** 2)
 
     def plot(self, t, exp, sim):
+        """Clear the current figure and scatter-plot the experimental and simulated current traces against time."""
         plt.cla()
         plt.clf()
         plt.scatter(t, exp)
@@ -81,6 +87,7 @@ class fitModelCurve:
         plt.show()
 
     def adjustSimData(self, expTime):
+        """Extract the simulated current values at the time points matching the experimental data's time samples."""
         simData = []
         for t, current in zip(self.simTime, self.simData):
             if int(t) in expTime:
@@ -90,6 +97,7 @@ class fitModelCurve:
         return simData
 
     def setupSim(self, stimStart, tstop):
+        """Configure NEURON's time step, stimulus start time and stop time, then reinitialize the simulation."""
         h.dt = 0.1
         self.stim = stimStart
         h.tstop = tstop
@@ -97,21 +105,26 @@ class fitModelCurve:
         h.frecord_init()
 
     def runSim(self):
+        """Run the NEURON simulation."""
         h.run()
 
     def readData(self):
+        """Load the experimental current-time data from CSV and return the current normalized by its peak value along with the time vector."""
         expData = pd.read_csv(self.cellType.File)
         return expData["i"] / expData["i"].max(), expData["t"]
 
     def adjustParms(self, x):
+        """Assign the parameter values in x to the corresponding synapse parameters on the synapse object."""
         for i, parm in enumerate(x):
             setattr(self.synSoma, self.cellType.Parms[i], parm)
 
     def createCell(self):
+        """Create a single-compartment soma section with a passive membrane mechanism."""
         self.soma = h.Section(name="soma")
         self.soma.insert("pas")
 
     def createSynapse(self, synName):
+        """Attach the synapse mechanism to the soma, wire up a single-spike NetStim/NetCon to trigger it, set up current and time recording vectors, and read the synapse's initial parameter values."""
         self.synSoma = getattr(h, synName)(self.soma(0.5))
         self.stim = h.NetStim()
         self.stim.number = 1
@@ -125,6 +138,7 @@ class fitModelCurve:
         self.readInitParms()
 
     def readInitParms(self):
+        """Read the current (initial) values of the synapse's fitted parameters from the synapse object."""
         self.cellType.initParms = []
         for parm in self.cellType.Parms:
             initParm = getattr(self.synSoma, parm)
@@ -133,6 +147,7 @@ class fitModelCurve:
 
 class calibrateChannel:
     def __init__(self):
+        """Initialize NEURON and define, for each ion channel under test, its experimental I-V data file and the corresponding NEURON mechanism/point-process name and type."""
         h.load_file("stdgui.hoc")
 
         self.channelName = [
@@ -161,6 +176,7 @@ class calibrateChannel:
         }
 
     def initModel(self, channel):
+        """Load the clamp-check hoc setup, then insert the given channel's NEURON mechanism (or point-process synapse) onto the soma and record its current, plus set up a time recording vector."""
         h.xopen("./neuronHoc/simpleCheck.hoc")
         nrnName, chantype = self.name2NEURON[channel]
         # define record for channel
@@ -186,6 +202,7 @@ class calibrateChannel:
         self.time.record(h._ref_t)
 
     def plotiCurve(self, channel, expSet, mdlSet):
+        """Plot experimental and modeled current traces for a channel and save the figure as a PDF."""
         plt.cla()
         plt.clf()
         plt.scatter(*expSet, label="experiment")
@@ -194,6 +211,7 @@ class calibrateChannel:
         plt.savefig(os.path.join("../results/paperRes/", f"icurve{channel}.pdf"))
 
     def getModeliCurve(self, channel, run=False, mV=None):
+        """Optionally run a voltage-clamp simulation at the given voltage, then return the recorded time and current traces for the channel."""
         if run:
             if mV != None:
                 h.clampSwitch(0, mV)
@@ -205,6 +223,7 @@ class calibrateChannel:
         return time, curr
 
     def getExpiCurve(self, channel):
+        """Load the experimental current-time trace for a channel from its .dat or .csv file and return time and current arrays normalized by the peak absolute current."""
         fName = self.expIVName[channel]
         ext = fName.split(".")[-1]
         time = []
@@ -231,6 +250,7 @@ class calibrateChannel:
         return np.array(time), curr
 
     def plotIVCurve(self, channel, expVolt, expCurr, mdlCurr):
+        """Plot the experimental and modeled I-V curves for a channel and save the figure as a PDF."""
         plt.cla()
         plt.clf()
         plt.figure(figsize=gl.figsize_panel)
@@ -243,6 +263,7 @@ class calibrateChannel:
         plt.savefig(os.path.join("../results/paperRes/", f"IVCurve{channel}.pdf"))
 
     def getModelIVPoint(self, mV, channel):
+        """Run a voltage-clamp simulation at the given voltage and return the peak (largest-magnitude) current from the second half of the recorded trace, i.e. after the initial transient."""
         h.clampSwitch(0, mV)
         h.init()
         h.run()
@@ -252,6 +273,7 @@ class calibrateChannel:
         )
 
     def getExpIVCurve(self, channel):
+        """Load the experimental I-V data for a channel from its .dat or .csv file and return voltage and current arrays normalized by the current at self.index."""
         fName = self.expIVName[channel]
         ext = fName.split(".")[-1]
         volt = []
@@ -274,6 +296,7 @@ class calibrateChannel:
         return np.array(volt), curr
 
     def IVCurve(self, channel, vStep=None):
+        """For each experimental voltage step, run the model at that clamp voltage and record the model's I-V response; at the designated vStep also plot the raw current trace comparison; normalize and return the experimental and modeled I-V curves."""
         try:
             expVolt, expCurr = self.getExpIVCurve(channel)
         except FileNotFoundError:

@@ -40,6 +40,7 @@ def global_function_override_runtime(
 
 
 def MPIReadlines(fName):
+    """Read all lines from a file and return them as a list of floats."""
     # if simultaneous access creates errors update this function
     # fails in parallel must think of a better way
     f = open(fName, "r")
@@ -51,10 +52,12 @@ def MPIReadlines(fName):
 
 
 def eq(x, a, b):
+    """Evaluate the linear equation a*x + b."""
     return a * x + b
 
 
 def loadFile(fName):
+    """Load fName as a headerless CSV DataFrame if it exists, otherwise return None."""
     if os.path.isfile(fName):
         return pd.read_csv(fName, header=None)
     else:
@@ -62,6 +65,11 @@ def loadFile(fName):
 
 
 def plot(dir, zoom=False, ext=False):
+    """
+    Load current, voltage, and membrane-current traces from dir and plot each against time.
+    Saves the plots as PDF files, applying optional zoom or extended x-axis limits.
+    Returns the peak voltage value.
+    """
     i = loadFile(os.path.join(dir, "iFile.dat"))
     v = loadFile(os.path.join(dir, "vFile.dat"))
     mem = loadFile(os.path.join(dir, "iFileMem.dat"))
@@ -107,6 +115,7 @@ def plot(dir, zoom=False, ext=False):
 
 
 def get_iter(parmA, parmASteps, parmB, parmBSteps, starta=0, startb=0):
+    """Build a list of (parmA, parmB) tuples by iterating each parameter over its own start/stop/step range, using integer ranges when possible and float arange otherwise."""
     # Update to get dynamic loops
     iterations = []
     if type(parmA) is int and type(parmASteps) is int:
@@ -134,6 +143,11 @@ def parallizeFor(
     mode="InitArgs",
     randomize=True,
 ):
+    """
+    Distribute the parameter iterations across MPI ranks and run the given functions/methods for each iteration, showing a per-rank progress bar.
+    In "InitArgs" mode the parameter values are injected into the functions' constructor arguments; in "MethodArgs" mode they replace placeholder values in method call arguments.
+    Gathers each rank's results back to rank 0 and returns the combined list.
+    """
     # ranodmize in case of consectuive iteration pairs that take time
     if randomize:
         iterations = comm.bcast(random.sample(iterations, len(iterations)), root=0)
@@ -259,6 +273,7 @@ def parallizeFor(
 
 
 def find_nan_inf_index(lst):
+    """Return the index of the first NaN or infinite value in lst, or "stop" if none is found."""
     for i, value in enumerate(lst):
         if math.isnan(value) or math.isinf(value):
             return i
@@ -266,6 +281,7 @@ def find_nan_inf_index(lst):
 
 
 def remove_nan_values(lst, lst2):
+    """Remove entries from lst and the corresponding entries from lst2 wherever lst contains a NaN or inf value, then return both; logs an error if their lengths end up mismatched."""
     index = find_nan_inf_index(lst)
     while index != "stop":
         del lst[index]
@@ -278,9 +294,11 @@ def remove_nan_values(lst, lst2):
 
 
 def sizeof(obj):
+    """Recursively estimate the total memory size in bytes of obj, including contained dict/list/tuple/set elements, without double-counting shared references."""
     seen = set()
 
     def inner(o):
+        """Recursively accumulate the size of o and its contents, skipping objects already counted."""
         if id(o) in seen:
             return 0
         seen.add(id(o))
@@ -295,6 +313,7 @@ def sizeof(obj):
 
 
 def print_pickle_objs():
+    """Load a pickle file named on the command line and print its contents (dict keys, list/tuple items, or object attributes) sorted by estimated size, largest first."""
     if len(sys.argv) < 2:
         print("Usage: python script.py <pickle_file>")
         sys.exit(1)
@@ -350,11 +369,13 @@ def print_pickle_objs():
 
 class LazySharedObject:
     def __init__(self, shared_array, win):
+        """Store the shared memory array, its MPI window, and an empty attribute cache."""
         self._shared_array = shared_array
         self._cache = {}
         self._win = win
 
     def _load(self):
+        """Return the unpickled object, using a locally cached byte copy if available or else reading and caching bytes from shared memory."""
         d = object.__getattribute__(self, "__dict__")
 
         # if cached bytes exist → use them
@@ -372,6 +393,7 @@ class LazySharedObject:
         return pickle.loads(data_bytes)
 
     def _write_back(self, obj):
+        """Pickle obj into the shared array, growing the array first if needed, and zero out any leftover bytes."""
         data_bytes = pickle.dumps(obj)
         new_size = len(data_bytes)
 
@@ -383,6 +405,7 @@ class LazySharedObject:
         self._shared_array[new_size:] = 0
 
     def _resize(self, required_size):
+        """On rank 0, free the current MPI shared-memory window and reallocate a larger one (1.5x required_size), rebinding the shared array view."""
         if rank != 0:
             return
         new_nbytes = int(required_size * 1.5)
@@ -396,6 +419,7 @@ class LazySharedObject:
         self._shared_array = np.ndarray(buffer=buf, dtype=np.uint8, shape=(new_nbytes,))
 
     def __iter__(self):
+        """Unpickle the current shared object and yield its items one by one."""
         obj = pickle.loads(memoryview(self._shared_array))
         for item in obj:
             yield item
@@ -404,12 +428,14 @@ class LazySharedObject:
         #    del obj
 
     def __getitem__(self, key):
+        """Unpickle the current shared object and return the item at key."""
         obj = pickle.loads(memoryview(self._shared_array))
         return obj[key]
         # finally:
         #    del obj
 
     def __getattr__(self, name):
+        """Look up name on the lazily-unpickled underlying object (or its dict entry), caching the result; underscore-prefixed or missing names raise AttributeError."""
         if name.startswith("_"):
             raise AttributeError(name)
 
@@ -436,6 +462,7 @@ class LazySharedObject:
         return value
 
     def __iadd__(self, other):
+        """Load the underlying object, add other to it in place (e.g. list concatenation), write the result back to shared memory, and return self."""
         obj = self._load()
 
         obj += other  # works for list
@@ -445,6 +472,7 @@ class LazySharedObject:
         return self
 
     def append(self, value):
+        """Load the underlying object, append value to it, and write the result back to shared memory."""
         obj = self._load()
         obj.append(value)
         self._write_back(obj)
@@ -452,6 +480,7 @@ class LazySharedObject:
         #    del obj
 
     def extend(self, values):
+        """Load the underlying object, extend it with values, and write the result back to shared memory."""
         obj = self._load()
         # try:
         obj.extend(values)
@@ -459,25 +488,30 @@ class LazySharedObject:
         #    del obj
 
     def __len__(self):
+        """Return the length of the underlying unpickled object."""
         obj = self._load()
         return len(obj)
         # finally:
         #    del obj
 
     def dump(self, file):
+        """Pickle the underlying object and write it to the given file object."""
         obj = self._load()
         pickle.dump(obj, file)
         # finally:
         #    del obj
 
     def dump_to_file(self, filename):
+        """Open filename for writing and dump the underlying object to it."""
         with open(filename, "wb") as f:
             self.dump(f)
 
     def load(self):
+        """Return the unpickled underlying object."""
         return self._load()
 
     def release(self):
+        """Release the shared-memory resources: synchronize ranks, drop the local reference to the shared array, free the MPI window, and force garbage collection."""
         win = self._win
         shared_array = self
         if size == 1 and win is None:
@@ -505,6 +539,11 @@ class LazySharedObject:
 
 
 def load_interm_data(pickle_obj, root=0):
+    """
+    Distribute pickle_obj into an MPI shared-memory window so all ranks can access it lazily.
+    Refuses to run if pickle_obj is already a LazySharedObject; otherwise rank root pickles the object, broadcasts its size, and copies the bytes into shared memory.
+    Returns a LazySharedObject wrapping the shared buffer.
+    """
     if isinstance(pickle_obj, LazySharedObject):
         wMessage("Expcted raw pickled object no lazy")
         return
@@ -526,12 +565,14 @@ def load_interm_data(pickle_obj, root=0):
 
 
 def cylindrical_shell_volume(diameter, shell_depth, length):
+    """Compute the volume of a cylindrical shell of the given length, shell_depth thick, surrounding a cylinder of the given diameter."""
     R = diameter / 2
     r = R + shell_depth
     return np.pi * length * (r**2 - R**2)
 
 
 def column_in_array(col, arr):
+    """Check whether col matches any column of the 2D array arr; returns False if arr is 1-dimensional."""
     if arr.ndim == 1:
         return False
     col = np.asarray(col).reshape(-1)
