@@ -48,62 +48,62 @@ ENDCOMMENT
 
 
 NEURON {
-	POINT_PROCESS AMPA_S
-	NONSPECIFIC_CURRENT iAMPA
-	RANGE R, g, gmax, i
-	RANGE Cdur_a, Alpha_a, Beta_a, Erev_a, Rinf_a, Rtau_a
-  RANGE multiple
-  THREADSAFE
+    POINT_PROCESS AMPA_S
+    NONSPECIFIC_CURRENT iAMPA
+    RANGE R, g, gmax, i
+    RANGE Cdur_a, Alpha_a, Beta_a, Erev_a, Rinf_a, Rtau_a
+    RANGE multiple
+    THREADSAFE
 }
 UNITS {
-	(nA) = (nanoamp)
-	(mV) = (millivolt)
-	(umho) = (micromho)
-	(mM) = (milli/liter)
-  (uM) = (micro/liter)
-	(pS) = (picosiemens)
+    (nA) = (nanoamp)
+    (mV) = (millivolt)
+    (umho) = (micromho)
+    (mM) = (milli/liter)
+    (uM) = (micro/liter)
+    (pS) = (picosiemens)
 }
 
 PARAMETER {
-  multiple = 1 (1)
+    multiple = 1 (1)
 
-	Cdur_a	= 1	(ms)		: transmitter duration (rising phase)
-	Alpha_a	= 1.1	(/ms)	: forward (binding) rate
-	Beta_a	= 0.19	(/ms)		: backward (unbinding) rate
-	Erev_a	= 0	(mV)		: reversal potential
-	gmax = 10 (pS) : single channel conductnace ofGluA2 lacking in Schwan Cell Chen (2017) JNeuro 
-  gluEC = 296 (uM) : zhang w. biophys J. 2006
-  hilln = 1.09 (1)
+    Cdur_a	= 1	(ms)		: transmitter duration (rising phase)
+    Alpha_a	= 1.1	(/ms)	: forward (binding) rate
+    Beta_a	= 0.19	(/ms)		: backward (unbinding) rate
+    Erev_a	= 0	(mV)		: reversal potential
+    gmax = 10 (pS) : single channel conductnace ofGluA2 lacking in Schwan Cell Chen (2017) JNeuro 
+    gluEC = 296 (uM) : zhang w. biophys J. 2006
+    hilln = 1.09 (1)
 
 }
 
 
 ASSIGNED {
-	v		(mV)		: postsynaptic voltage
-	iAMPA		(nA)		: current = g*(v - Erev)
-	g 		(umho)		: conductance
-	Rinf_a				: steady state channels open
-	Rtau_a		(ms)		: time constant of channel binding
-	synon
+    v		(mV)		: postsynaptic voltage
+    iAMPA		(nA)		: current = g*(v - Erev)
+    g 		(umho)		: conductance
+    Rinf_a				: steady state channels open
+    Rtau_a		(ms)		: time constant of channel binding
+    synon
 }
 
 STATE {Ron Roff}
 
 INITIAL {
-	Rinf_a = Alpha_a / (Alpha_a + Beta_a)
-	Rtau_a = 1 / (Alpha_a + Beta_a)
-	synon = 0
+    Rinf_a = Alpha_a / (Alpha_a + Beta_a)
+    Rtau_a = 1 / (Alpha_a + Beta_a)
+    synon = 0
 }
 
 BREAKPOINT {
-	SOLVE release METHOD derivimplicit
-	g = (1e-06)*gmax*multiple*(Ron + Roff)
-	iAMPA = g*(v - Erev_a)
+    SOLVE release METHOD derivimplicit
+    g = (1e-06)*gmax*multiple*(Ron + Roff)
+    iAMPA = g*(v - Erev_a)
 }
 
 DERIVATIVE release {
-	Ron' = (synon*Rinf_a - Ron)/Rtau_a
-	Roff' = -Beta_a*Roff
+    Ron' = (synon*Rinf_a - Ron)/Rtau_a
+    Roff' = -Beta_a*Roff
 }
 
 : following supports both saturation from single input and
@@ -113,30 +113,30 @@ DERIVATIVE release {
 : Note: automatic initialization of all reference args to 0 except first
 
 NET_RECEIVE(weight, on, nspike, r0, t0 (ms)) {
-  weight = hillGluc(weight*1(mM))
-	: flag is an implicit argument of NET_RECEIVE and  normally 0
-        if (flag == 0) { : a spike, so turn on if not already in a Cdur_a pulse
-		nspike = nspike + 1
-		if (!on) {
-			r0 = r0*exp(-Beta_a*(t - t0))
-			t0 = t
-			on = 1
-			synon = synon + weight
-			state_discontinuity(Ron, Ron + r0)
-			state_discontinuity(Roff, Roff - r0)
-		}
-		: come again in Cdur_a with flag = current value of nspike
-		net_send(Cdur_a, nspike)
+    weight = hillGluc(weight*1(mM))
+    : flag is an implicit argument of NET_RECEIVE and  normally 0
+    if (flag == 0) { : a spike, so turn on if not already in a Cdur_a pulse
+        nspike = nspike + 1
+        if (!on) {
+            r0 = r0*exp(-Beta_a*(t - t0))
+            t0 = t
+            on = 1
+            synon = synon + weight
+            state_discontinuity(Ron, Ron + r0)
+            state_discontinuity(Roff, Roff - r0)
         }
-	if (flag == nspike) { : if this associated with last spike then turn off
-		r0 = weight*Rinf_a + (r0 - weight*Rinf_a)*exp(-(t - t0)/Rtau_a)
-		t0 = t
-		synon = synon - weight
-		state_discontinuity(Ron, Ron - r0)
-		state_discontinuity(Roff, Roff + r0)
-		on = 0
-	}
+        : come again in Cdur_a with flag = current value of nspike
+        net_send(Cdur_a, nspike)
+    }
+    if (flag == nspike) { : if this associated with last spike then turn off
+        r0 = weight*Rinf_a + (r0 - weight*Rinf_a)*exp(-(t - t0)/Rtau_a)
+        t0 = t
+        synon = synon - weight
+        state_discontinuity(Ron, Ron - r0)
+        state_discontinuity(Roff, Roff + r0)
+        on = 0
+    }
 }
 FUNCTION hillGluc(gluConc (mM)){
-        hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
-    }
+    hillGluc = 1/(1 + pow((1e-3)*gluEC/gluConc,hilln))
+}

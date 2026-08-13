@@ -13,25 +13,25 @@ NEURON {
 }
 
 UNITS {
-	(molar) = (1/liter)
-	(mA) = (milliamp)
-        (mV) = (millivolt)
-	(mM) =	(millimolar)
-	(J)  = (joules)
-        (um) = (micron)
-	F = (faraday) (coulombs)
-        
-    }
-    
-CONSTANT {
-	T = 273.16	(degC)
-	R = 8.314	(J/degC): universal gas constant (joules/mol/K)
-	z = 1		(1)		: valency of K+
+    (molar) = (1/liter)
+    (mA) = (milliamp)
+    (mV) = (millivolt)
+    (mM) =	(millimolar)
+    (J)  = (joules)
+    (um) = (micron)
+    F = (faraday) (coulombs)
+
 }
-    
+
+CONSTANT {
+    T = 273.16	(degC)
+    R = 8.314	(J/degC): universal gas constant (joules/mol/K)
+    z = 1		(1)		: valency of K+
+}
+
 
 PARAMETER {
-  total_area = 4e5 (um2) 
+    total_area = 4e5 (um2) 
     powk = 2  (1)
     vs = 25.7 (mV)
     : ki = 130     (mM)
@@ -45,11 +45,11 @@ PARAMETER {
 ASSIGNED {
     v 		(mV)
     ik      (mA/cm2)
-    
+
     : Pkp (cm3/s)
     : vkp (mV)
     nkp  (1)
-    
+
     ko      (mM)
     ki      (mM)    
 }
@@ -67,21 +67,21 @@ INITIAL {
 
 BREAKPOINT {
     SOLVE state METHOD derivimplicit
-    
+
     ik = (100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) /total_area
     : ik = pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs))) 
     : divided by estimated surface area Radulescu A. et al (2022)
     : units changes to mA/cm2 for ik
     : printf("ik:%g\n",ik)
-   :if ((100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs)))< 0){
-   : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
-   : } 
+    :if ((100) *pow(n,powk) * Pkp(ko) * F * F * pow(z,2) * v * (ki - ko*exp(-z*v/vs)) / (R * T * (1 - exp(-z*v/vs)))< 0){
+    : printf("Pkp:%g v:%g nkp:%g ko:%g vkp:%g n:%g\n", Pkp(ko), v, nkp,ko,vkp(ko),n)
+    : } 
     : printf("exp:%g\n",exp(-z*v/vs))
     : ionMove()
-        : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
-	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
-        : consider different channel dynamics
-    }
+    : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
+    : printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
+    : consider different channel dynamics
+}
 :    PROCEDURE ionMove() {
 :     ko = ko + ik / (F * area)
 :     : ki = ki - ik / (F * area)
@@ -90,7 +90,7 @@ BREAKPOINT {
 DERIVATIVE state {
     rates(v,ko,ki)
     n' = (nkp - n) / taukp
-    }
+}
 
 PROCEDURE rates(v (mV),ko (mM),ki (mM)) {
     : Pkp = PBkp * (1 + 0.85 * log10(ko/kob))

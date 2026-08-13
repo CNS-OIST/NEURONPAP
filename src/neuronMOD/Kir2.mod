@@ -42,108 +42,108 @@ UNITS {
 }
 
 PARAMETER {
-  rect_off = 0  (1)
-	v 		(mV)
-	gkbar  = 50	(pS) 	: 50 pS single channel conductance Yang et al 2000 
+    rect_off = 0  (1)
+    v 		(mV)
+    gkbar  = 50	(pS) 	: 50 pS single channel conductance Yang et al 2000 
 
-	: Boltzman steady state curve	
-        vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
-        kl = 10.89       (mV)    		: Stegen et al. 2012
+    : Boltzman steady state curve	
+    vhalfl = -98.92  (mV)    		: fitted to patch data, Stegen et al. 2012
+    kl = 10.89       (mV)    		: Stegen et al. 2012
 
-	: tau_infty 
-        vhalft=-59.6170749	 (mV)    	: refitted with VC from Olsen 2012 Methods Mol Biol
-        at=1.98752141	 (/ms)   		: 
-	bt=0.0143908141	 (/ms)	 		: 
+    : tau_infty 
+    vhalft=-59.6170749	 (mV)    	: refitted with VC from Olsen 2012 Methods Mol Biol
+    at=1.98752141	 (/ms)   		: 
+    bt=0.0143908141	 (/ms)	 		: 
 
-	: Temperature dependence
-        : celsius          (degC)  		: unused if q10 == 1.
-        q10 = 1.                              	: temperature scaling
-        A = 0.09534626                          : fit to sqrt rule and match single channel conductance 50 pS at Yang condition
-multiple = 0 (1)
-density = 370e8 (/cm2)
-density_std = 1e8 (/cm2)
+    : Temperature dependence
+    : celsius          (degC)  		: unused if q10 == 1.
+    q10 = 1.                              	: temperature scaling
+    A = 0.09534626                          : fit to sqrt rule and match single channel conductance 50 pS at Yang condition
+    multiple = 0 (1)
+    density = 370e8 (/cm2)
+    density_std = 1e8 (/cm2)
 }
 
 
 
 NEURON {
-	SUFFIX kir2 			
-	USEION k READ ek,ko WRITE ik	
-        RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
-        RANGE ik_kir,gk
-        RANGE rect_off
-        RANGE linf,taul
-        
-        THREADSAFE
+    SUFFIX kir2 			
+    USEION k READ ek,ko WRITE ik	
+    RANGE  gkbar, vhalfl, kl, vhalft, at, bt, q10, multiple,count,count_std
+    RANGE ik_kir,gk
+    RANGE rect_off
+    RANGE linf,taul
+
+    THREADSAFE
 }
 
 
 STATE {
-        l
+    l
 }
 
 ASSIGNED {
-        ik                              (mA/cm2)
-        ik_kir                          (mA/cm2)
-        gk                              (pS/cm2)
-        ek                              (mV)
-        linf      (1)
-        taul (ms)
-        ko                              (mM)
-        area (um2)
-        celsius (degC)
-        count (1)
-        count_std(1)
+    ik                              (mA/cm2)
+    ik_kir                          (mA/cm2)
+    gk                              (pS/cm2)
+    ek                              (mV)
+    linf      (1)
+    taul (ms)
+    ko                              (mM)
+    area (um2)
+    celsius (degC)
+    count (1)
+    count_std(1)
 }
 
 
 INITIAL {
-	rate(v)
-	l=linf
-  count_std = (1e-08) * area * density_std
-  count = (1e-08) * area * density + 4.7e3 * count_std 
-  gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * (count + multiple * count_std)/area
+    rate(v)
+    l=linf
+    count_std = (1e-08) * area * density_std
+    count = (1e-08) * area * density + 4.7e3 * count_std 
+    gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * (count + multiple * count_std)/area
 }
 
 
 
 BREAKPOINT {
-  LOCAL updatedCount
-	SOLVE states METHOD derivimplicit	: solve differential equations in states with method 'cnexp'
+    LOCAL updatedCount
+    SOLVE states METHOD derivimplicit	: solve differential equations in states with method 'cnexp'
     updatedCount = (count + multiple * count_std)
-  if (updatedCount < 0){
-    updatedCount = 0
-  }
-  if (ko <0){
-      gk = 0
-  } else {
-    gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * updatedCount /area
-  }
+    if (updatedCount < 0){
+        updatedCount = 0
+    }
+    if (ko <0){
+        gk = 0
+    } else {
+        gk = (1e8) * gkbar*(A*sqrt(ko/1 (mM))) * updatedCount /area
+    }
 
 
-        : printf("%g\n",area)
-        : printf("%g\n",gk*area*(1e-8))
-	: use state l to calulate gk
-        : area will be multiplied per section resulting in single channel conductance per segment.
-        : calculate gkbar from fitting single channel recording
-        if (rect_off == 0){ 
-          ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
-        } else {
-          ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
-          }
-        ik = ik_kir
+    : printf("%g\n",area)
+    : printf("%g\n",gk*area*(1e-8))
+    : use state l to calulate gk
+    : area will be multiplied per section resulting in single channel conductance per segment.
+    : calculate gkbar from fitting single channel recording
+    if (rect_off == 0){ 
+        ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+    } else {
+        ik_kir = (1e-12)*gk *l* ( v - ek )		: calculate ik 
+    }
+    ik = ik_kir
 }
 
 
 
 DERIVATIVE states {     
-        rate(v)
-        l' =  (linf - l)/taul		: differential equation 
+    rate(v)
+    l' =  (linf - l)/taul		: differential equation 
 }
 
 PROCEDURE rate(v (mV)) { :callable from hoc
     LOCAL qt 
     qt=q10^((celsius-33)/10(degC))
-        linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
- 	taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
+    linf = 1/(1 + exp((v-vhalfl)/kl))			: l_steadystate fit janiac data
+    taul = 1/(qt *(at*exp(-v/vhalft) + bt*exp(v/vhalft) ))
 }

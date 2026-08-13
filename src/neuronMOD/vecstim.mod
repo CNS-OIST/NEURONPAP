@@ -116,10 +116,10 @@ VERBATIM
 extern double* vector_vec();
 extern int vector_capacity();
 extern void* vector_arg();
-ENDVERBATIM     
+ENDVERBATIM
 
 PROCEDURE element() {
-VERBATIM
+    VERBATIM
     { void* vv; int i, size; double* px;
         i = (int)index;
         if (i >= 0) {
@@ -138,11 +138,11 @@ VERBATIM
             }
         }
     }
-ENDVERBATIM
+    ENDVERBATIM
 }
 
 PROCEDURE play() {
-VERBATIM
+    VERBATIM
     void** vv;
     vv = (void**)(&space);
     *vv = (void*)0;
@@ -150,5 +150,5 @@ VERBATIM
         *vv = vector_arg(1);
     }
     index = -2;
-ENDVERBATIM
+    ENDVERBATIM
 }

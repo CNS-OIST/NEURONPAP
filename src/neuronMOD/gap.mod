@@ -3,15 +3,15 @@ NEURON {
     POINT_PROCESS Gap
     NONSPECIFIC_CURRENT i_gap
     :USEION k READ ki WRITE ki
-    
+
     RANGE  i, VoltageGap,multiple,g
 }
 UNITS {
     (molar) = (1/liter)
-  
+
     (mM) =	(millimolar)
     (pS) = (picosiemens)
-  }
+}
 
 PARAMETER {
     multiple = 50 (1)
@@ -21,15 +21,15 @@ PARAMETER {
     ki_0 = 120 (mM)
 }
 ASSIGNED {
-  g (pS)
+    g (pS)
 }
 
 INITIAL {
-  if (multiple < 0) {
-      multiple = 0
+    if (multiple < 0) {
+        multiple = 0
     }
-      g = (g_max * multiple)
-  }
+    g = (g_max * multiple)
+}
 
 ASSIGNED {
     v (millivolt)

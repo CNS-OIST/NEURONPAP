@@ -4,39 +4,39 @@ COMMENT
 ENDCOMMENT
 
 NEURON {
-	SUFFIX GEVI
-        RANGE tON,tOFF
-	THREADSAFE
+    SUFFIX GEVI
+    RANGE tON,tOFF
+    THREADSAFE
+}
+
+UNITS {
+    (mV) = (millivolt)
+}
+ASSIGNED {
+    v (mV)
+    fluor (mV/ms)
+}
+PARAMETER {
+    tON = 58 (ms)
+    tOFF = 44 (ms)
+}
+INITIAL {
+    dF = v
+}
+STATE {
+    dF (mV)        
+}
+BREAKPOINT {
+    SOLVE state METHOD derivimplicit
+}
+DERIVATIVE state {
+    : printf("%f\n",fluor)
+    if ((v - dF) > 0 ){
+        fluor = (v - dF) / tON
+    } else {
+        fluor = (v - dF) / tOFF
     }
-    
-    UNITS {
-        (mV) = (millivolt)
-    }
-    ASSIGNED {
-        v (mV)
-        fluor (mV/ms)
-    }
-    PARAMETER {
-        tON = 58 (ms)
-        tOFF = 44 (ms)
-    }
-    INITIAL {
-        dF = v
-    }
-    STATE {
-        dF (mV)        
-    }
-    BREAKPOINT {
-        SOLVE state METHOD derivimplicit
-    }
-    DERIVATIVE state {
-        : printf("%f\n",fluor)
-        if ((v - dF) > 0 ){
-            fluor = (v - dF) / tON
-        } else {
-            fluor = (v - dF) / tOFF
-        }
-        dF' = fluor
-    }
-       
+    dF' = fluor
+}
+
 

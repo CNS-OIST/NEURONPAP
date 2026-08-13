@@ -62,10 +62,10 @@ PARAMETER {
     k65 = 0.1          ( /mM /ms) 
     k16 = 0.0016          ( /mM /ms)
     k61 =  2e-4        ( /mM /ms)
-    
+
     Gluin = 0.3      (mM)
     Gluout_0 = 20e-6	(mM)
-    
+
     density = 18686e8  (/cm2) : at tip for GLT-1
     density_std = 812e8  (/cm2) : at tip for GLT-1
     :Estimating the glutamate transporter surface density in distinct sub-cellular compartments of mouse hippocampal astrocytes Radulescu 2022 PLOS Comp.Bio
@@ -109,7 +109,7 @@ ASSIGNED {
 
 STATE {
     : Transporter  states (all fractions)
-            : 
+    : 
     C1	(1)	:  
     C2	(1)	:  
     C3	(1)	: 
@@ -161,7 +161,7 @@ NET_RECEIVE(weight,maxG ,GluRes,tsyn(ms)) {
     C5= 0.0142    
     C6= 0.0047
     UNITSON
-    
+
     : printf("%g,%g,%g\n",tSpike,maxGlu,GluRes)
 }
 
@@ -184,22 +184,22 @@ BREAKPOINT {
     updatedCount = (count + multiple * count_std)
     if (updatedCount < 0){
         updatedCount = 0
-      }
+    }
 
     ik = -charge*(1e12)*0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) * updatedCount
-    
+
     iGluT=-charge*(1e12)*(-0.1*(C1*k12*Gluout*u(v,-0.1)-C2*k21)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) + 0.5*(C2*k23*Naout*u(v,0.5)-C3*k32) + 0.4*( C3*k34*u(v,0.4)-C4*k43)) *  updatedCount
     : printf("iGluT:%g\n",iGluT)
     : printf("%g,%g\n",Nain,Naout)
     : printf("%g,%g\n",Kin,Kout)
     : printf("%g,%g,%g,%g,%g\n",C1,C2,C3,C4,C5)
     : printf("%g,%g\n",v,u(v,-0.1))
-    
+
     : if (Gluout > Gluout_0){
     :     printf("%g:%g\n",Gluout,iGluT)
     : }
     : itransLog=log(-iGluT*(1e+006))
-    
+
     :iGluT=-charge*density*(1e+006)*(0.6*(C1*k16*Kout*u(v,0.6)-C6*k61*Kin) +0.4*( C3*k34-C4*k43)+0.6*(C5*k56*u(v,0.6)-C6*k65*Nain) )
 }
 
@@ -214,7 +214,7 @@ KINETIC kstates {
     ~ C4 <-> C5 	   (k45,k54*Gluin)
     ~ C5 <-> C6	       (k56*u(v,0.6),k65*nai)
     ~ C6  <-> C1       (ki*k61, k16*u(v,0.6)*ko)
-    
+
     CONSERVE C1+C2+C3+C4+C5+C6= 1
 }
 

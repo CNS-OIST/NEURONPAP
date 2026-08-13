@@ -454,9 +454,9 @@ class PAPModel(ResultsPAPModel):
         gradient when on, or back to the resting potential when off.
         """
         if on:
-            h.set_gapv(self.nernstK(10, 120) * 1000)
+            h.set_vgap(self.nernstK(10, 120) * 1000)
         else:
-            h.set_gapv(self.v_init)
+            h.set_vgap(self.v_init)
 
     def plot_path_attenuation(self, parmName="voltageClamp", origin=None):
         """Compute paths away from (and toward) the given origin section, and plot voltage

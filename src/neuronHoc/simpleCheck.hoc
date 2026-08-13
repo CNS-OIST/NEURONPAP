@@ -63,7 +63,7 @@ proc setGluTs(){local lenPAP localobj sref
         GluTs.append(sGluT)
         ifsec $o1 {
             // psection()
-            
+
             // print(lenPAP)
             nc = new NetCon(stim,sGluT)
             ncGluList.append(nc)
@@ -99,6 +99,6 @@ proc clampSwitch() {
         vc.dur[0] = tstop
         vc.amp[0] = $2  // mV depolarization (dV = 20)
         //---------------------------------------------------
-        
+
     }
 }

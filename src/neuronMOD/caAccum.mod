@@ -18,51 +18,51 @@ COMMENT
 ENDCOMMENT
 
 NEURON {
-	SUFFIX ca_acc
-	USEION ca READ ica WRITE cai
-	RANGE tau, cai0, cmax, irest, ca_tmax
-        NONSPECIFIC_CURRENT dummy
+    SUFFIX ca_acc
+    USEION ca READ ica WRITE cai
+    RANGE tau, cai0, cmax, irest, ca_tmax
+    NONSPECIFIC_CURRENT dummy
 }
 
 UNITS {
-        (um) = (micron)
-	(mM) = (milli/liter)
-	(mA) = (milliamp)
-	F = (faraday) (coulombs)
+    (um) = (micron)
+    (mM) = (milli/liter)
+    (mA) = (milliamp)
+    F = (faraday) (coulombs)
 }
 
 PARAMETER {
-	irest = 0  (mA/cm2)		: to be initialized in hoc	
-	tau = 350 (ms) :  ~40 ms phenomenologically fits dendrite shafts, ~350 ms fits spines (murthy et al 2000 PNAS, earlier model default was 100 (ms)
-	cai0 = 50e-6 (mM)	: Requires explicit use in INITIAL
-			: block for it to take precedence over cai0_ca_ion
-			: Do not forget to initialize in hoc if different
-			: from this default.
+    irest = 0  (mA/cm2)		: to be initialized in hoc	
+    tau = 350 (ms) :  ~40 ms phenomenologically fits dendrite shafts, ~350 ms fits spines (murthy et al 2000 PNAS, earlier model default was 100 (ms)
+    cai0 = 50e-6 (mM)	: Requires explicit use in INITIAL
+    : block for it to take precedence over cai0_ca_ion
+    : Do not forget to initialize in hoc if different
+    : from this default.
 }
 
 ASSIGNED {
     ica      (mA/cm2)
     dummy (mA/cm2)
-        cmax     (milli/liter)
-        ca_tmax  (ms)
-        d (um)
+    cmax     (milli/liter)
+    ca_tmax  (ms)
+    d (um)
 }
 
 STATE {
-	cai (mM)
+    cai (mM)
 }
 
 INITIAL {
-	cai = cai0
-:	irest = ica : this make simulations depend on end result of prior simulations
-	cmax=cai
-	ca_tmax=0
+    cai = cai0
+    :	irest = ica : this make simulations depend on end result of prior simulations
+    cmax=cai
+    ca_tmax=0
 }
 
 BREAKPOINT {
-	SOLVE integrate METHOD derivimplicit
-	if (cai>cmax) {cmax=cai ca_tmax=t}
-	dummy=0
+    SOLVE integrate METHOD derivimplicit
+    if (cai>cmax) {cmax=cai ca_tmax=t}
+    dummy=0
 }
 
 DERIVATIVE integrate {

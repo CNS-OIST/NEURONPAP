@@ -1,21 +1,21 @@
 TITLE Potassium ion accumulation
 
 NEURON {
-	SUFFIX k_acc
-	USEION k READ ko, ik WRITE ko
-        RANGE tauk_0, ko0, flag, kbath,kbath_change, flux, flux_change,slowing
-        RANGE fhspace
-	THREADSAFE
+    SUFFIX k_acc
+    USEION k READ ko, ik WRITE ko
+    RANGE tauk_0, ko0, flag, kbath,kbath_change, flux, flux_change,slowing
+    RANGE fhspace
+    THREADSAFE
 }
 
 UNITS {
-	(um) = (micron)	
-	(mV) = (millivolt)
-	(mM) = (milli/liter)
-	(mA) = (milliamp)
-  (nA) = (nanoamp)
-	F = (faraday) (coulombs)
-  PI = (pi) (1)
+    (um) = (micron)	
+    (mV) = (millivolt)
+    (mM) = (milli/liter)
+    (mA) = (milliamp)
+    (nA) = (nanoamp)
+    F = (faraday) (coulombs)
+    PI = (pi) (1)
 }
 
 PARAMETER {    
@@ -64,28 +64,28 @@ INITIAL {
     tauk = tauk_0
     kbathRate()
     det_flag()
-        :printf("%g\n",tauk)
+    :printf("%g\n",tauk)
 }
 
 BREAKPOINT {
-        kbathRate()
-        SOLVE state METHOD derivimplicit
-        if (ko <= 0){
-            ko = 0
-        }
+    kbathRate()
+    SOLVE state METHOD derivimplicit
+    if (ko <= 0){
+        ko = 0
     }
-    
-    DERIVATIVE state {
-        kbathRate()
-        : if (ko0 > 2.5){
-        :     printf("%g\n",ko0)
-        : }
-        ko' = flux * (1e8)*ik /(fhspace*F) + kbath * (ko0-ko)/tauk
-        flux_change =(1e8)*ik /(fhspace*F) 
-        kbath_change =(ko0-ko)/tauk
- 
-        : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
-    }
+}
+
+DERIVATIVE state {
+    kbathRate()
+    : if (ko0 > 2.5){
+    :     printf("%g\n",ko0)
+    : }
+    ko' = flux * (1e8)*ik /(fhspace*F) + kbath * (ko0-ko)/tauk
+    flux_change =(1e8)*ik /(fhspace*F) 
+    kbath_change =(ko0-ko)/tauk
+
+    : printf("%g, %g, %g, %g\n",flag,ik,kbath,(1e8)*ik /(fhspace*F)/kbath)
+}
 PROCEDURE kbathRate(){
     if (flag > 0){
         flux = 0
@@ -98,9 +98,9 @@ PROCEDURE kbathRate(){
         :printf("%g, ",kbath)
         if (tauk < 0.01) {
             flag = 2
-          }
+        }
     }
-    
+
     if (flag == 1) {
         : instantaneous free bath mode for one step
         flag = 0   
@@ -108,12 +108,12 @@ PROCEDURE kbathRate(){
 }
 PROCEDURE det_flag() {
     if (tauk_0 < 0.01) {
-      : dont simulate very fast dissipation
-      flag = 2
-      }else{
+        : dont simulate very fast dissipation
+        flag = 2
+    }else{
         :printf("%g\n",tauk)
         flag = 0
-        }
-  }
+    }
+}
 
-    
+

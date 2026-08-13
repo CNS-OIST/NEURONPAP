@@ -4,13 +4,13 @@ COMMENT
 ENDCOMMENT
 
 NEURON {
-	SUFFIX shell
-  RANGE num
-	THREADSAFE
+    SUFFIX shell
+    RANGE num
+    THREADSAFE
 }
 
-    
+
 PARAMETER {
-      num = 0 (1)
+    num = 0 (1)
 }
 

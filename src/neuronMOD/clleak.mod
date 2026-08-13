@@ -9,30 +9,30 @@ NEURON {
     USEION k READ ko
     USEION na READ nao
     RANGE  gleak
-        
+
 }
 
 UNITS {
-	(molar) = (1/liter)
-	(mA) = (milliamp)
-        (mV) = (millivolt)
-        (uS)  = (microsiemens)
-	(mM) =	(millimolar)
-	(J)  = (joules)
-        (um) = (micron)
-        (uM) = (micromolar)
-        F  = (faraday) (coulombs)
-    }
-    CONSTANT {
-	T = 307	(degC)
- 	R        = 8.3145   (J/degC) 	
-        z = -1
-    }
-    
-    INITIAL {
-        calcECL()
-        }
-    
+    (molar) = (1/liter)
+    (mA) = (milliamp)
+    (mV) = (millivolt)
+    (uS)  = (microsiemens)
+    (mM) =	(millimolar)
+    (J)  = (joules)
+    (um) = (micron)
+    (uM) = (micromolar)
+    F  = (faraday) (coulombs)
+}
+CONSTANT {
+    T = 307	(degC)
+    R        = 8.3145   (J/degC) 	
+    z = -1
+}
+
+INITIAL {
+    calcECL()
+}
+
 
 PARAMETER {
     gleak = 5.57e-6 (uS) : ratio from Kalia et al. (2021) * Janic et al K leak
@@ -53,17 +53,17 @@ ASSIGNED {
 
 
 :BREAKPOINT {
-    :calcECL()
-    :icl = (100) * gleak * (v - ecl) / (4e5 (um2)) 
-        : divided by estimated surface area Radulescu A. et al (2022)
-        : ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
-	: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
-        : consider different channel dynamics
-    :}
-    
-    PROCEDURE calcECL(){
-        ecl = NERNST(clo_0, cli_0, z)
-    }
-    FUNCTION NERNST (co (mM), ci (mM), zion (1)) (mV) {
-        NERNST = (1e3) * R*T/F/zion * log(co/ci)
+:calcECL()
+:icl = (100) * gleak * (v - ecl) / (4e5 (um2)) 
+: divided by estimated surface area Radulescu A. et al (2022)
+: ik = (0.001)*gkir * ( v - ek*NormK - va1) *sqrt(((ko)/(1 (mM)))/(1+exp((v-ek*NormK-va2)/va3)))		: calculate ik 
+: printf("v: %g, ko: %g, va2: %g\n", v, ko, va2)
+: consider different channel dynamics
+:}
+
+PROCEDURE calcECL(){
+    ecl = NERNST(clo_0, cli_0, z)
+}
+FUNCTION NERNST (co (mM), ci (mM), zion (1)) (mV) {
+    NERNST = (1e3) * R*T/F/zion * log(co/ci)
 }

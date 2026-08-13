@@ -3253,7 +3253,7 @@ class procedure(plotFigures):
         # plt.show()
 
     def alteredDist(self):
-        """Runs simulations across a log-spaced range of Kir channel distribution ratios (soma:PAP) and overlays the resulting somatic voltage traces."""
+        """Depracted Runs simulations across a log-spaced range of Kir channel distribution ratios (soma:PAP) and overlays the resulting somatic voltage traces."""
         funcArgs = []
         funcArgs.append(
             {

@@ -63,7 +63,7 @@ proc get_path_toward_soma() {localobj sr
         }
 
         sr.parent sr = new SectionRef()
-        
+
     }
 }
 

@@ -11,18 +11,18 @@ Look Up Armstrong units to double check.
 ENDCOMMENT
 
 NEURON {
-	SUFFIX na_acc
-	USEION na READ nao, ina WRITE nao
-        RANGE tauna, nao0, flag
-	THREADSAFE
+    SUFFIX na_acc
+    USEION na READ nao, ina WRITE nao
+    RANGE tauna, nao0, flag
+    THREADSAFE
 }
 
 UNITS {
-	(um) = (micron)	
-	(mV) = (millivolt)
-	(mM) = (milli/liter)
-	(mA) = (milliamp)
-	F = (faraday) (coulombs)
+    (um) = (micron)	
+    (mV) = (millivolt)
+    (mM) = (milli/liter)
+    (mA) = (milliamp)
+    F = (faraday) (coulombs)
 }
 
 PARAMETER {    
@@ -44,17 +44,17 @@ STATE {
 INITIAL {
     nao = nao0
 
-    }
-    
-    BREAKPOINT {
-        SOLVE state METHOD derivimplicit
-    }
-    
-    DERIVATIVE state {
-        : if (ko0 > 2.5){
-        :     printf("%g\n",ko0)
+}
+
+BREAKPOINT {
+    SOLVE state METHOD derivimplicit
+}
+
+DERIVATIVE state {
+    : if (ko0 > 2.5){
+    :     printf("%g\n",ko0)
     : }
     nao' = (1e8)*ina /(fhspace*F) - (nao - nao0)/tauna
 }
 
-    
+
