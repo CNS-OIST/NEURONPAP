@@ -7,6 +7,5 @@ video/
 flycheck*
 .python-version
 uv.lock
-intermediaryData/
 *.mp4
 *.slurm
