@@ -12,7 +12,7 @@ Welcome to the NEURON model for depolarization of Perisynaptic Astrocyitc Proces
 This model tries to explore the electrophysiolgical properties at PAPs.
 It is the model used in the paper,
 
-"Global Nernstian Dynamics Breakdown for Local Synaptic Stimuli in Astrocytic Depolarization"
+"Global Nernstian astrocytic depolarization breaks down during local synaptic input."
 by RJ Nakatani and E De Schutter
 
 # installation
